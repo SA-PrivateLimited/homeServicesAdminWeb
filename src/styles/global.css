@@ -1,0 +1,123 @@
+/**
+ * Structural tokens only. Brand colors come from themeConfig via applyColorPalette().
+ * Fallbacks mirror `homeservices` so first paint works before JS.
+ */
+:root {
+  --primary-color: #3182ce;
+  --primary-color-2: #2c5282;
+  --secondary-color: #38b2ac;
+  --secondary-color-2: #2c7a7b;
+  --primary-color-opacity-05: rgba(49, 130, 206, 0.05);
+  --primary-color-opacity-10: rgba(49, 130, 206, 0.1);
+  --primary-color-opacity-15: rgba(49, 130, 206, 0.15);
+  --primary-color-opacity-20: rgba(49, 130, 206, 0.2);
+  --primary-color-opacity-35: rgba(49, 130, 206, 0.35);
+  --secondary-color-opacity-10: rgba(56, 178, 172, 0.1);
+  --secondary-color-opacity-20: rgba(56, 178, 172, 0.2);
+  --primary-opacity-10: var(--primary-color-opacity-10);
+  --neutral-white: #ffffff;
+  --neutral-black: #000000;
+  --neutral-white-opacity-06: rgba(255, 255, 255, 0.06);
+  --neutral-white-opacity-08: rgba(255, 255, 255, 0.08);
+  --neutral-white-opacity-16: rgba(255, 255, 255, 0.16);
+  --neutral-black-opacity-04: rgba(0, 0, 0, 0.04);
+  --neutral-black-opacity-06: rgba(0, 0, 0, 0.06);
+  --neutral-black-opacity-20: rgba(0, 0, 0, 0.2);
+  --neutral-black-opacity-25: rgba(0, 0, 0, 0.25);
+  --color-sidebar-opacity-45: rgba(26, 32, 44, 0.45);
+  --color-bg-opacity-60: rgba(245, 247, 250, 0.6);
+  --color-bg-opacity-80: rgba(245, 247, 250, 0.8);
+  --color-error-opacity-08: rgba(229, 62, 62, 0.08);
+  --color-error-opacity-12: rgba(229, 62, 62, 0.12);
+  --color-success-opacity-12: rgba(56, 161, 105, 0.12);
+  --color-warning-opacity-12: rgba(221, 107, 32, 0.12);
+
+  --color-primary: var(--primary-color);
+  --color-primary-dark: var(--primary-color-2);
+  --color-secondary: var(--secondary-color);
+  --color-bg: #f5f7fa;
+  --color-card: #ffffff;
+  --color-surface: #ffffff;
+  --color-text: #1a202c;
+  --color-text-secondary: #718096;
+  --color-border: #e2e8f0;
+  --color-error: #e53e3e;
+  --warning-red: var(--color-error);
+  --color-success: #38a169;
+  --color-warning: #dd6b20;
+  --color-sidebar: #1a202c;
+  --color-sidebar-text: #edf2f7;
+  --color-sidebar-muted: #a0aec0;
+
+  --font-body: 'IBM Plex Sans', 'Segoe UI', sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+
+  /* Spacing scale (4px base) — use everywhere */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+
+  /* Typography scale */
+  --font-size-xs: 12.5px; /* secondary / secondary table line */
+  --font-size-sm: 14px; /* body + table content */
+  --font-size-md: 16px; /* section / table / modal headers */
+  --font-size-lg: 20px; /* page titles */
+  --font-size-xl: 24px; /* stat values */
+
+  --line-height-tight: 1.25;
+  --line-height-body: 1.45;
+
+  --radius: 8px;
+  --radius-lg: 12px;
+  --shadow-sm: 0 1px 2px var(--neutral-black-opacity-06),
+    0 4px 12px var(--neutral-black-opacity-04);
+  --shadow: var(--shadow-sm);
+  --sidebar-width: 240px;
+  --sidebar-width-collapsed: 72px;
+  --control-height: 40px;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: var(--font-body);
+  color: var(--color-text);
+  overflow-x: hidden;
+  background:
+    radial-gradient(
+      ellipse 80% 50% at 100% 0%,
+      var(--primary-color-opacity-10),
+      transparent 50%
+    ),
+    radial-gradient(
+      ellipse 60% 40% at 0% 100%,
+      var(--secondary-color-opacity-10),
+      transparent 45%
+    ),
+    var(--color-bg);
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+#root {
+  min-height: 100vh;
+}

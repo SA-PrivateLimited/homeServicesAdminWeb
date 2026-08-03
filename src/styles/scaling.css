@@ -1,0 +1,47 @@
+/**
+ * Scaling system (aligned with ai-agent-cursor-claude frontend conventions).
+ * Put `scale-baseline-80` on the SAME element as the page root class — never nest.
+ * Prefer rem for spacing; avoid vh/fixed inside scaled containers for overlays
+ * (modals stay position:fixed on the backdrop outside the scaled tree when possible).
+ */
+
+.scale-baseline-80 {
+  zoom: 0.8;
+  width: 125%;
+  max-width: 125%;
+  box-sizing: border-box;
+  min-height: 100%;
+  /* Width compensation for zoom must not create a horizontal scrollbar */
+  overflow-x: clip;
+}
+
+.scale-baseline-100 {
+  zoom: 1;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+@supports not (zoom: 1) {
+  .scale-baseline-80 {
+    transform: scale(0.8);
+    transform-origin: top left;
+    width: 125%;
+  }
+}
+
+/* Narrow viewports: drop zoom compensation so tables/layout fit the real width */
+@media (max-width: 1100px) {
+  .scale-baseline-80 {
+    zoom: 1;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: visible;
+  }
+
+  @supports not (zoom: 1) {
+    .scale-baseline-80 {
+      transform: none;
+      width: 100%;
+    }
+  }
+}
