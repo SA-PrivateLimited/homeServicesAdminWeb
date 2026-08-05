@@ -1,9 +1,13 @@
-import {useEffect, useState} from 'react';
-import {NavLink, Outlet, useNavigate} from 'react-router-dom';
+import {useEffect, useRef, useState} from 'react';
+import {NavLink, Outlet, useLocation, useNavigate} from 'react-router-dom';
 import {useTranslation} from 'react-i18next';
 import {Icon} from 'sapvt-ltd-web-packages';
 import {Modal} from '../components/Modal';
 import {useAuthStore} from '../store/authStore';
+import {
+  adminSocketService,
+  type NewServiceRequestPayload,
+} from '../services/adminSocket';
 import './AdminShell.css';
 
 const NAV = [
@@ -28,6 +32,9 @@ export function AdminShell() {
   const changeSuperAdminKey = useAuthStore((s) => s.changeSuperAdminKey);
   const superAdminElevated = useAuthStore((s) => s.superAdminElevated);
   const navigate = useNavigate();
+  const location = useLocation();
+  const pathRef = useRef(location.pathname);
+  pathRef.current = location.pathname;
 
   const [elevateOpen, setElevateOpen] = useState(false);
   const [keyOpen, setKeyOpen] = useState(false);
@@ -37,6 +44,10 @@ export function AdminShell() {
   const [confirmKey, setConfirmKey] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [jobsBadge, setJobsBadge] = useState(0);
+  const [requestToast, setRequestToast] = useState<NewServiceRequestPayload | null>(
+    null,
+  );
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     try {
       return localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === '1';
@@ -56,7 +67,27 @@ export function AdminShell() {
     }
   }, [sidebarCollapsed]);
 
+  useEffect(() => {
+    const unsubscribe = adminSocketService.onNewServiceRequest((payload) => {
+      setRequestToast(payload);
+      if (
+        !payload.needsProvidersInArea &&
+        !pathRef.current.startsWith('/jobs')
+      ) {
+        setJobsBadge((n) => n + 1);
+      }
+    });
+    return unsubscribe;
+  }, []);
+
+  useEffect(() => {
+    if (location.pathname.startsWith('/jobs')) {
+      setJobsBadge(0);
+    }
+  }, [location.pathname]);
+
   const onLogout = async () => {
+    adminSocketService.disconnect();
     await logout();
     navigate('/login', {replace: true});
   };
@@ -148,6 +179,11 @@ export function AdminShell() {
                 {t(item.key).charAt(0)}
               </span>
               <span className="nav-link-text">{t(item.key)}</span>
+              {item.to === '/jobs' && jobsBadge > 0 ? (
+                <span className="nav-link-badge" aria-label={`${jobsBadge} new`}>
+                  {jobsBadge > 99 ? '99+' : jobsBadge}
+                </span>
+              ) : null}
             </NavLink>
           ))}
         </nav>
@@ -212,6 +248,60 @@ export function AdminShell() {
         </div>
       </aside>
       <main className="shell-main">
+        {requestToast ? (
+          <div className="admin-request-toast" role="status">
+            <div className="admin-request-toast-body">
+              <strong>
+                {requestToast.needsProvidersInArea
+                  ? 'Provider needed in area'
+                  : requestToast.needsAdminAssignment
+                    ? 'Needs provider assignment'
+                    : 'New service request'}
+              </strong>
+              <p>
+                {requestToast.customerName || 'Customer'}
+                {requestToast.serviceType
+                  ? ` · ${requestToast.serviceType}`
+                  : ''}
+                {requestToast.pincode ? ` · ${requestToast.pincode}` : ''}
+                {requestToast.needsProvidersInArea
+                  ? ' · request more providers'
+                  : requestToast.needsAdminAssignment
+                    ? ' · no providers in area'
+                    : ''}
+              </p>
+            </div>
+            <div className="admin-request-toast-actions">
+              <button
+                type="button"
+                className="admin-request-toast-btn"
+                onClick={() => {
+                  setRequestToast(null);
+                  if (!requestToast.needsProvidersInArea) {
+                    setJobsBadge(0);
+                  }
+                  navigate(
+                    requestToast.needsProvidersInArea
+                      ? '/providers'
+                      : requestToast.needsAdminAssignment
+                        ? '/jobs?filter=unassigned'
+                        : '/jobs',
+                  );
+                }}>
+                {requestToast.needsProvidersInArea
+                  ? 'View providers'
+                  : 'View jobs'}
+              </button>
+              <button
+                type="button"
+                className="admin-request-toast-dismiss"
+                aria-label="Dismiss"
+                onClick={() => setRequestToast(null)}>
+                ×
+              </button>
+            </div>
+          </div>
+        ) : null}
         <Outlet />
       </main>
 

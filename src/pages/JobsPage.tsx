@@ -1,5 +1,6 @@
 import {useCallback, useEffect, useMemo, useState} from 'react';
 import {useTranslation} from 'react-i18next';
+import {useSearchParams} from 'react-router-dom';
 import {
   Icon,
   Select,
@@ -20,7 +21,16 @@ import {
   type JobComment,
 } from '../services/api/jobCardsApi';
 import {getProviders, type Provider} from '../services/api/providersApi';
-import {formatPhoneDisplay} from '../utils/phone';
+import {
+  getGeographyMeta,
+  type GeographyMetaDistrict,
+  type GeographyMetaState,
+} from '../services/api/geographyApi';
+import {adminSocketService} from '../services/adminSocket';
+import {formatPhoneDisplay, localTenDigits} from '../utils/phone';
+import {downloadExcelSpreadsheet} from '../utils/excelExport';
+import {CopyFeedbackButton} from '../components/CopyFeedbackButton';
+import {useAuthStore} from '../store/authStore';
 import '../styles/pages.css';
 
 const FILTERS = [
@@ -34,6 +44,9 @@ const FILTERS = [
 ] as const;
 
 const PAGE_SIZE = 50;
+const ALL_STATES = '__all_states__';
+const ALL_DISTRICTS = '__all_districts__';
+const EXPORT_PAGE_SIZE = 100;
 
 const STATUS_EDIT_OPTIONS = [
   'pending',
@@ -47,6 +60,11 @@ const STATUS_FILTER_OPTIONS = [
   'unassigned',
   ...STATUS_EDIT_OPTIONS.map((o) => o.value),
 ].map((s) => ({value: s, label: s}));
+
+function phoneCopyDigits(value?: string | null): string {
+  const ten = localTenDigits(value);
+  return ten.length === 10 ? ten : '';
+}
 
 function formatDate(value?: string | Date | null): string {
   if (!value) return '—';
@@ -76,10 +94,27 @@ function formatDateShort(value?: string | Date | null): string {
 function formatAddress(value?: string | JobAddress | null): string {
   if (!value) return '—';
   if (typeof value === 'string') return value.trim() || '—';
-  const parts = [value.address, value.city, value.state, value.pincode].filter(
-    Boolean,
-  );
+  const parts = [
+    value.address,
+    value.district || value.city,
+    value.state,
+    value.pincode,
+  ].filter(Boolean);
   return parts.length ? parts.join(', ') : '—';
+}
+
+function addressSearchValue(value?: string | JobAddress | null): string {
+  if (!value) return '';
+  if (typeof value === 'string') return value;
+  return [
+    value.address,
+    value.district,
+    value.city,
+    value.state,
+    value.pincode,
+  ]
+    .filter(Boolean)
+    .join(' ');
 }
 
 function providerLabel(p: Provider): string {
@@ -111,7 +146,17 @@ function statusBadgeClass(status: string): string {
 
 export function JobsPage() {
   const {t} = useTranslation();
-  const [filter, setFilter] = useState<(typeof FILTERS)[number]>('all');
+  const [searchParams] = useSearchParams();
+  const initialFilter = (() => {
+    const f = searchParams.get('filter');
+    // Legacy deep-link: needs-provider → unassigned (same admin action queue)
+    if (f === 'needs-provider') return 'unassigned';
+    if (f && (FILTERS as readonly string[]).includes(f)) {
+      return f as (typeof FILTERS)[number];
+    }
+    return 'all';
+  })();
+  const [filter, setFilter] = useState<(typeof FILTERS)[number]>(initialFilter);
   const [rows, setRows] = useState<JobCard[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
@@ -130,6 +175,48 @@ export function JobsPage() {
     Record<string, boolean>
   >({});
   const [revealModalPin, setRevealModalPin] = useState(false);
+  const [geoStates, setGeoStates] = useState<GeographyMetaState[]>([]);
+  const [geoDistricts, setGeoDistricts] = useState<GeographyMetaDistrict[]>(
+    [],
+  );
+  const [filterStateId, setFilterStateId] = useState(ALL_STATES);
+  const [filterDistrictId, setFilterDistrictId] = useState(ALL_DISTRICTS);
+  const [exportBusy, setExportBusy] = useState(false);
+  const [exportMessage, setExportMessage] = useState<string | null>(null);
+  const superAdminElevated = useAuthStore((s) => s.superAdminElevated);
+
+  const selectedState = useMemo(
+    () => geoStates.find((s) => s._id === filterStateId) || null,
+    [geoStates, filterStateId],
+  );
+  const districtOptions = useMemo(() => {
+    if (filterStateId === ALL_STATES) return geoDistricts;
+    return geoDistricts.filter((d) => d.stateId === filterStateId);
+  }, [geoDistricts, filterStateId]);
+  const selectedDistrict = useMemo(
+    () => geoDistricts.find((d) => d._id === filterDistrictId) || null,
+    [geoDistricts, filterDistrictId],
+  );
+
+  const areaFilters = useMemo(
+    () => ({
+      stateId: filterStateId !== ALL_STATES ? filterStateId : undefined,
+      state:
+        filterStateId !== ALL_STATES ? selectedState?.name : undefined,
+      districtId:
+        filterDistrictId !== ALL_DISTRICTS ? filterDistrictId : undefined,
+      district:
+        filterDistrictId !== ALL_DISTRICTS
+          ? selectedDistrict?.name
+          : undefined,
+    }),
+    [
+      filterDistrictId,
+      filterStateId,
+      selectedDistrict?.name,
+      selectedState?.name,
+    ],
+  );
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -139,11 +226,13 @@ export function JobsPage() {
         filter === 'unassigned'
           ? await getJobCardsPage({
               unassigned: true,
+              ...areaFilters,
               limit: PAGE_SIZE,
               offset: page * PAGE_SIZE,
             })
           : await getJobCardsPage({
               status: filter === 'all' ? undefined : filter,
+              ...areaFilters,
               limit: PAGE_SIZE,
               offset: page * PAGE_SIZE,
             });
@@ -154,15 +243,38 @@ export function JobsPage() {
     } finally {
       setLoading(false);
     }
-  }, [filter, page, t]);
+  }, [areaFilters, filter, page, t]);
 
   useEffect(() => {
     void load();
   }, [load]);
 
   useEffect(() => {
+    return adminSocketService.onNewServiceRequest(() => {
+      void load();
+    });
+  }, [load]);
+
+  useEffect(() => {
     setPage(0);
-  }, [filter]);
+  }, [filter, filterStateId, filterDistrictId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const meta = await getGeographyMeta();
+        if (cancelled) return;
+        setGeoStates(meta.states || []);
+        setGeoDistricts(meta.districts || []);
+      } catch {
+        // geography optional for filters
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -190,6 +302,126 @@ export function JobsPage() {
       })),
     [providers],
   );
+
+  const providerPhoneById = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const p of providers) {
+      const phone = p.phone || p.phoneNumber;
+      if (phone) map.set(p._id, phone);
+    }
+    return map;
+  }, [providers]);
+
+  const resolveProviderPhone = useCallback(
+    (row: JobCard): string => {
+      if (isJobUnassigned(row)) return '';
+      const fromJob = (row.providerPhone || '').trim();
+      if (fromJob) return fromJob;
+      const id = (row.providerId || '').trim();
+      if (!id) return '';
+      return providerPhoneById.get(id) || '';
+    },
+    [providerPhoneById],
+  );
+
+  const onExportExcel = useCallback(async () => {
+    if (!superAdminElevated) {
+      setExportMessage(t('exportSuperAdminOnly'));
+      return;
+    }
+    setExportBusy(true);
+    setExportMessage(null);
+    try {
+      const all: JobCard[] = [];
+      let offset = 0;
+      let totalCount = Infinity;
+      while (all.length < totalCount) {
+        const pageResult =
+          filter === 'unassigned'
+            ? await getJobCardsPage({
+                unassigned: true,
+                ...areaFilters,
+                limit: EXPORT_PAGE_SIZE,
+                offset,
+              })
+            : await getJobCardsPage({
+                status: filter === 'all' ? undefined : filter,
+                ...areaFilters,
+                limit: EXPORT_PAGE_SIZE,
+                offset,
+              });
+        all.push(...pageResult.items);
+        totalCount = pageResult.total;
+        if (!pageResult.items.length) break;
+        offset += EXPORT_PAGE_SIZE;
+      }
+
+      const headers = [
+        'Job ID',
+        'Service',
+        'Problem',
+        'Status',
+        'Needs provider',
+        'Customer name',
+        'Customer phone',
+        'Customer address',
+        'Provider name',
+        'Provider phone',
+        'Provider address',
+        'Task PIN',
+        'Created',
+        'Updated',
+      ];
+      const excelRows = all.map((job) => {
+        const unassigned = isJobUnassigned(job);
+        const providerPhone = unassigned
+          ? ''
+          : job.providerPhone ||
+            (job.providerId
+              ? providerPhoneById.get(job.providerId) || ''
+              : '');
+        return [
+          job._id,
+          job.serviceType || '',
+          job.problem || '',
+          unassigned ? 'unassigned' : job.status || '',
+          job.needsAdminAssignment ? 'yes' : 'no',
+          job.customerName || '',
+          phoneCopyDigits(job.customerPhone) || job.customerPhone || '',
+          formatAddress(job.customerAddress),
+          unassigned ? '' : job.providerName || '',
+          unassigned
+            ? ''
+            : phoneCopyDigits(providerPhone) || providerPhone || '',
+          unassigned ? '' : formatAddress(job.providerAddress),
+          job.taskPIN || '',
+          formatDate(job.createdAt),
+          formatDate(job.updatedAt),
+        ];
+      });
+
+      const stamp = new Date().toISOString().slice(0, 10);
+      downloadExcelSpreadsheet(
+        `job-cards-${stamp}`,
+        'Job cards',
+        headers,
+        excelRows,
+      );
+      setExportMessage(t('exportExcelDone'));
+    } catch (err) {
+      setExportMessage(
+        err instanceof Error ? err.message : t('exportExcelFailed'),
+      );
+    } finally {
+      setExportBusy(false);
+    }
+  }, [
+    areaFilters,
+    filter,
+    providerPhoneById,
+    superAdminElevated,
+    t,
+  ]);
 
   const refreshViewJob = async (jobId: string) => {
     const full = await getJobCardById(jobId);
@@ -309,15 +541,29 @@ export function JobsPage() {
       {
         key: 'service',
         header: 'Service',
+        width: '7rem',
         filterable: true,
         filterType: 'multi',
         filterPlaceholder: 'Filter services',
         filterValue: (row) => row.serviceType || '',
-        render: (row) => row.serviceType || '—',
+        render: (row) => (
+          <span>
+            {row.serviceType || '—'}
+            {row.needsAdminAssignment ? (
+              <span
+                className="badge badge-pending"
+                style={{marginLeft: 6}}
+                title="No providers in customer area">
+                Needs provider
+              </span>
+            ) : null}
+          </span>
+        ),
       },
       {
         key: 'problem',
         header: 'Problem',
+        width: '9rem',
         filterable: true,
         filterPlaceholder: 'Search problem',
         filterValue: (row) => row.problem || '',
@@ -330,40 +576,89 @@ export function JobsPage() {
       {
         key: 'customer',
         header: 'Customer',
+        width: '14rem',
         filterable: true,
         filterPlaceholder: 'Search customer',
         filterValue: (row) =>
-          `${row.customerName || ''} ${row.customerPhone || ''}`,
-        render: (row) =>
-          row.customerName
-            ? `${row.customerName}${
-                row.customerPhone
-                  ? ` · ${formatPhoneDisplay(row.customerPhone)}`
-                  : ''
-              }`
-            : '—',
+          `${row.customerName || ''} ${row.customerPhone || ''} ${addressSearchValue(row.customerAddress)}`,
+        render: (row) => {
+          const addr = formatAddress(row.customerAddress);
+          const rawPhone = (row.customerPhone || '').trim();
+          const phone = rawPhone ? formatPhoneDisplay(rawPhone) : '';
+          const copyDigits = phoneCopyDigits(rawPhone);
+          return (
+            <span
+              className="party-cell"
+              title={[row.customerName, phone, addr].filter(Boolean).join(' · ')}>
+              <span className="party-cell-primary">
+                {row.customerName || '—'}
+              </span>
+              {phone && phone !== '—' ? (
+                <span className="party-phone-row">
+                  <span className="party-cell-meta">{phone}</span>
+                  {copyDigits ? (
+                    <CopyFeedbackButton
+                      text={copyDigits}
+                      ariaLabel={t('copyPhone')}
+                      title={t('copyPhone')}
+                    />
+                  ) : null}
+                </span>
+              ) : null}
+              {addr !== '—' ? (
+                <span className="party-cell-meta">{addr}</span>
+              ) : null}
+            </span>
+          );
+        },
       },
       {
         key: 'provider',
         header: 'Provider',
+        width: '14rem',
         filterable: true,
         filterPlaceholder: 'Search provider',
         filterValue: (row) =>
           isJobUnassigned(row)
             ? 'unassigned'
-            : `${row.providerName || ''} ${row.providerPhone || ''}`,
-        render: (row) =>
-          isJobUnassigned(row) ? (
-            <span className="badge badge-pending">{t('unassigned')}</span>
-          ) : row.providerName ? (
-            `${row.providerName}${
-              row.providerPhone
-                ? ` · ${formatPhoneDisplay(row.providerPhone)}`
-                : ''
-            }`
-          ) : (
-            '—'
-          ),
+            : `${row.providerName || ''} ${resolveProviderPhone(row)} ${addressSearchValue(row.providerAddress)}`,
+        render: (row) => {
+          if (isJobUnassigned(row)) {
+            return (
+              <span className="badge badge-pending">{t('unassigned')}</span>
+            );
+          }
+          const addr = formatAddress(row.providerAddress);
+          const rawPhone = resolveProviderPhone(row);
+          const phone = rawPhone ? formatPhoneDisplay(rawPhone) : '';
+          const copyDigits = phoneCopyDigits(rawPhone);
+          return (
+            <span
+              className="party-cell"
+              title={[row.providerName, phone, addr]
+                .filter((part) => part && part !== '—')
+                .join(' · ')}>
+              <span className="party-cell-primary">
+                {row.providerName || '—'}
+              </span>
+              {phone && phone !== '—' ? (
+                <span className="party-phone-row">
+                  <span className="party-cell-meta">{phone}</span>
+                  {copyDigits ? (
+                    <CopyFeedbackButton
+                      text={copyDigits}
+                      ariaLabel={t('copyPhone')}
+                      title={t('copyPhone')}
+                    />
+                  ) : null}
+                </span>
+              ) : null}
+              {addr !== '—' ? (
+                <span className="party-cell-meta">{addr}</span>
+              ) : null}
+            </span>
+          );
+        },
       },
       {
         key: 'status',
@@ -386,6 +681,7 @@ export function JobsPage() {
       {
         key: 'pin',
         header: 'Task PIN',
+        width: '7.5rem',
         filterable: true,
         filterPlaceholder: 'Search PIN',
         filterValue: (row) => row.taskPIN || '',
@@ -393,19 +689,35 @@ export function JobsPage() {
           if (!row.taskPIN) return '—';
           const shown = Boolean(revealedTaskPins[row._id]);
           return (
-            <span className="pin-reveal-cell">
-              <code>{shown ? row.taskPIN : t('pinMasked')}</code>
-              <button
-                type="button"
-                className="btn btn-ghost"
-                onClick={() =>
-                  setRevealedTaskPins((m) => ({
-                    ...m,
-                    [row._id]: !m[row._id],
-                  }))
-                }>
-                {shown ? t('hidePin') : t('revealPin')}
-              </button>
+            <span className="pin-cell">
+              <span className="pin-cell-value">
+                <code>{shown ? row.taskPIN : t('pinMasked')}</code>
+              </span>
+              <span className="pin-cell-actions">
+                <button
+                  type="button"
+                  className="btn btn-ghost icon-only"
+                  aria-label={shown ? t('hidePin') : t('revealPin')}
+                  title={shown ? t('hidePin') : t('revealPin')}
+                  onClick={() =>
+                    setRevealedTaskPins((m) => ({
+                      ...m,
+                      [row._id]: !m[row._id],
+                    }))
+                  }>
+                  <Icon
+                    name={shown ? 'visibility_off' : 'visibility'}
+                    size={16}
+                  />
+                </button>
+                {shown ? (
+                  <CopyFeedbackButton
+                    text={row.taskPIN || ''}
+                    ariaLabel={t('copyPin')}
+                    title={t('copyPin')}
+                  />
+                ) : null}
+              </span>
             </span>
           );
         },
@@ -452,7 +764,7 @@ export function JobsPage() {
         ),
       },
     ],
-    [revealedTaskPins, t],
+    [revealedTaskPins, resolveProviderPhone, t],
   );
 
   const comments = viewJob?.comments ?? [];
@@ -460,10 +772,34 @@ export function JobsPage() {
 
   return (
     <div className="admin-page scale-baseline-80" data-testid="jobs-root">
-      <header className="page-header">
-        <h1>{t('jobsTitle')}</h1>
-        <p>{t('jobsLead')}</p>
+      <header className="page-header row-header">
+        <div>
+          <h1>{t('jobsTitle')}</h1>
+          <p>{t('jobsLead')}</p>
+        </div>
+        {superAdminElevated ? (
+          <div className="row-header-actions">
+            <button
+              type="button"
+              className="btn btn-primary"
+              disabled={exportBusy || loading}
+              onClick={() => void onExportExcel()}>
+              <Icon name="download" size={18} />
+              {exportBusy ? t('exportingExcel') : t('exportExcel')}
+            </button>
+          </div>
+        ) : null}
       </header>
+      {exportMessage ? (
+        <p
+          className={
+            exportMessage === t('exportExcelDone')
+              ? 'muted compact'
+              : 'error-text'
+          }>
+          {exportMessage}
+        </p>
+      ) : null}
 
       <div className="filter-row">
         {FILTERS.map((s) => (
@@ -471,10 +807,48 @@ export function JobsPage() {
             key={s}
             type="button"
             className={filter === s ? 'btn btn-primary' : 'btn btn-ghost'}
-            onClick={() => setFilter(s)}>
+            onClick={() => {
+              setPage(0);
+              setFilter(s);
+            }}>
             {s === 'unassigned' ? t('filterUnassigned') : s}
           </button>
         ))}
+        <div className="filter-inline" style={{minWidth: '12rem'}}>
+          <Select
+            options={[
+              {value: ALL_STATES, label: t('allStates')},
+              ...geoStates.map((s) => ({value: s._id, label: s.name})),
+            ]}
+            value={filterStateId}
+            placeholder={t('filterByState')}
+            showSearch
+            onChange={(value) => {
+              setFilterStateId(value || ALL_STATES);
+              setFilterDistrictId(ALL_DISTRICTS);
+              setPage(0);
+            }}
+          />
+        </div>
+        <div className="filter-inline" style={{minWidth: '12rem'}}>
+          <Select
+            options={[
+              {value: ALL_DISTRICTS, label: t('allDistricts')},
+              ...districtOptions.map((d) => ({
+                value: d._id,
+                label: d.name,
+              })),
+            ]}
+            value={filterDistrictId}
+            placeholder={t('filterByDistrict')}
+            showSearch
+            disabled={filterStateId === ALL_STATES}
+            onChange={(value) => {
+              setFilterDistrictId(value || ALL_DISTRICTS);
+              setPage(0);
+            }}
+          />
+        </div>
       </div>
 
       <div className="panel">
@@ -600,9 +974,12 @@ export function JobsPage() {
             ) : (
               <p className="job-party-name">
                 {viewJob.providerName || '—'}
-                {viewJob.providerPhone
-                  ? ` · ${formatPhoneDisplay(viewJob.providerPhone)}`
-                  : ''}
+                {(() => {
+                  const phone = resolveProviderPhone(viewJob);
+                  return phone
+                    ? ` · ${formatPhoneDisplay(phone)}`
+                    : '';
+                })()}
               </p>
             )}
             <p className="job-party-address">

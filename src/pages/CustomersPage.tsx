@@ -16,6 +16,7 @@ import {
 import {
   createUser,
   deactivateUser,
+  deleteUser,
   getUsersPage,
   restoreUser,
   revealUserPin,
@@ -36,11 +37,20 @@ import {
   toE164,
 } from '../utils/phone';
 import {formatLastUpdated} from '../utils/datetime';
+import {CopyFeedbackButton} from '../components/CopyFeedbackButton';
 import '../styles/pages.css';
 
 const PAGE_SIZE = 50;
 const ALL_STATES = '__all_states__';
 const ALL_DISTRICTS = '__all_districts__';
+
+function phoneCopyDigits(
+  ...candidates: Array<string | null | undefined>
+): string {
+  const raw = candidates.find((c) => (c || '').trim()) || '';
+  const ten = localTenDigits(raw);
+  return ten.length === 10 ? ten : '';
+}
 
 export function CustomersPage() {
   const {t} = useTranslation();
@@ -94,6 +104,9 @@ export function CustomersPage() {
   const [deactivateReason, setDeactivateReason] = useState('');
   const [deactivateBusy, setDeactivateBusy] = useState(false);
   const [deactivateError, setDeactivateError] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<User | null>(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [restoreBusyId, setRestoreBusyId] = useState<string | null>(null);
   const [phoneVerifyBusyId, setPhoneVerifyBusyId] = useState<string | null>(null);
 
@@ -472,6 +485,26 @@ export function CustomersPage() {
     }
   };
 
+  const onDeleteUser = async () => {
+    if (!deleteTarget) return;
+    setDeleteBusy(true);
+    setDeleteError(null);
+    try {
+      const {name} = userLabel(deleteTarget);
+      await deleteUser(deleteTarget._id);
+      setDeleteTarget(null);
+      setSuccessBanner({
+        title: t('userDeletedTitle'),
+        detail: t('userDeletedDetail', {name}),
+      });
+      await load();
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : t('errorGeneric'));
+    } finally {
+      setDeleteBusy(false);
+    }
+  };
+
   const openPinModal = (row: User) => {
     setPinUser(row);
     setPinValue('');
@@ -503,35 +536,58 @@ export function CustomersPage() {
       {
         key: 'name',
         header: 'Name',
+        width: '8rem',
         filterable: true,
         filterPlaceholder: 'Search name',
         filterValue: (row) => row.name || row.displayName || '',
-        render: (row) => row.name || row.displayName || '—',
+        render: (row) => (
+          <span
+            className="cell-clamp"
+            title={row.name || row.displayName || undefined}>
+            {row.name || row.displayName || '—'}
+          </span>
+        ),
       },
       {
         key: 'phone',
         header: 'Phone',
+        width: '11.5rem',
         filterable: true,
         filterPlaceholder: 'Search phone',
         filterValue: (row) => phoneSearchValue(row.phone, row.phoneNumber),
-        render: (row) => (
-          <span className="phone-verify-cell">
-            <span>{formatPhoneDisplay(row.phone, row.phoneNumber)}</span>
-            <label className="checkbox-inline phone-verified-toggle">
-              <input
-                type="checkbox"
-                checked={Boolean(row.phoneVerified)}
-                disabled={phoneVerifyBusyId === row._id}
-                onChange={() => void onTogglePhoneVerified(row)}
-                title={t('markPhoneVerified')}
-                aria-label={t('markPhoneVerified')}
-              />
-              <span className="muted compact">
-                {row.phoneVerified ? t('phoneVerified') : t('phoneUnverified')}
+        render: (row) => {
+          const display = formatPhoneDisplay(row.phone, row.phoneNumber);
+          const copyDigits = phoneCopyDigits(row.phone, row.phoneNumber);
+          return (
+            <span className="phone-verify-cell">
+              <span className="phone-number-row">
+                <span className="phone-number-text" title={display}>
+                  {display}
+                </span>
+                {copyDigits ? (
+                  <CopyFeedbackButton
+                    text={copyDigits}
+                    ariaLabel={t('copyPhone')}
+                    title={t('copyPhone')}
+                  />
+                ) : null}
               </span>
-            </label>
-          </span>
-        ),
+              <label className="checkbox-inline phone-verified-toggle">
+                <input
+                  type="checkbox"
+                  checked={Boolean(row.phoneVerified)}
+                  disabled={phoneVerifyBusyId === row._id}
+                  onChange={() => void onTogglePhoneVerified(row)}
+                  title={t('markPhoneVerified')}
+                  aria-label={t('markPhoneVerified')}
+                />
+                <span className="muted compact">
+                  {row.phoneVerified ? t('phoneVerified') : t('phoneUnverified')}
+                </span>
+              </label>
+            </span>
+          );
+        },
       },
       {
         key: 'address',
@@ -562,7 +618,7 @@ export function CustomersPage() {
       {
         key: 'pin',
         header: t('loginPin'),
-        width: '8.5rem',
+        width: '12rem',
         render: (row) => {
           const pin = revealedPins[row._id];
           return (
@@ -570,29 +626,39 @@ export function CustomersPage() {
               <span className="pin-cell-value">
                 {pin ? <code>{pin}</code> : row.hasPin ? '••••••' : '—'}
               </span>
-              {row.hasPin ? (
-                <button
-                  type="button"
-                  className="btn btn-ghost icon-only"
-                  disabled={revealBusyId === row._id}
-                  aria-label={pin ? t('hidePassword') : t('revealPin')}
-                  title={pin ? t('hidePassword') : t('revealPin')}
-                  onClick={() => void onRevealPin(row)}>
-                  <Icon
-                    name={pin ? 'visibility_off' : 'visibility'}
-                    size={18}
-                  />
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  className="btn btn-ghost icon-only"
-                  aria-label={t('generatePin')}
-                  title={t('generatePin')}
-                  onClick={() => openPinModal(row)}>
-                  <Icon name="lock_reset" size={18} />
-                </button>
-              )}
+              <span className="pin-cell-actions">
+                {row.hasPin ? (
+                  <>
+                    <button
+                      type="button"
+                      className="btn btn-ghost icon-only"
+                      disabled={revealBusyId === row._id}
+                      aria-label={pin ? t('hidePassword') : t('revealPin')}
+                      title={pin ? t('hidePassword') : t('revealPin')}
+                      onClick={() => void onRevealPin(row)}>
+                      <Icon
+                        name={pin ? 'visibility_off' : 'visibility'}
+                        size={18}
+                      />
+                    </button>
+                    <CopyFeedbackButton
+                      text={pin || ''}
+                      disabled={!pin}
+                      ariaLabel={t('copyPin')}
+                      title={pin ? t('copyPin') : t('revealPin')}
+                    />
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    className="btn btn-ghost icon-only"
+                    aria-label={t('generatePin')}
+                    title={t('generatePin')}
+                    onClick={() => openPinModal(row)}>
+                    <Icon name="lock_reset" size={18} />
+                  </button>
+                )}
+              </span>
             </span>
           );
         },
@@ -606,7 +672,7 @@ export function CustomersPage() {
       {
         key: 'actions',
         header: 'Actions',
-        width: '8rem',
+        width: '16rem',
         render: (row) => (
           <span className="actions table-actions">
             <button
@@ -651,6 +717,17 @@ export function CustomersPage() {
                 <Icon name="safety_check_off" size={18} />
               </button>
             )}
+            <button
+              type="button"
+              className="btn btn-ghost icon-only"
+              aria-label={t('delete')}
+              title={t('delete')}
+              onClick={() => {
+                setDeleteTarget(row);
+                setDeleteError(null);
+              }}>
+              <Icon name="delete" size={18} />
+            </button>
           </span>
         ),
       },
@@ -1079,6 +1156,33 @@ export function CustomersPage() {
               type="button"
               className="btn btn-ghost"
               onClick={() => setDeactivateTarget(null)}>
+              {t('cancel')}
+            </button>
+          </div>
+        </Modal>
+      ) : null}
+
+      {deleteTarget ? (
+        <Modal
+          title={t('deleteUserTitle')}
+          onClose={() => setDeleteTarget(null)}
+          testId="customers-delete-modal">
+          <p className="muted compact">
+            {t('deleteUserLead', {name: userLabel(deleteTarget).name})}
+          </p>
+          {deleteError ? <p className="error-text">{deleteError}</p> : null}
+          <div className="actions">
+            <button
+              type="button"
+              className="btn btn-danger"
+              disabled={deleteBusy}
+              onClick={() => void onDeleteUser()}>
+              {deleteBusy ? t('saving') : t('confirmDelete')}
+            </button>
+            <button
+              type="button"
+              className="btn btn-ghost"
+              onClick={() => setDeleteTarget(null)}>
               {t('cancel')}
             </button>
           </div>

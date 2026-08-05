@@ -21,8 +21,14 @@ import {
   type Provider,
 } from '../services/api/providersApi';
 import {
+  getAreaProviderDemands,
+  updateAreaProviderDemand,
+  type AreaProviderDemand,
+} from '../services/api/areaProviderDemandsApi';
+import {
   createUser,
   deactivateUser,
+  deleteUser,
   restoreUser,
   revealUserPin,
   setUserPin,
@@ -42,11 +48,20 @@ import {
   toE164,
 } from '../utils/phone';
 import {formatLastUpdated} from '../utils/datetime';
+import {CopyFeedbackButton} from '../components/CopyFeedbackButton';
 import '../styles/pages.css';
 
 const PAGE_SIZE = 50;
 const ALL_STATES = '__all_states__';
 const ALL_DISTRICTS = '__all_districts__';
+
+function phoneCopyDigits(
+  ...candidates: Array<string | null | undefined>
+): string {
+  const raw = candidates.find((c) => (c || '').trim()) || '';
+  const ten = localTenDigits(raw);
+  return ten.length === 10 ? ten : '';
+}
 
 const STATUS_OPTIONS = [
   {value: 'pending', label: 'pending'},
@@ -76,6 +91,10 @@ export function ProvidersPage() {
   const [revealBusyId, setRevealBusyId] = useState<string | null>(null);
   const [successBanner, setSuccessBanner] =
     useState<SuccessBannerContent | null>(null);
+  const [areaDemands, setAreaDemands] = useState<AreaProviderDemand[]>([]);
+  const [areaDemandsBusyId, setAreaDemandsBusyId] = useState<string | null>(
+    null,
+  );
 
   const [serviceOptions, setServiceOptions] = useState<
     {value: string; label: string}[]
@@ -118,6 +137,9 @@ export function ProvidersPage() {
   const [deactivateReason, setDeactivateReason] = useState('');
   const [deactivateBusy, setDeactivateBusy] = useState(false);
   const [deactivateError, setDeactivateError] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Provider | null>(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [restoreBusyId, setRestoreBusyId] = useState<string | null>(null);
   const [phoneVerifyBusyId, setPhoneVerifyBusyId] = useState<string | null>(null);
 
@@ -170,6 +192,34 @@ export function ProvidersPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  const loadAreaDemands = useCallback(async () => {
+    try {
+      const rows = await getAreaProviderDemands({status: 'open', limit: 30});
+      setAreaDemands(rows);
+    } catch {
+      setAreaDemands([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadAreaDemands();
+  }, [loadAreaDemands]);
+
+  const onResolveDemand = async (
+    demand: AreaProviderDemand,
+    status: 'resolved' | 'dismissed',
+  ) => {
+    setAreaDemandsBusyId(demand._id);
+    try {
+      await updateAreaProviderDemand(demand._id, {status});
+      setAreaDemands((prev) => prev.filter((d) => d._id !== demand._id));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t('errorGeneric'));
+    } finally {
+      setAreaDemandsBusyId(null);
+    }
+  };
 
   useEffect(() => {
     void getServiceCategories(false)
@@ -507,6 +557,30 @@ export function ProvidersPage() {
     }
   };
 
+  const onDeleteProvider = async () => {
+    if (!deleteTarget) return;
+    setDeleteBusy(true);
+    setDeleteError(null);
+    try {
+      const name =
+        deleteTarget.businessName ||
+        deleteTarget.name ||
+        deleteTarget.displayName ||
+        deleteTarget._id;
+      await deleteUser(deleteTarget._id);
+      setDeleteTarget(null);
+      setSuccessBanner({
+        title: t('userDeletedTitle'),
+        detail: t('userDeletedDetail', {name}),
+      });
+      await load();
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : t('errorGeneric'));
+    } finally {
+      setDeleteBusy(false);
+    }
+  };
+
   const onTogglePhoneVerified = async (row: Provider) => {
     setPhoneVerifyBusyId(row._id);
     setError(null);
@@ -532,37 +606,61 @@ export function ProvidersPage() {
       {
         key: 'name',
         header: 'Name',
+        width: '8rem',
         filterable: true,
         filterPlaceholder: 'Search name',
         filterValue: (row) =>
           row.businessName || row.name || row.displayName || '',
-        render: (row) =>
-          row.businessName || row.name || row.displayName || '—',
+        render: (row) => {
+          const label =
+            row.businessName || row.name || row.displayName || '—';
+          return (
+            <span className="cell-clamp" title={label !== '—' ? label : undefined}>
+              {label}
+            </span>
+          );
+        },
       },
       {
         key: 'phone',
         header: 'Phone',
+        width: '11.5rem',
         filterable: true,
         filterPlaceholder: 'Search phone',
         filterValue: (row) => phoneSearchValue(row.phone, row.phoneNumber),
-        render: (row) => (
-          <span className="phone-verify-cell">
-            <span>{formatPhoneDisplay(row.phone, row.phoneNumber)}</span>
-            <label className="checkbox-inline phone-verified-toggle">
-              <input
-                type="checkbox"
-                checked={Boolean(row.phoneVerified)}
-                disabled={phoneVerifyBusyId === row._id}
-                onChange={() => void onTogglePhoneVerified(row)}
-                title={t('markPhoneVerified')}
-                aria-label={t('markPhoneVerified')}
-              />
-              <span className="muted compact">
-                {row.phoneVerified ? t('phoneVerified') : t('phoneUnverified')}
+        render: (row) => {
+          const display = formatPhoneDisplay(row.phone, row.phoneNumber);
+          const copyDigits = phoneCopyDigits(row.phone, row.phoneNumber);
+          return (
+            <span className="phone-verify-cell">
+              <span className="phone-number-row">
+                <span className="phone-number-text" title={display}>
+                  {display}
+                </span>
+                {copyDigits ? (
+                  <CopyFeedbackButton
+                    text={copyDigits}
+                    ariaLabel={t('copyPhone')}
+                    title={t('copyPhone')}
+                  />
+                ) : null}
               </span>
-            </label>
-          </span>
-        ),
+              <label className="checkbox-inline phone-verified-toggle">
+                <input
+                  type="checkbox"
+                  checked={Boolean(row.phoneVerified)}
+                  disabled={phoneVerifyBusyId === row._id}
+                  onChange={() => void onTogglePhoneVerified(row)}
+                  title={t('markPhoneVerified')}
+                  aria-label={t('markPhoneVerified')}
+                />
+                <span className="muted compact">
+                  {row.phoneVerified ? t('phoneVerified') : t('phoneUnverified')}
+                </span>
+              </label>
+            </span>
+          );
+        },
       },
       {
         key: 'address',
@@ -601,6 +699,7 @@ export function ProvidersPage() {
       {
         key: 'service',
         header: 'Service',
+        width: '7rem',
         filterable: true,
         filterType: 'multi',
         filterPlaceholder: 'Filter services',
@@ -610,6 +709,7 @@ export function ProvidersPage() {
       {
         key: 'status',
         header: 'Status',
+        width: '8.5rem',
         filterable: true,
         filterType: 'multi',
         filterPlaceholder: 'Filter statuses',
@@ -662,7 +762,7 @@ export function ProvidersPage() {
       {
         key: 'pin',
         header: t('loginPin'),
-        width: '8.5rem',
+        width: '12rem',
         render: (row) => {
           const userId = row.userId || row._id;
           const pin = revealedPins[userId];
@@ -671,36 +771,52 @@ export function ProvidersPage() {
               <span className="pin-cell-value">
                 {pin ? <code>{pin}</code> : row.hasPin ? '••••••' : '—'}
               </span>
-              {row.hasPin ? (
-                <button
-                  type="button"
-                  className="btn btn-ghost icon-only"
-                  disabled={revealBusyId === userId}
-                  aria-label={pin ? t('hidePassword') : t('revealPin')}
-                  title={pin ? t('hidePassword') : t('revealPin')}
-                  onClick={() => void onRevealPin(row)}>
-                  <Icon
-                    name={pin ? 'visibility_off' : 'visibility'}
-                    size={18}
-                  />
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  className="btn btn-ghost icon-only"
-                  aria-label={t('generatePin')}
-                  title={t('generatePin')}
-                  onClick={() => {
-                    setPinUser(row);
-                    setPinValue('');
-                    setPinMessage(null);
-                  }}>
-                  <Icon name="lock_reset" size={18} />
-                </button>
-              )}
+              <span className="pin-cell-actions">
+                {row.hasPin ? (
+                  <>
+                    <button
+                      type="button"
+                      className="btn btn-ghost icon-only"
+                      disabled={revealBusyId === userId}
+                      aria-label={pin ? t('hidePassword') : t('revealPin')}
+                      title={pin ? t('hidePassword') : t('revealPin')}
+                      onClick={() => void onRevealPin(row)}>
+                      <Icon
+                        name={pin ? 'visibility_off' : 'visibility'}
+                        size={18}
+                      />
+                    </button>
+                    <CopyFeedbackButton
+                      text={pin || ''}
+                      disabled={!pin}
+                      ariaLabel={t('copyPin')}
+                      title={pin ? t('copyPin') : t('revealPin')}
+                    />
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    className="btn btn-ghost icon-only"
+                    aria-label={t('generatePin')}
+                    title={t('generatePin')}
+                    onClick={() => {
+                      setPinUser(row);
+                      setPinValue('');
+                      setPinMessage(null);
+                    }}>
+                    <Icon name="lock_reset" size={18} />
+                  </button>
+                )}
+              </span>
             </span>
           );
         },
+      },
+      {
+        key: 'createdAt',
+        header: t('createdDate'),
+        width: '10rem',
+        render: (row) => formatLastUpdated(row.createdAt),
       },
       {
         key: 'updatedAt',
@@ -711,7 +827,7 @@ export function ProvidersPage() {
       {
         key: 'actions',
         header: 'Actions',
-        width: '11rem',
+        width: '13rem',
         render: (row) => (
           <span className="actions table-actions">
             <Link className="btn btn-ghost" to={`/providers/${row._id}`}>
@@ -741,6 +857,17 @@ export function ProvidersPage() {
                 <Icon name="safety_check_off" size={18} />
               </button>
             )}
+            <button
+              type="button"
+              className="btn btn-ghost icon-only"
+              aria-label={t('delete')}
+              title={t('delete')}
+              onClick={() => {
+                setDeleteTarget(row);
+                setDeleteError(null);
+              }}>
+              <Icon name="delete" size={18} />
+            </button>
           </span>
         ),
       },
@@ -790,6 +917,69 @@ export function ProvidersPage() {
           testId="provider-create-banner"
         />
       ) : null}
+
+      {areaDemands.length > 0 ? (
+        <section
+          className="card"
+          style={{marginBottom: '1rem', padding: '1rem'}}
+          aria-label="Area provider requests">
+          <h2 style={{fontSize: '1.05rem', margin: '0 0 0.35rem'}}>
+            Customers requesting providers in their area
+          </h2>
+          <p style={{margin: '0 0 0.75rem', opacity: 0.8, fontSize: '0.9rem'}}>
+            No matching providers nearby — customer asked admin to arrange this
+            service type.
+          </p>
+          <ul style={{listStyle: 'none', margin: 0, padding: 0}}>
+            {areaDemands.map((d) => (
+              <li
+                key={d._id}
+                style={{
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  gap: '0.5rem 1rem',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '0.65rem 0',
+                  borderTop: '1px solid var(--border, #e5e5e5)',
+                }}>
+                <div>
+                  <strong>{d.serviceType}</strong>
+                  <span style={{opacity: 0.75}}>
+                    {' '}
+                    · {d.pincode}
+                    {d.district || d.city
+                      ? ` · ${d.district || d.city}`
+                      : ''}
+                  </span>
+                  <div style={{fontSize: '0.85rem', opacity: 0.8}}>
+                    {d.customerName || 'Customer'}
+                    {d.customerPhone ? ` · ${d.customerPhone}` : ''}
+                    {d.address ? ` · ${d.address}` : ''}
+                  </div>
+                </div>
+                <div style={{display: 'flex', gap: '0.4rem'}}>
+                  <button
+                    type="button"
+                    className="btn btn-ghost"
+                    disabled={areaDemandsBusyId === d._id}
+                    onClick={() => void onResolveDemand(d, 'dismissed')}>
+                    Dismiss
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    disabled={areaDemandsBusyId === d._id}
+                    onClick={() => void onResolveDemand(d, 'resolved')}>
+                    Mark resolved
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
       <div className="filter-row">
         <div className="filter-inline" style={{minWidth: '12rem'}}>
           <Select
@@ -1136,6 +1326,39 @@ export function ProvidersPage() {
               type="button"
               className="btn btn-ghost"
               onClick={() => setDeactivateTarget(null)}>
+              {t('cancel')}
+            </button>
+          </div>
+        </Modal>
+      ) : null}
+
+      {deleteTarget ? (
+        <Modal
+          title={t('deleteUserTitle')}
+          onClose={() => setDeleteTarget(null)}
+          testId="providers-delete-modal">
+          <p className="muted compact">
+            {t('deleteUserLead', {
+              name:
+                deleteTarget.businessName ||
+                deleteTarget.name ||
+                deleteTarget.displayName ||
+                deleteTarget._id,
+            })}
+          </p>
+          {deleteError ? <p className="error-text">{deleteError}</p> : null}
+          <div className="actions">
+            <button
+              type="button"
+              className="btn btn-danger"
+              disabled={deleteBusy}
+              onClick={() => void onDeleteProvider()}>
+              {deleteBusy ? t('saving') : t('confirmDelete')}
+            </button>
+            <button
+              type="button"
+              className="btn btn-ghost"
+              onClick={() => setDeleteTarget(null)}>
               {t('cancel')}
             </button>
           </div>

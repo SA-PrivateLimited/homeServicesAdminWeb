@@ -3,7 +3,10 @@ import { apiGet, apiGetPaginated, apiPost, apiPut } from './apiClient';
 export interface JobAddress {
   address?: string;
   city?: string;
+  district?: string;
   state?: string;
+  stateId?: string;
+  districtId?: string;
   pincode?: string;
   latitude?: number;
   longitude?: number;
@@ -38,6 +41,8 @@ export interface JobCard {
   cancellationReason?: string;
   bookingId?: string;
   consultationId?: string;
+  serviceRequestId?: string;
+  needsAdminAssignment?: boolean;
   comments?: JobComment[];
   createdAt?: string;
   updatedAt?: string;
@@ -57,16 +62,26 @@ export function isJobUnassigned(
 export async function getJobCardsPage(options?: {
   status?: string;
   unassigned?: boolean;
+  needsAdminAssignment?: boolean;
   providerId?: string;
   customerId?: string;
+  state?: string;
+  district?: string;
+  stateId?: string;
+  districtId?: string;
   limit?: number;
   offset?: number;
 }): Promise<{items: JobCard[]; total: number; limit: number; offset: number}> {
   const params = new URLSearchParams();
   if (options?.status) params.set('status', options.status);
   if (options?.unassigned) params.set('unassigned', 'true');
+  if (options?.needsAdminAssignment) params.set('needsAdminAssignment', 'true');
   if (options?.providerId) params.set('providerId', options.providerId);
   if (options?.customerId) params.set('customerId', options.customerId);
+  if (options?.state) params.set('state', options.state);
+  if (options?.district) params.set('district', options.district);
+  if (options?.stateId) params.set('stateId', options.stateId);
+  if (options?.districtId) params.set('districtId', options.districtId);
   params.set('limit', String(options?.limit ?? 50));
   params.set('offset', String(options?.offset ?? 0));
   return apiGetPaginated<JobCard>(`/api/admin/jobCards?${params.toString()}`);
