@@ -1,0 +1,28 @@
+---
+description: Always-active project conventions (Home Services Web)
+alwaysApply: true
+---
+
+# Project Always Rules
+
+## Never commit
+- `.env` / `.env.local` — secrets
+- `agent-context/` (gitignored)
+
+## Branch naming
+`feat/[ticket-id]` · `fix/[ticket-id]` · `chore/[description]`
+
+## i18n
+User-visible strings use i18next when the app has `src/i18n/`.
+
+## Theme
+Use CSS variables / `baseline.md`. No random hex in new UI.
+
+## State
+Zustand in `src/store/` when needed. API in `src/services/api/`.
+
+## Routing
+React Router — register pages in `App.tsx`.
+
+## PR size
+Prefer PRs under ~400 lines changed.
