@@ -25,6 +25,7 @@ env:
   APP_DIR: web
   BUILD_DIR: web/dist
   UI_PACKAGE_REPO: SA-PrivateLimited/npm-sa-packages
+  UI_PACKAGE_CHECKOUT_PATH: packages
   UI_PACKAGE_PATH: packages/saPvtLtdWebPackages
 
 jobs:
@@ -43,7 +44,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: ${{ env.UI_PACKAGE_REPO }}
-          path: ${{ env.UI_PACKAGE_PATH }}
+          path: ${{ env.UI_PACKAGE_CHECKOUT_PATH }}
           token: ${{ secrets.GH_PACKAGES_READ_TOKEN || github.token }}
 
       - name: Setup Node.js
