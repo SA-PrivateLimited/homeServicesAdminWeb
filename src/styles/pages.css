@@ -39,7 +39,7 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
-  overflow: hidden;
+  overflow: clip;
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -141,6 +141,13 @@
   -webkit-overflow-scrolling: touch;
 }
 
+.panel .hs-vtable__scroll {
+  overflow-x: auto !important;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+}
+
 .hs-vtable__table {
   width: 100%;
   max-width: none;
@@ -155,7 +162,6 @@
   border-bottom-color: var(--color-border);
   overflow-wrap: break-word;
   word-break: normal;
-  vertical-align: top;
 }
 
 .hs-vtable__table th {
@@ -165,6 +171,19 @@
   background: var(--color-bg);
   z-index: 2;
   white-space: nowrap;
+  vertical-align: middle;
+}
+
+.hs-vtable__table td {
+  vertical-align: top;
+}
+
+.hs-vtable__th-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  min-width: 0;
 }
 
 .hs-vtable__table th.hs-vtable__th--filter-open {
@@ -184,6 +203,16 @@
 .hs-vtable__table th:last-child,
 .hs-vtable__table td:last-child {
   padding-right: var(--space-4);
+  position: sticky;
+  right: 0;
+  z-index: 4;
+  background: var(--color-card);
+  box-shadow: -6px 0 8px -6px rgba(0, 0, 0, 0.12);
+}
+
+.hs-vtable__table th:last-child {
+  z-index: 5;
+  background: var(--color-bg);
 }
 
 .hs-vtable__table .cell-clamp {
@@ -323,7 +352,9 @@
   flex-shrink: 0;
 }
 
-.modal .error-text {
+.modal .error-text,
+.hs-dialog .error-text,
+.hs-modal .error-text {
   padding: var(--space-1) 0;
   margin: 0;
 }
@@ -351,7 +382,8 @@
 }
 
 .btn,
-a.btn {
+a.btn,
+a.hs-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -404,7 +436,8 @@ a.btn {
 .table .btn,
 .table .btn-ghost,
 .hs-vtable__table .btn,
-.hs-vtable__table .btn-ghost {
+.hs-vtable__table .btn-ghost,
+.hs-vtable__table .hs-btn {
   min-height: auto;
   padding: var(--space-1) var(--space-2);
   font-size: var(--font-size-xs);
@@ -1058,6 +1091,12 @@ a.btn {
 .modal label input,
 .modal label select,
 .modal label textarea,
+.hs-dialog label input,
+.hs-dialog label select,
+.hs-dialog label textarea,
+.hs-modal label input,
+.hs-modal label select,
+.hs-modal label textarea,
 .field input {
   font-weight: 400;
   font-size: var(--font-size-sm);
@@ -1089,6 +1128,39 @@ a.btn {
   border-radius: 999px;
   margin-right: var(--space-2);
   vertical-align: middle;
+}
+
+.client-logo-thumb {
+  display: inline-block;
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  border-radius: 6px;
+  margin-right: var(--space-2);
+  vertical-align: middle;
+  background: #fff;
+  border: 1px solid var(--color-border, #e2e8f0);
+}
+
+.client-logo-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 8px 0 16px;
+  flex-wrap: wrap;
+}
+
+.client-logo-preview {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+  border-radius: 10px;
+  border: 1px solid var(--color-border, #e2e8f0);
+  background: #fff;
+}
+
+.client-logo-upload {
+  display: inline-flex;
 }
 
 .hs-toggle {
@@ -1348,7 +1420,9 @@ a.btn {
 }
 
 .table-actions-stack .btn,
-.table-actions-row .btn {
+.table-actions-row .btn,
+.table-actions-stack .hs-btn,
+.table-actions-row .hs-btn {
   justify-content: center;
   white-space: nowrap;
   flex-shrink: 0;
@@ -1493,7 +1567,9 @@ a.btn {
   min-width: 12rem;
 }
 
-.btn.icon-only {
+.btn.icon-only,
+.hs-btn.icon-only,
+a.hs-btn.icon-only {
   padding: var(--space-1);
   min-width: 2rem;
   height: 2rem;
@@ -1645,7 +1721,8 @@ a.btn {
   min-width: 0;
 }
 
-.password-generate-row .btn {
+.password-generate-row .btn,
+.password-generate-row .hs-btn {
   flex-shrink: 0;
   white-space: nowrap;
 }
@@ -1681,11 +1758,13 @@ a.btn {
   font-variant-numeric: tabular-nums;
 }
 
-.btn.icon-only.copy-feedback-ok {
+.btn.icon-only.copy-feedback-ok,
+.hs-btn.icon-only.copy-feedback-ok {
   color: var(--color-success, #1b7f3a);
 }
 
-.btn.icon-only.copy-feedback-ok:hover:not(:disabled) {
+.btn.icon-only.copy-feedback-ok:hover:not(:disabled),
+.hs-btn.icon-only.copy-feedback-ok:hover:not(:disabled) {
   color: var(--color-success, #1b7f3a);
 }
 
@@ -1699,6 +1778,77 @@ a.btn {
   flex-wrap: wrap;
   gap: var(--space-1);
   align-items: center;
+}
+
+.admin-action-row {
+  max-width: 22rem;
+}
+
+.permissions-fieldset {
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: var(--radius, 8px);
+  padding: var(--space-3);
+  margin: var(--space-3) 0;
+}
+
+.permissions-fieldset legend {
+  padding: 0 var(--space-1);
+  font-size: var(--font-size-sm, 0.875rem);
+  font-weight: 600;
+}
+
+.permissions-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.permission-check {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-sm, 0.875rem);
+  margin: 0;
+}
+
+.permissions-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+  max-height: 14rem;
+  overflow: auto;
+  margin-top: var(--space-2);
+  padding: var(--space-2);
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: var(--radius, 8px);
+}
+
+.admin-profile-meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2) var(--space-4);
+  margin: 0 0 var(--space-3);
+}
+
+.admin-profile-meta dt {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--color-text-secondary, #718096);
+}
+
+.admin-profile-meta dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+.wrap-actions {
+  flex-wrap: wrap;
+}
+
+.invite-qr {
+  display: flex;
+  justify-content: center;
+  margin: var(--space-3) 0;
 }
 
 .feedback-list {
@@ -1830,7 +1980,8 @@ a.btn {
   white-space: pre-wrap;
 }
 
-.actions .btn {
+.actions .btn,
+.actions .hs-btn {
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
@@ -1879,12 +2030,15 @@ a.btn {
     gap: var(--space-2);
   }
 
-  .row-header-actions .btn {
+  .row-header-actions .btn,
+  .row-header-actions .hs-btn {
     flex: 1 1 auto;
   }
 }
 
-.modal label {
+.modal label,
+.hs-dialog label,
+.hs-modal label {
   display: flex;
   flex-direction: column;
   gap: var(--space-1);

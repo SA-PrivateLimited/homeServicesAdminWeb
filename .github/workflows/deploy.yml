@@ -1,0 +1,148 @@
+# Production deploy: GitHub main → npm build → S3 → CloudFront
+# Auth: GitHub Actions OIDC → IAM role AkansoWebDeployRole (no access keys)
+
+name: Deploy production
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  NODE_VERSION: '22'
+  AWS_REGION: ${{ vars.AWS_REGION || 'eu-north-1' }}
+  AWS_ROLE_ARN: arn:aws:iam::715831355325:role/AkansoWebDeployRole
+  S3_BUCKET: admin.akanso.in
+  CLOUDFRONT_DISTRIBUTION_ID: E1GCB5ZX81YGSF
+  APP_DIR: web
+  BUILD_DIR: web/dist
+  UI_PACKAGE_REPO: SA-PrivateLimited/npm-sa-packages
+  UI_PACKAGE_PATH: packages/saPvtLtdWebPackages
+
+jobs:
+  deploy:
+    name: Build and deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout application
+        uses: actions/checkout@v4
+        with:
+          path: ${{ env.APP_DIR }}
+
+      - name: Checkout UI package (file:../packages/saPvtLtdWebPackages)
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.UI_PACKAGE_REPO }}
+          path: ${{ env.UI_PACKAGE_PATH }}
+          token: ${{ secrets.GH_PACKAGES_READ_TOKEN || github.token }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: ${{ env.APP_DIR }}/package-lock.json
+
+      - name: Build UI package
+        working-directory: ${{ env.UI_PACKAGE_PATH }}
+        run: |
+          npm install
+          npm run build
+          test -f dist/index.js
+          test -f dist/styles.css
+
+      - name: Install application dependencies
+        working-directory: ${{ env.APP_DIR }}
+        run: npm ci
+
+      - name: Production build
+        working-directory: ${{ env.APP_DIR }}
+        env:
+          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
+        run: npm run build
+
+      - name: Verify build output
+        run: |
+          test -d "${BUILD_DIR}"
+          test -f "${BUILD_DIR}/index.html"
+          test -d "${BUILD_DIR}/assets"
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          role-session-name: github-actions-admin-web
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Preserve production runtime config.json if present
+        id: prod_config
+        run: |
+          if aws s3 cp "s3://${S3_BUCKET}/config.json" /tmp/prod-config.json; then
+            echo "preserved=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "preserved=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Sync build to S3
+        run: |
+          set -euo pipefail
+          aws s3 sync "${BUILD_DIR}" "s3://${S3_BUCKET}" \
+            --delete \
+            --cache-control "public, max-age=0, must-revalidate"
+
+          if [ -d "${BUILD_DIR}/assets" ]; then
+            aws s3 sync "${BUILD_DIR}/assets" "s3://${S3_BUCKET}/assets" \
+              --cache-control "public, max-age=31536000, immutable" \
+              --metadata-directive REPLACE
+          fi
+
+          aws s3 cp "${BUILD_DIR}/index.html" "s3://${S3_BUCKET}/index.html" \
+            --cache-control "no-cache, no-store, must-revalidate" \
+            --content-type "text/html; charset=utf-8" \
+            --metadata-directive REPLACE
+
+          if [ "${{ steps.prod_config.outputs.preserved }}" = "true" ]; then
+            aws s3 cp /tmp/prod-config.json "s3://${S3_BUCKET}/config.json" \
+              --cache-control "no-cache, no-store, must-revalidate" \
+              --content-type "application/json" \
+              --metadata-directive REPLACE
+          elif [ -f "${BUILD_DIR}/config.json" ]; then
+            aws s3 cp "${BUILD_DIR}/config.json" "s3://${S3_BUCKET}/config.json" \
+              --cache-control "no-cache, no-store, must-revalidate" \
+              --content-type "application/json" \
+              --metadata-directive REPLACE
+          fi
+
+      - name: Invalidate CloudFront
+        id: invalidate
+        run: |
+          set -euo pipefail
+          INVALIDATION_ID="$(
+            aws cloudfront create-invalidation \
+              --distribution-id "${CLOUDFRONT_DISTRIBUTION_ID}" \
+              --paths "/*" \
+              --query 'Invalidation.Id' \
+              --output text
+          )"
+          echo "id=${INVALIDATION_ID}" >> "$GITHUB_OUTPUT"
+          echo "Created invalidation ${INVALIDATION_ID}"
+          aws cloudfront wait invalidation-completed \
+            --distribution-id "${CLOUDFRONT_DISTRIBUTION_ID}" \
+            --id "${INVALIDATION_ID}"
+          echo "Invalidation ${INVALIDATION_ID} completed"
+
+      - name: Deployment summary
+        run: |
+          echo "Deployed to s3://${S3_BUCKET}"
+          echo "CloudFront: ${CLOUDFRONT_DISTRIBUTION_ID} invalidation ${{ steps.invalidate.outputs.id }}"
+          echo "Production: https://admin.akanso.in"

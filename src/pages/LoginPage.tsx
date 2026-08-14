@@ -1,7 +1,8 @@
-import {useState, type FormEvent, type ReactNode} from 'react';
+import {useEffect, useState, type FormEvent, type ReactNode} from 'react';
 import {Navigate, useNavigate} from 'react-router-dom';
 import {useTranslation} from 'react-i18next';
 import {useAuthStore} from '../store/authStore';
+import {getBrandLogoSrc, getRuntimeConfig} from '../config/runtime';
 import './LoginPage.css';
 
 type Step =
@@ -15,12 +16,103 @@ type Step =
       qrCodeDataUrl: string;
     };
 
-function LoginBrand({title, subtitle}: {title: string; subtitle: string}) {
+const SHOWCASE_SLIDES = [
+  {
+    src: '/login/login-electrician.jpg',
+    title: 'Approve providers',
+    caption: 'Review documents and activate trusted pros for your marketplace',
+  },
+  {
+    src: '/login/login-plumber.jpg',
+    title: 'Oversee jobs',
+    caption: 'Monitor live service requests from booking to completion',
+  },
+  {
+    src: '/login/login-carpenter.jpg',
+    title: 'Manage coverage',
+    caption: 'Geography, categories, and area demand in one operations hub',
+  },
+  {
+    src: '/login/login-driver.jpg',
+    title: 'Brand & clients',
+    caption: 'White-label themes, product names, and client activation',
+  },
+] as const;
+
+function LoginShowcase({
+  brandName,
+  logoSrc,
+}: {
+  brandName: string;
+  logoSrc: string;
+}) {
+  const [active, setActive] = useState(0);
+
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      setActive((i) => (i + 1) % SHOWCASE_SLIDES.length);
+    }, 4200);
+    return () => window.clearInterval(id);
+  }, []);
+
+  return (
+    <aside className="login-showcase" aria-hidden>
+      <div className="login-showcase-brand">
+        <img src={logoSrc} alt="" width={48} height={48} />
+        <div>
+          <strong>{brandName}</strong>
+          <span>Operations & marketplace control</span>
+        </div>
+      </div>
+
+      <div className="login-showcase-stage">
+        {SHOWCASE_SLIDES.map((slide, i) => (
+          <figure
+            key={slide.src}
+            className={`login-slide${i === active ? ' is-active' : ''}`}>
+            <img src={slide.src} alt="" />
+            <figcaption>
+              <strong>{slide.title}</strong>
+              <span>{slide.caption}</span>
+            </figcaption>
+          </figure>
+        ))}
+      </div>
+
+      <div className="login-showcase-dots">
+        {SHOWCASE_SLIDES.map((slide, i) => (
+          <button
+            key={slide.src}
+            type="button"
+            className={i === active ? 'is-active' : undefined}
+            aria-label={slide.title}
+            onClick={() => setActive(i)}
+          />
+        ))}
+      </div>
+
+      <p className="login-showcase-foot">
+        Approve providers, track jobs, manage geography, and keep your
+        marketplace running smoothly.
+      </p>
+    </aside>
+  );
+}
+
+function LoginBrand({
+  title,
+  subtitle,
+  logoSrc,
+}: {
+  title: string;
+  subtitle: string;
+  logoSrc: string;
+}) {
   return (
     <div className="login-brand">
       <img
         className="login-brand-logo"
-        src="/logo.png"
+        src={logoSrc}
         alt=""
         width={64}
         height={64}
@@ -35,16 +127,23 @@ function LoginShell({
   children,
   testId,
   onSubmit,
+  brandName,
+  logoSrc,
 }: {
   children: ReactNode;
   testId: string;
   onSubmit: (event: FormEvent) => void;
+  brandName: string;
+  logoSrc: string;
 }) {
   return (
-    <div className="login-page scale-baseline-80">
-      <form className="login-card" onSubmit={onSubmit} data-testid={testId}>
-        {children}
-      </form>
+    <div className="login-layout">
+      <LoginShowcase brandName={brandName} logoSrc={logoSrc} />
+      <div className="login-form-pane">
+        <form className="login-card" onSubmit={onSubmit} data-testid={testId}>
+          {children}
+        </form>
+      </div>
     </div>
   );
 }
@@ -54,6 +153,9 @@ export function LoginPage() {
   const navigate = useNavigate();
   const {user, beginLogin, completeMfaSetup, completeMfaVerify} =
     useAuthStore();
+  const {brandName} = getRuntimeConfig();
+  const logoSrc = getBrandLogoSrc();
+  const displayBrand = brandName?.trim() ? `${brandName} Admin` : t('appTitle');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [mfaCode, setMfaCode] = useState('');
@@ -64,6 +166,11 @@ export function LoginPage() {
   if (user) {
     return <Navigate to="/" replace />;
   }
+
+  const shellProps = {
+    brandName: displayBrand,
+    logoSrc,
+  };
 
   const onCredentials = async (event: FormEvent) => {
     event.preventDefault();
@@ -128,8 +235,12 @@ export function LoginPage() {
 
   if (step.name === 'mfa_setup') {
     return (
-      <LoginShell testId="login-mfa-setup" onSubmit={onMfa}>
-        <LoginBrand title={t('mfaSetupTitle')} subtitle={t('mfaSetupLead')} />
+      <LoginShell testId="login-mfa-setup" onSubmit={onMfa} {...shellProps}>
+        <LoginBrand
+          title={t('mfaSetupTitle')}
+          subtitle={t('mfaSetupLead')}
+          logoSrc={logoSrc}
+        />
         {error ? <p className="login-error">{error}</p> : null}
         <div className="mfa-qr-wrap">
           <img
@@ -172,8 +283,12 @@ export function LoginPage() {
 
   if (step.name === 'mfa') {
     return (
-      <LoginShell testId="login-mfa" onSubmit={onMfa}>
-        <LoginBrand title={t('mfaVerifyTitle')} subtitle={t('mfaVerifyLead')} />
+      <LoginShell testId="login-mfa" onSubmit={onMfa} {...shellProps}>
+        <LoginBrand
+          title={t('mfaVerifyTitle')}
+          subtitle={t('mfaVerifyLead')}
+          logoSrc={logoSrc}
+        />
         {error ? <p className="login-error">{error}</p> : null}
         <div className="field">
           <label htmlFor="mfa-code">{t('mfaCode')}</label>
@@ -207,8 +322,12 @@ export function LoginPage() {
   }
 
   return (
-    <LoginShell testId="login-root" onSubmit={onCredentials}>
-      <LoginBrand title={t('loginTitle')} subtitle={t('loginSubtitle')} />
+    <LoginShell testId="login-root" onSubmit={onCredentials} {...shellProps}>
+      <LoginBrand
+        title={t('loginTitle')}
+        subtitle={t('loginSubtitle')}
+        logoSrc={logoSrc}
+      />
       {error ? <p className="login-error">{error}</p> : null}
       <div className="field">
         <label htmlFor="email">{t('email')}</label>

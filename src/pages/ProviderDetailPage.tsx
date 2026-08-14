@@ -1,8 +1,15 @@
 import {useCallback, useEffect, useMemo, useRef, useState, type FormEvent} from 'react';
 import {Link, useParams} from 'react-router-dom';
 import {useTranslation} from 'react-i18next';
-import {Icon, Select} from 'sapvt-ltd-web-packages';
-import {Modal} from '../components/Modal';
+import {
+  Icon,
+  Select,
+  Button,
+  Dialog,
+  ErrorState,
+  Loader,
+  StatusChip,
+} from 'sapvt-ltd-web-packages';
 import {SuccessBanner, type SuccessBannerContent} from '../components/SuccessBanner';
 import {
   getProviderById,
@@ -401,15 +408,17 @@ export function ProviderDetailPage() {
     }
   };
 
-  if (loading) return <p className="muted">{t('loading')}</p>;
+  if (loading) return <Loader label={t('loading')} />;
   if (!provider) {
     return (
-      <div>
-        <p className="error-text">{error || t('notFound')}</p>
-        <Link className="btn btn-ghost icon-only" to="/providers" aria-label={t('back')}>
-          <Icon name="arrow_back" size={20} />
-        </Link>
-      </div>
+      <ErrorState
+        title={t('notFound')}
+        message={error || undefined}
+        retryLabel={t('back')}
+        onRetry={() => {
+          window.location.assign('/providers');
+        }}
+      />
     );
   }
 
@@ -422,7 +431,7 @@ export function ProviderDetailPage() {
       <header className="page-header detail-header">
         <div className="detail-header-left">
           <Link
-            className="btn btn-ghost icon-only detail-back"
+            className="hs-btn hs-btn--ghost hs-btn--md icon-only detail-back"
             to="/providers"
             aria-label={t('back')}
             title={t('back')}>
@@ -435,27 +444,28 @@ export function ProviderDetailPage() {
             </p>
             <h1>{t('providerDetails')}</h1>
             <p>
-              Status: <span className={`badge badge-${status}`}>{status}</span>
+              Status: <StatusChip status={status} label={status} />
               {provider.isActive === false ? (
                 <>
                   {' '}
-                  <span className="badge badge-rejected">{t('inactive')}</span>
+                  <StatusChip status="cancelled" label={t('inactive')} />
                 </>
               ) : null}
             </p>
           </div>
         </div>
         <div className="detail-header-actions">
-          <Link className="btn btn-ghost detail-close" to="/providers">
+          <Link className="hs-btn hs-btn--ghost hs-btn--md detail-close" to="/providers">
             {t('close')}
           </Link>
-          <button
+          <Button
             type="submit"
             form="provider-edit-form"
-            className="btn btn-primary detail-save"
-            disabled={saving}>
+            variant="primary"
+            className="detail-save"
+            loading={saving}>
             {saving ? t('saving') : t('save')}
-          </button>
+          </Button>
         </div>
       </header>
 
@@ -487,10 +497,10 @@ export function ProviderDetailPage() {
                   <div>
                     <strong>{key}</strong>{' '}
                     {verified ? (
-                      <span className="badge badge-approved">verified</span>
+                      <StatusChip status="completed" label="verified" />
                     ) : null}
                     {rejected ? (
-                      <span className="badge badge-rejected">rejected</span>
+                      <StatusChip status="cancelled" label="rejected" />
                     ) : null}
                     {typeof reason === 'string' && reason ? (
                       <p className="muted compact">{reason}</p>
@@ -499,7 +509,7 @@ export function ProviderDetailPage() {
                   <div className="actions">
                     {url ? (
                       <a
-                        className="btn btn-ghost"
+                        className="hs-btn hs-btn--ghost hs-btn--md"
                         href={url}
                         target="_blank"
                         rel="noreferrer">
@@ -519,33 +529,21 @@ export function ProviderDetailPage() {
                         void onUploadDoc(key, e.target.files?.[0])
                       }
                     />
-                    <button
-                      type="button"
-                      className="btn btn-ghost"
-                      disabled={uploadBusyKey === key}
-                      onClick={() => fileInputRefs.current[key]?.click()}>
+                    <Button variant="ghost" disabled={uploadBusyKey === key} onClick={() => fileInputRefs.current[key]?.click()}>
                       <Icon name="upload" size={16} />
                       {uploadBusyKey === key
                         ? t('uploading')
                         : t('uploadDocument')}
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn-primary"
-                      disabled={saving || !url}
-                      onClick={() => void verifyDoc(key)}>
+                    </Button>
+                    <Button variant="primary" disabled={saving || !url} onClick={() => void verifyDoc(key)}>
                       {t('verify')}
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn-danger"
-                      disabled={saving || !url}
-                      onClick={() => {
+                    </Button>
+                    <Button variant="danger" disabled={saving || !url} onClick={() => {
                         setDocReject(key);
                         setDocRejectReason('');
                       }}>
                       {t('reject')}
-                    </button>
+                    </Button>
                   </div>
                 </div>
               </li>
@@ -746,7 +744,7 @@ export function ProviderDetailPage() {
       </div>
 
       {docReject ? (
-        <Modal
+        <Dialog open
           title={`${t('reject')} ${docReject}`}
           onClose={() => setDocReject(null)}>
           <label>
@@ -759,21 +757,14 @@ export function ProviderDetailPage() {
             />
           </label>
           <div className="actions">
-            <button
-              type="button"
-              className="btn btn-danger"
-              disabled={saving}
-              onClick={() => void rejectDoc()}>
+            <Button variant="danger" disabled={saving} onClick={() => void rejectDoc()}>
               {t('reject')}
-            </button>
-            <button
-              type="button"
-              className="btn btn-ghost"
-              onClick={() => setDocReject(null)}>
+            </Button>
+            <Button variant="ghost" onClick={() => setDocReject(null)}>
               {t('cancel')}
-            </button>
+            </Button>
           </div>
-        </Modal>
+        </Dialog>
       ) : null}
     </div>
   );

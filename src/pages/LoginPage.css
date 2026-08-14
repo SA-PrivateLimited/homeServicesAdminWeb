@@ -1,25 +1,33 @@
-.login-page {
-  min-height: 100vh;
+/**
+ * Admin login — mobile: centered card; desktop (≥861px): full-height split.
+ * Left + right share one dark theme so the page reads as a single surface.
+ */
+
+.login-layout {
+  box-sizing: border-box;
+  min-height: 100dvh;
+  width: 100%;
   display: grid;
   place-items: center;
   padding: var(--space-5) var(--space-4);
   background:
     radial-gradient(
-      ellipse 70% 50% at 80% 10%,
-      var(--secondary-color-opacity-20),
-      transparent 50%
+      ellipse 70% 55% at 20% 15%,
+      color-mix(in srgb, var(--primary-color) 55%, #1a365d),
+      transparent 55%
     ),
-    radial-gradient(
-      ellipse 60% 45% at 10% 90%,
-      var(--primary-color-opacity-20),
-      transparent 50%
-    ),
-    linear-gradient(
-      160deg,
-      var(--color-sidebar) 0%,
-      var(--primary-color-2) 55%,
-      var(--secondary-color-2) 100%
-    );
+    linear-gradient(160deg, #0b2540 0%, #1a365d 48%, #234e70 100%);
+}
+
+.login-showcase {
+  display: none;
+}
+
+.login-form-pane {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .login-card {
@@ -27,7 +35,9 @@
   background: var(--color-card);
   border-radius: var(--radius-lg);
   padding: var(--space-5);
-  box-shadow: var(--shadow-lg);
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.12),
+    0 24px 48px rgba(0, 0, 0, 0.28);
 }
 
 .login-brand {
@@ -44,6 +54,7 @@
   object-fit: contain;
   margin-bottom: var(--space-3);
   border-radius: var(--radius);
+  background: #fff;
 }
 
 .login-card h1 {
@@ -159,4 +170,254 @@
 
 .login-back:hover {
   color: var(--color-text);
+}
+
+/* Legacy class used by ActivatePage */
+.login-page {
+  box-sizing: border-box;
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: var(--space-5) var(--space-4);
+  background:
+    radial-gradient(
+      ellipse 70% 55% at 20% 15%,
+      color-mix(in srgb, var(--primary-color) 55%, #1a365d),
+      transparent 55%
+    ),
+    linear-gradient(160deg, #0b2540 0%, #1a365d 48%, #234e70 100%);
+}
+
+@media (min-width: 861px) {
+  .login-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1.1fr) minmax(400px, 0.9fr);
+    grid-template-rows: 1fr;
+    align-items: stretch;
+    justify-items: stretch;
+    place-items: stretch;
+    padding: 0;
+    height: 100dvh;
+    min-height: 100dvh;
+    max-height: 100dvh;
+    overflow: hidden;
+    /* Shared page surface — both columns sit on this */
+    background:
+      radial-gradient(
+        ellipse 70% 55% at 18% 12%,
+        color-mix(in srgb, var(--primary-color) 55%, #1a365d),
+        transparent 55%
+      ),
+      radial-gradient(
+        ellipse 55% 45% at 88% 88%,
+        color-mix(in srgb, #63b3ed 22%, transparent),
+        transparent 50%
+      ),
+      linear-gradient(160deg, #0b2540 0%, #1a365d 48%, #234e70 100%);
+  }
+
+  .login-showcase {
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    overflow: hidden;
+    height: 100%;
+    min-height: 0;
+    padding: 28px 32px 32px;
+    color: #fff;
+    background: transparent;
+  }
+
+  .login-showcase::before,
+  .login-showcase::after {
+    display: none;
+  }
+
+  .login-showcase-brand {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 28px;
+    flex-shrink: 0;
+  }
+
+  .login-showcase-brand img {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    object-fit: contain;
+    background: #fff;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+  }
+
+  .login-showcase-brand strong {
+    display: block;
+    font-size: 22px;
+    font-weight: 750;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+  }
+
+  .login-showcase-brand span {
+    display: block;
+    font-size: 13px;
+    opacity: 0.78;
+    margin-top: 2px;
+  }
+
+  .login-showcase-stage {
+    position: relative;
+    z-index: 2;
+    flex: 1;
+    min-height: 0;
+    border-radius: 22px;
+    overflow: hidden;
+    box-shadow: 0 24px 48px rgba(0, 0, 0, 0.35);
+    background: #0a1929;
+  }
+
+  .login-slide {
+    position: absolute;
+    inset: 0;
+    margin: 0;
+    opacity: 0;
+    transform: scale(1.06);
+    transition:
+      opacity 0.9s ease,
+      transform 6s ease;
+    pointer-events: none;
+  }
+
+  .login-slide.is-active {
+    opacity: 1;
+    transform: scale(1);
+    pointer-events: auto;
+    z-index: 1;
+  }
+
+  .login-slide img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    animation: login-kenburns 8s ease-in-out infinite alternate;
+  }
+
+  @keyframes login-kenburns {
+    from {
+      transform: scale(1);
+    }
+    to {
+      transform: scale(1.08);
+    }
+  }
+
+  .login-slide figcaption {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    padding: 28px 24px 22px;
+    background: linear-gradient(
+      180deg,
+      transparent 0%,
+      rgba(10, 25, 41, 0.55) 35%,
+      rgba(10, 25, 41, 0.92) 100%
+    );
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .login-slide figcaption strong {
+    font-size: 28px;
+    font-weight: 750;
+    letter-spacing: -0.02em;
+  }
+
+  .login-slide figcaption span {
+    font-size: 15px;
+    line-height: 1.4;
+    opacity: 0.88;
+    max-width: 28rem;
+  }
+
+  .login-showcase-dots {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    gap: 8px;
+    margin-top: 18px;
+    flex-shrink: 0;
+  }
+
+  .login-showcase-dots button {
+    width: 10px;
+    height: 10px;
+    border-radius: 999px;
+    border: none;
+    background: rgba(255, 255, 255, 0.28);
+    cursor: pointer;
+    padding: 0;
+    transition:
+      width 0.25s ease,
+      background 0.25s ease;
+  }
+
+  .login-showcase-dots button.is-active {
+    width: 28px;
+    background: #fff;
+  }
+
+  .login-showcase-foot {
+    position: relative;
+    z-index: 2;
+    margin: 18px 0 0;
+    font-size: 14px;
+    line-height: 1.5;
+    opacity: 0.78;
+    max-width: 34rem;
+    flex-shrink: 0;
+  }
+
+  .login-form-pane {
+    box-sizing: border-box;
+    height: 100%;
+    min-height: 0;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 48px;
+    background: transparent;
+  }
+
+  .login-card {
+    width: min(100%, 26rem);
+    margin: 0;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow:
+      0 1px 2px rgba(0, 0, 0, 0.12),
+      0 24px 48px rgba(0, 0, 0, 0.28);
+  }
+
+  .login-page {
+    background:
+      radial-gradient(
+        ellipse 70% 55% at 20% 15%,
+        color-mix(in srgb, var(--primary-color) 55%, #1a365d),
+        transparent 55%
+      ),
+      linear-gradient(160deg, #0b2540 0%, #1a365d 48%, #234e70 100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .login-slide,
+  .login-slide img {
+    animation: none !important;
+    transition: opacity 0.2s ease !important;
+  }
 }

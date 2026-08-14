@@ -1,38 +1,71 @@
 import {useEffect, useRef, useState} from 'react';
 import {NavLink, Outlet, useLocation, useNavigate} from 'react-router-dom';
 import {useTranslation} from 'react-i18next';
-import {Icon} from 'sapvt-ltd-web-packages';
-import {Modal} from '../components/Modal';
+import {
+  Icon,
+  Button,
+  Dialog,
+} from 'sapvt-ltd-web-packages';
 import {useAuthStore} from '../store/authStore';
+import {getBrandLogoSrc, getRuntimeConfig} from '../config/runtime';
+import {usePermissions} from '../hooks/usePermissions';
+import {PERMISSIONS} from '../constants/permissions';
 import {
   adminSocketService,
   type NewServiceRequestPayload,
 } from '../services/adminSocket';
+import {setAppLanguage} from '../i18n';
 import './AdminShell.css';
 
-const NAV = [
-  {to: '/', end: true, key: 'navOverview'},
-  {to: '/providers', key: 'navProviders'},
-  {to: '/geography', key: 'navGeography'},
-  {to: '/customers', key: 'navCustomers'},
-  {to: '/admins', key: 'navAdmins', superAdminOnly: true},
-  {to: '/jobs', key: 'navJobs'},
-  {to: '/categories', key: 'navCategories'},
-  {to: '/contacts', key: 'navContacts'},
-  {to: '/clients', key: 'navClients', superAdminOnly: true},
-] as const;
+const NAV: Array<{
+  to: string;
+  end?: boolean;
+  key: string;
+  permission?: string;
+  superAdminOnly?: boolean;
+}> = [
+  {to: '/', end: true, key: 'navOverview', permission: PERMISSIONS.OVERVIEW_VIEW},
+  {to: '/providers', key: 'navProviders', permission: PERMISSIONS.PROVIDERS_VIEW},
+  {to: '/geography', key: 'navGeography', permission: PERMISSIONS.GEOGRAPHY_VIEW},
+  {to: '/customers', key: 'navCustomers', permission: PERMISSIONS.CUSTOMERS_VIEW},
+  {
+    to: '/admins',
+    key: 'navAdmins',
+    permission: PERMISSIONS.ADMINS_VIEW,
+    superAdminOnly: true,
+  },
+  {to: '/jobs', key: 'navJobs', permission: PERMISSIONS.JOBS_VIEW},
+  {
+    to: '/categories',
+    key: 'navCategories',
+    permission: PERMISSIONS.CATEGORIES_VIEW,
+  },
+  {to: '/contacts', key: 'navContacts', permission: PERMISSIONS.CONTACTS_VIEW},
+  {
+    to: '/clients',
+    key: 'navClients',
+    permission: PERMISSIONS.CLIENTS_VIEW,
+    superAdminOnly: true,
+  },
+];
 
 const SIDEBAR_COLLAPSED_KEY = 'hs-admin-sidebar-collapsed';
 
 export function AdminShell() {
-  const {t} = useTranslation();
+  const {t, i18n} = useTranslation();
   const logout = useAuthStore((s) => s.logout);
   const elevateToSuperAdmin = useAuthStore((s) => s.elevateToSuperAdmin);
   const exitSuperAdmin = useAuthStore((s) => s.exitSuperAdmin);
   const changeSuperAdminKey = useAuthStore((s) => s.changeSuperAdminKey);
   const superAdminElevated = useAuthStore((s) => s.superAdminElevated);
+  const {canAccess} = usePermissions();
   const navigate = useNavigate();
   const location = useLocation();
+  const {brandName} = getRuntimeConfig();
+  const logoSrc = getBrandLogoSrc();
+  const shellTitle = brandName?.trim()
+    ? `${brandName} Admin`
+    : t('appTitle');
   const pathRef = useRef(location.pathname);
   pathRef.current = location.pathname;
 
@@ -134,12 +167,12 @@ export function AdminShell() {
           <div className="sidebar-brand">
             <img
               className="sidebar-brand-logo"
-              src="/logo.png"
+              src={logoSrc}
               alt=""
               width={36}
               height={36}
             />
-            {!sidebarCollapsed ? <span>{t('appTitle')}</span> : null}
+            {!sidebarCollapsed ? <span>{shellTitle}</span> : null}
           </div>
           <button
             type="button"
@@ -162,15 +195,15 @@ export function AdminShell() {
           <p className="superadmin-badge">{t('superAdminActive')}</p>
         ) : null}
         <nav className="sidebar-nav" aria-label="Admin">
-          {NAV.filter(
-            (item) =>
-              !('superAdminOnly' in item && item.superAdminOnly) ||
-              superAdminElevated,
-          ).map((item) => (
+          {NAV.filter((item) => {
+            if (item.superAdminOnly && !superAdminElevated) return false;
+            if (item.permission && !canAccess(item.permission)) return false;
+            return true;
+          }).map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
-              end={'end' in item ? item.end : false}
+              end={Boolean(item.end)}
               className={({isActive}) =>
                 isActive ? 'nav-link active' : 'nav-link'
               }
@@ -235,6 +268,21 @@ export function AdminShell() {
               </span>
             </button>
           )}
+          <button
+            type="button"
+            className="logout-btn"
+            title={t('language')}
+            onClick={() =>
+              setAppLanguage(i18n.language?.startsWith('hi') ? 'en' : 'hi')
+            }>
+            <span className="logout-btn-label">
+              {t('language')}:{' '}
+              {i18n.language?.startsWith('hi') ? t('langEn') : t('langHi')}
+            </span>
+            <span className="logout-btn-icon" aria-hidden>
+              <Icon name="translate" size={18} />
+            </span>
+          </button>
           <button
             type="button"
             className="logout-btn"
@@ -306,7 +354,7 @@ export function AdminShell() {
       </main>
 
       {elevateOpen ? (
-        <Modal
+        <Dialog open
           title={t('actAsSuperAdmin')}
           onClose={() => setElevateOpen(false)}
           testId="superadmin-elevate-modal">
@@ -324,25 +372,18 @@ export function AdminShell() {
           </label>
           {error ? <p className="error-text">{error}</p> : null}
           <div className="actions">
-            <button
-              type="button"
-              className="btn btn-primary"
-              disabled={busy || code.length !== 4}
-              onClick={() => void onElevate()}>
+            <Button variant="primary" disabled={busy || code.length !== 4} onClick={() => void onElevate()}>
               {busy ? t('saving') : t('continue')}
-            </button>
-            <button
-              type="button"
-              className="btn btn-ghost"
-              onClick={() => setElevateOpen(false)}>
+            </Button>
+            <Button variant="ghost" onClick={() => setElevateOpen(false)}>
               {t('cancel')}
-            </button>
+            </Button>
           </div>
-        </Modal>
+        </Dialog>
       ) : null}
 
       {keyOpen ? (
-        <Modal
+        <Dialog open
           title={t('updateSuperAdminKey')}
           onClose={() => setKeyOpen(false)}
           testId="superadmin-key-modal">
@@ -379,26 +420,14 @@ export function AdminShell() {
           </label>
           {error ? <p className="error-text">{error}</p> : null}
           <div className="actions">
-            <button
-              type="button"
-              className="btn btn-primary"
-              disabled={
-                busy ||
-                currentKey.length !== 4 ||
-                newKey.length !== 4 ||
-                confirmKey.length !== 4
-              }
-              onClick={() => void onUpdateKey()}>
+            <Button variant="primary" disabled={ busy || currentKey.length !== 4 || newKey.length !== 4 || confirmKey.length !== 4 } onClick={() => void onUpdateKey()}>
               {busy ? t('saving') : t('save')}
-            </button>
-            <button
-              type="button"
-              className="btn btn-ghost"
-              onClick={() => setKeyOpen(false)}>
+            </Button>
+            <Button variant="ghost" onClick={() => setKeyOpen(false)}>
               {t('cancel')}
-            </button>
+            </Button>
           </div>
-        </Modal>
+        </Dialog>
       ) : null}
     </div>
   );

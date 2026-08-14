@@ -1,7 +1,11 @@
 import {useCallback, useEffect, useMemo, useState} from 'react';
 import {Link} from 'react-router-dom';
 import {useTranslation} from 'react-i18next';
-import {VirtualTable, type VirtualTableColumn} from 'sapvt-ltd-web-packages';
+import {
+  VirtualTable,
+  type VirtualTableColumn,
+  Button,
+} from 'sapvt-ltd-web-packages';
 import {
   clearGeographyListCache,
   getGeographyStates,
@@ -9,6 +13,7 @@ import {
   type GeographyJobStats,
   type GeographyStateRow,
 } from '../services/api/geographyApi';
+import {sortByUpdatedThenCreated} from '../utils/sort';
 import '../styles/pages.css';
 
 function formatJobs(stats?: GeographyJobStats): string {
@@ -28,14 +33,14 @@ export function GeographyStatesPage() {
     if (force) clearGeographyListCache();
     const cached = !force ? peekGeographyStates() : null;
     if (cached) {
-      setRows(cached);
+      setRows(sortByUpdatedThenCreated(cached));
       setLoading(false);
     } else {
       setLoading(true);
     }
     setError(null);
     try {
-      setRows(await getGeographyStates({force}));
+      setRows(sortByUpdatedThenCreated(await getGeographyStates({force})));
     } catch (err) {
       setError(err instanceof Error ? err.message : t('errorGeneric'));
     } finally {
@@ -95,7 +100,7 @@ export function GeographyStatesPage() {
         header: '',
         width: '12%',
         render: (row) => (
-          <Link className="btn btn-ghost" to={`/geography/states/${row._id}`}>
+          <Link className="hs-btn hs-btn--ghost hs-btn--md" to={`/geography/states/${row._id}`}>
             {t('geoViewDistricts')}
           </Link>
         ),
@@ -111,13 +116,10 @@ export function GeographyStatesPage() {
         <p>{t('geoStatesLead')}</p>
       </header>
       <div className="filter-row">
-        <button
-          type="button"
-          className="btn btn-ghost"
-          onClick={() => void load({force: true})}
+        <Button variant="ghost" onClick={() => void load({force: true})}
           disabled={loading}>
           {t('geoRefresh')}
-        </button>
+        </Button>
       </div>
       <div className="panel">
         {error ? <p className="error-text">{error}</p> : null}

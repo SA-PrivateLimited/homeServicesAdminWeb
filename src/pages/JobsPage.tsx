@@ -6,8 +6,10 @@ import {
   Select,
   VirtualTable,
   type VirtualTableColumn,
+  Button,
+  Dialog,
+  StatusChip,
 } from 'sapvt-ltd-web-packages';
-import {Modal} from '../components/Modal';
 import {
   addJobCardComment,
   assignProviderToJobCard,
@@ -29,6 +31,7 @@ import {
 import {adminSocketService} from '../services/adminSocket';
 import {formatPhoneDisplay, localTenDigits} from '../utils/phone';
 import {downloadExcelSpreadsheet} from '../utils/excelExport';
+import {sortByUpdatedThenCreated} from '../utils/sort';
 import {CopyFeedbackButton} from '../components/CopyFeedbackButton';
 import {useAuthStore} from '../store/authStore';
 import '../styles/pages.css';
@@ -48,18 +51,19 @@ const ALL_STATES = '__all_states__';
 const ALL_DISTRICTS = '__all_districts__';
 const EXPORT_PAGE_SIZE = 100;
 
-const STATUS_EDIT_OPTIONS = [
+const STATUS_EDIT_VALUES = [
   'pending',
   'accepted',
   'in-progress',
   'completed',
   'cancelled',
-].map((s) => ({value: s, label: s}));
+] as const;
 
-const STATUS_FILTER_OPTIONS = [
-  'unassigned',
-  ...STATUS_EDIT_OPTIONS.map((o) => o.value),
-].map((s) => ({value: s, label: s}));
+const STATUS_FILTER_VALUES = ['unassigned', ...STATUS_EDIT_VALUES] as const;
+
+function jobStatusI18nKey(status: string): string {
+  return `jobStatus_${status.replace(/-/g, '_')}`;
+}
 
 function phoneCopyDigits(value?: string | null): string {
   const ten = localTenDigits(value);
@@ -138,14 +142,24 @@ function commentIcon(role: JobComment['role']): string {
   return 'admin_panel_settings';
 }
 
-function statusBadgeClass(status: string): string {
-  if (status === 'completed' || status === 'accepted') return 'badge-approved';
-  if (status === 'cancelled') return 'badge-rejected';
-  return 'badge-pending';
-}
-
 export function JobsPage() {
   const {t} = useTranslation();
+  const statusEditOptions = useMemo(
+    () =>
+      STATUS_EDIT_VALUES.map((value) => ({
+        value,
+        label: t(jobStatusI18nKey(value)),
+      })),
+    [t],
+  );
+  const statusFilterOptions = useMemo(
+    () =>
+      STATUS_FILTER_VALUES.map((value) => ({
+        value,
+        label: t(jobStatusI18nKey(value)),
+      })),
+    [t],
+  );
   const [searchParams] = useSearchParams();
   const initialFilter = (() => {
     const f = searchParams.get('filter');
@@ -236,7 +250,7 @@ export function JobsPage() {
               limit: PAGE_SIZE,
               offset: page * PAGE_SIZE,
             });
-      setRows(result.items);
+      setRows(sortByUpdatedThenCreated(result.items));
       setTotal(result.total);
     } catch (err) {
       setError(err instanceof Error ? err.message : t('errorGeneric'));
@@ -370,6 +384,7 @@ export function JobsPage() {
         'Provider address',
         'Task PIN',
         'Created',
+        'Accepted',
         'Updated',
       ];
       const excelRows = all.map((job) => {
@@ -385,7 +400,7 @@ export function JobsPage() {
           job.serviceType || '',
           job.problem || '',
           unassigned ? 'unassigned' : job.status || '',
-          job.needsAdminAssignment ? 'yes' : 'no',
+          unassigned && job.needsAdminAssignment ? 'yes' : 'no',
           job.customerName || '',
           phoneCopyDigits(job.customerPhone) || job.customerPhone || '',
           formatAddress(job.customerAddress),
@@ -396,6 +411,7 @@ export function JobsPage() {
           unassigned ? '' : formatAddress(job.providerAddress),
           job.taskPIN || '',
           formatDate(job.createdAt),
+          formatDate(job.acceptedAt),
           formatDate(job.updatedAt),
         ];
       });
@@ -540,32 +556,31 @@ export function JobsPage() {
     () => [
       {
         key: 'service',
-        header: 'Service',
+        header: t('service'),
         width: '7rem',
         filterable: true,
         filterType: 'multi',
-        filterPlaceholder: 'Filter services',
+        filterPlaceholder: t('filterServices'),
         filterValue: (row) => row.serviceType || '',
         render: (row) => (
           <span>
             {row.serviceType || '—'}
-            {row.needsAdminAssignment ? (
-              <span
-                className="badge badge-pending"
+            {row.needsAdminAssignment && isJobUnassigned(row) ? (
+              <StatusChip
+                status="pending"
+                label={t('filterNeedsProvider')}
                 style={{marginLeft: 6}}
-                title="No providers in customer area">
-                Needs provider
-              </span>
+              />
             ) : null}
           </span>
         ),
       },
       {
         key: 'problem',
-        header: 'Problem',
+        header: t('problem'),
         width: '9rem',
         filterable: true,
-        filterPlaceholder: 'Search problem',
+        filterPlaceholder: t('searchProblem'),
         filterValue: (row) => row.problem || '',
         render: (row) => (
           <span className="table-problem" title={row.problem || undefined}>
@@ -575,10 +590,10 @@ export function JobsPage() {
       },
       {
         key: 'customer',
-        header: 'Customer',
+        header: t('customer'),
         width: '14rem',
         filterable: true,
-        filterPlaceholder: 'Search customer',
+        filterPlaceholder: t('searchCustomer'),
         filterValue: (row) =>
           `${row.customerName || ''} ${row.customerPhone || ''} ${addressSearchValue(row.customerAddress)}`,
         render: (row) => {
@@ -614,10 +629,10 @@ export function JobsPage() {
       },
       {
         key: 'provider',
-        header: 'Provider',
+        header: t('provider'),
         width: '14rem',
         filterable: true,
-        filterPlaceholder: 'Search provider',
+        filterPlaceholder: t('searchProvider'),
         filterValue: (row) =>
           isJobUnassigned(row)
             ? 'unassigned'
@@ -625,7 +640,7 @@ export function JobsPage() {
         render: (row) => {
           if (isJobUnassigned(row)) {
             return (
-              <span className="badge badge-pending">{t('unassigned')}</span>
+              <StatusChip status="pending" label={t('unassigned')} />
             );
           }
           const addr = formatAddress(row.providerAddress);
@@ -662,28 +677,26 @@ export function JobsPage() {
       },
       {
         key: 'status',
-        header: 'Status',
+        header: t('status'),
         width: '8rem',
         filterable: true,
         filterType: 'multi',
-        filterPlaceholder: 'Filter statuses',
-        filterOptions: STATUS_FILTER_OPTIONS,
+        filterPlaceholder: t('filterStatuses'),
+        filterOptions: statusFilterOptions,
         filterValue: (row) => row.status || 'pending',
         render: (row) => {
           const status = row.status || 'pending';
           return (
-            <span className={`badge ${statusBadgeClass(status)}`}>
-              {status === 'unassigned' ? t('unassigned') : status}
-            </span>
+            <StatusChip status={status} label={t(jobStatusI18nKey(status))} />
           );
         },
       },
       {
         key: 'pin',
-        header: 'Task PIN',
+        header: t('taskPin'),
         width: '7.5rem',
         filterable: true,
-        filterPlaceholder: 'Search PIN',
+        filterPlaceholder: t('searchPin'),
         filterValue: (row) => row.taskPIN || '',
         render: (row) => {
           if (!row.taskPIN) return '—';
@@ -694,12 +707,7 @@ export function JobsPage() {
                 <code>{shown ? row.taskPIN : t('pinMasked')}</code>
               </span>
               <span className="pin-cell-actions">
-                <button
-                  type="button"
-                  className="btn btn-ghost icon-only"
-                  aria-label={shown ? t('hidePin') : t('revealPin')}
-                  title={shown ? t('hidePin') : t('revealPin')}
-                  onClick={() =>
+                <Button variant="ghost" className="icon-only" aria-label={shown ? t('hidePin') : t('revealPin')} title={shown ? t('hidePin') : t('revealPin')} onClick={() =>
                     setRevealedTaskPins((m) => ({
                       ...m,
                       [row._id]: !m[row._id],
@@ -709,7 +717,7 @@ export function JobsPage() {
                     name={shown ? 'visibility_off' : 'visibility'}
                     size={16}
                   />
-                </button>
+                </Button>
                 {shown ? (
                   <CopyFeedbackButton
                     text={row.taskPIN || ''}
@@ -724,10 +732,10 @@ export function JobsPage() {
       },
       {
         key: 'createdAt',
-        header: 'Created',
+        header: t('createdDate'),
         width: '9rem',
         filterable: true,
-        filterPlaceholder: 'Search created',
+        filterPlaceholder: t('searchCreated'),
         filterValue: (row) => formatDateShort(row.createdAt),
         render: (row) => (
           <span className="table-date" title={formatDate(row.createdAt)}>
@@ -736,11 +744,24 @@ export function JobsPage() {
         ),
       },
       {
-        key: 'updatedAt',
-        header: 'Updated',
+        key: 'acceptedAt',
+        header: t('acceptedDate'),
         width: '9rem',
         filterable: true,
-        filterPlaceholder: 'Search updated',
+        filterPlaceholder: t('searchAccepted'),
+        filterValue: (row) => formatDateShort(row.acceptedAt),
+        render: (row) => (
+          <span className="table-date" title={formatDate(row.acceptedAt)}>
+            {row.acceptedAt ? formatDateShort(row.acceptedAt) : '—'}
+          </span>
+        ),
+      },
+      {
+        key: 'updatedAt',
+        header: t('updatedCol'),
+        width: '9rem',
+        filterable: true,
+        filterPlaceholder: t('searchUpdated'),
         filterValue: (row) => formatDateShort(row.updatedAt),
         render: (row) => (
           <span className="table-date" title={formatDate(row.updatedAt)}>
@@ -750,21 +771,21 @@ export function JobsPage() {
       },
       {
         key: 'actions',
-        header: 'Actions',
+        header: t('actions'),
         width: '9rem',
         render: (row) => (
-          <button
-            type="button"
-            className="btn btn-ghost table-view-btn"
+          <Button
+            variant="ghost"
+            className="table-view-btn"
             onClick={() => void openView(row)}
             aria-label={t('viewUpdate')}>
             <Icon name="visibility" size={18} />
             {t('viewUpdate')}
-          </button>
+          </Button>
         ),
       },
     ],
-    [revealedTaskPins, resolveProviderPhone, t],
+    [revealedTaskPins, resolveProviderPhone, statusFilterOptions, t],
   );
 
   const comments = viewJob?.comments ?? [];
@@ -779,14 +800,10 @@ export function JobsPage() {
         </div>
         {superAdminElevated ? (
           <div className="row-header-actions">
-            <button
-              type="button"
-              className="btn btn-primary"
-              disabled={exportBusy || loading}
-              onClick={() => void onExportExcel()}>
+            <Button variant="primary" disabled={exportBusy || loading} onClick={() => void onExportExcel()}>
               <Icon name="download" size={18} />
               {exportBusy ? t('exportingExcel') : t('exportExcel')}
-            </button>
+            </Button>
           </div>
         ) : null}
       </header>
@@ -806,12 +823,16 @@ export function JobsPage() {
           <button
             key={s}
             type="button"
-            className={filter === s ? 'btn btn-primary' : 'btn btn-ghost'}
+            className={filter === s ? 'hs-btn hs-btn--primary hs-btn--md' : 'hs-btn hs-btn--ghost hs-btn--md'}
             onClick={() => {
               setPage(0);
               setFilter(s);
             }}>
-            {s === 'unassigned' ? t('filterUnassigned') : s}
+            {s === 'all'
+              ? t('filter_all')
+              : s === 'unassigned'
+                ? t('filterUnassigned')
+                : t(jobStatusI18nKey(s))}
           </button>
         ))}
         <div className="filter-inline" style={{minWidth: '12rem'}}>
@@ -823,6 +844,8 @@ export function JobsPage() {
             value={filterStateId}
             placeholder={t('filterByState')}
             showSearch
+            searchPlaceholder={t('searchState')}
+            emptyMessage={t('noStatesFound')}
             onChange={(value) => {
               setFilterStateId(value || ALL_STATES);
               setFilterDistrictId(ALL_DISTRICTS);
@@ -842,6 +865,8 @@ export function JobsPage() {
             value={filterDistrictId}
             placeholder={t('filterByDistrict')}
             showSearch
+            searchPlaceholder={t('searchDistrict')}
+            emptyMessage={t('noDistrictsFound')}
             disabled={filterStateId === ALL_STATES}
             onChange={(value) => {
               setFilterDistrictId(value || ALL_DISTRICTS);
@@ -872,7 +897,7 @@ export function JobsPage() {
       </div>
 
       {viewJob ? (
-        <Modal
+        <Dialog open
           title={t('jobDetails')}
           onClose={closeView}
           className="modal--wide"
@@ -883,21 +908,27 @@ export function JobsPage() {
           <dl className="detail-list detail-list--grid">
             <div>
               <dt>
-                <Icon name="handyman" size={14} /> Service
+                <Icon name="handyman" size={14} /> {t('service')}
               </dt>
               <dd>{viewJob.serviceType || '—'}</dd>
             </div>
             <div>
               <dt>
-                <Icon name="flag" size={14} /> Status
+                <Icon name="flag" size={14} /> {t('status')}
               </dt>
               <dd>
-                <span
-                  className={`badge ${statusBadgeClass(
-                    modalUnassigned ? 'unassigned' : viewJob.status || 'pending',
-                  )}`}>
-                  {modalUnassigned ? t('unassigned') : viewJob.status || '—'}
-                </span>
+                <StatusChip
+                  status={
+                    modalUnassigned
+                      ? 'pending'
+                      : viewJob.status || 'pending'
+                  }
+                  label={
+                    modalUnassigned
+                      ? t('unassigned')
+                      : t(jobStatusI18nKey(viewJob.status || 'pending'))
+                  }
+                />
               </dd>
             </div>
             <div className="detail-span-2">
@@ -916,12 +947,9 @@ export function JobsPage() {
                     <code>
                       {revealModalPin ? viewJob.taskPIN : t('pinMasked')}
                     </code>
-                    <button
-                      type="button"
-                      className="btn btn-ghost"
-                      onClick={() => setRevealModalPin((v) => !v)}>
+                    <Button variant="ghost" onClick={() => setRevealModalPin((v) => !v)}>
                       {revealModalPin ? t('hidePin') : t('revealPin')}
-                    </button>
+                    </Button>
                   </span>
                 ) : (
                   '—'
@@ -933,6 +961,26 @@ export function JobsPage() {
                 <Icon name="schedule" size={14} /> {t('scheduledTime')}
               </dt>
               <dd>{formatDate(viewJob.scheduledTime)}</dd>
+            </div>
+            <div>
+              <dt>
+                <Icon name="event" size={14} /> {t('createdDate')}
+              </dt>
+              <dd>{formatDate(viewJob.createdAt)}</dd>
+            </div>
+            <div>
+              <dt>
+                <Icon name="check_circle" size={14} /> {t('acceptedDate')}
+              </dt>
+              <dd>
+                {viewJob.acceptedAt ? formatDate(viewJob.acceptedAt) : '—'}
+              </dd>
+            </div>
+            <div>
+              <dt>
+                <Icon name="update" size={14} /> {t('updatedCol')}
+              </dt>
+              <dd>{formatDate(viewJob.updatedAt)}</dd>
             </div>
             {viewJob.cancellationReason ? (
               <div className="detail-span-2">
@@ -969,7 +1017,7 @@ export function JobsPage() {
             </h4>
             {modalUnassigned ? (
               <p className="job-party-name">
-                <span className="badge badge-pending">{t('unassigned')}</span>
+                <StatusChip status="pending" label={t('unassigned')} />
               </p>
             ) : (
               <p className="job-party-name">
@@ -1003,43 +1051,32 @@ export function JobsPage() {
                 placeholder={t('selectProvider')}
                 disabled={actionBusy}
                 showSearch
+                searchPlaceholder={t('searchProvider')}
+                emptyMessage={t('empty')}
                 onChange={setAssignProviderId}
               />
             </label>
             <div className="actions">
-              <button
-                type="button"
-                className="btn btn-primary"
-                disabled={
-                  actionBusy ||
-                  !assignProviderId ||
-                  (!modalUnassigned &&
-                    assignProviderId === (viewJob.providerId || '').trim())
-                }
-                onClick={onAssignOrChange}>
+              <Button variant="primary" disabled={ actionBusy || !assignProviderId || (!modalUnassigned && assignProviderId === (viewJob.providerId || '').trim()) } onClick={onAssignOrChange}>
                 <Icon name={modalUnassigned ? 'person_add' : 'swap_horiz'} size={16} />
                 {actionBusy
                   ? t('saving')
                   : modalUnassigned
                     ? t('assignAndConfirm')
                     : t('changeProvider')}
-              </button>
+              </Button>
               {!modalUnassigned ? (
-                <button
-                  type="button"
-                  className="btn btn-ghost"
-                  disabled={actionBusy}
-                  onClick={onUnassign}>
+                <Button variant="ghost" disabled={actionBusy} onClick={onUnassign}>
                   <Icon name="person_remove" size={16} />
                   {t('unassignProvider')}
-                </button>
+                </Button>
               ) : null}
             </div>
             {!modalUnassigned ? (
               <label>
                 {t('updateStatus')}
                 <Select
-                  options={STATUS_EDIT_OPTIONS}
+                  options={statusEditOptions}
                   value={viewJob.status || 'pending'}
                   disabled={actionBusy}
                   onChange={onStatusChange}
@@ -1091,23 +1128,16 @@ export function JobsPage() {
               />
             </label>
             <div className="actions">
-              <button
-                type="button"
-                className="btn btn-primary"
-                disabled={commentBusy || !commentText.trim()}
-                onClick={() => void onPostComment()}>
+              <Button variant="primary" disabled={commentBusy || !commentText.trim()} onClick={() => void onPostComment()}>
                 <Icon name="send" size={16} />
                 {commentBusy ? t('postingComment') : t('postComment')}
-              </button>
-              <button
-                type="button"
-                className="btn btn-ghost"
-                onClick={closeView}>
+              </Button>
+              <Button variant="ghost" onClick={closeView}>
                 {t('cancel')}
-              </button>
+              </Button>
             </div>
           </section>
-        </Modal>
+        </Dialog>
       ) : null}
     </div>
   );

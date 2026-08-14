@@ -1,6 +1,9 @@
 import {useEffect, useMemo, useRef, useState} from 'react';
 import {useTranslation} from 'react-i18next';
-import {Widget} from 'sapvt-ltd-web-packages';
+import {
+  Widget,
+  Loader,
+} from 'sapvt-ltd-web-packages';
 import {
   getOverviewStats,
   type OverviewGeoRow,
@@ -787,7 +790,7 @@ export function OverviewPage() {
         <p>{t('overviewLead')}</p>
       </header>
 
-      {loading ? <p className="muted">{t('loading')}</p> : null}
+      {loading ? <Loader label={t('loading')} /> : null}
       {error ? <p className="error-text">{error}</p> : null}
 
       {!loading && !error && stats ? (

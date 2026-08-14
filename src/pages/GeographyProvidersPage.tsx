@@ -5,8 +5,9 @@ import {
   Select,
   VirtualTable,
   type VirtualTableColumn,
+  Button,
+  Dialog,
 } from 'sapvt-ltd-web-packages';
-import {Modal} from '../components/Modal';
 import {
   assignProviderToDistrict,
   clearGeographyListCache,
@@ -23,6 +24,7 @@ import {
   localTenDigits,
   toE164,
 } from '../utils/phone';
+import {sortByUpdatedThenCreated} from '../utils/sort';
 import '../styles/pages.css';
 
 function formatJobs(stats?: GeographyJobStats): string {
@@ -103,7 +105,7 @@ export function GeographyProvidersPage() {
     if (force) clearGeographyListCache();
     const cached = !force ? peekGeographyProviders(districtId) : null;
     if (cached) {
-      setRows(cached.providers);
+      setRows(sortByUpdatedThenCreated(cached.providers));
       setDistrict(cached.district);
       setLoading(false);
     } else {
@@ -112,7 +114,7 @@ export function GeographyProvidersPage() {
     setError(null);
     try {
       const result = await getGeographyProviders(districtId, {force});
-      setRows(result.providers);
+      setRows(sortByUpdatedThenCreated(result.providers));
       setDistrict(result.district);
     } catch (err) {
       setError(err instanceof Error ? err.message : t('errorGeneric'));
@@ -335,31 +337,25 @@ export function GeographyProvidersPage() {
       <div className="filter-row">
         {district ? (
           <Link
-            className="btn btn-ghost"
+            className="hs-btn hs-btn--ghost hs-btn--md"
             to={`/geography/states/${district.stateId}`}>
             {t('back')}
           </Link>
         ) : (
-          <Link className="btn btn-ghost" to="/geography">
+          <Link className="hs-btn hs-btn--ghost hs-btn--md" to="/geography">
             {t('back')}
           </Link>
         )}
-        <button
-          type="button"
-          className="btn btn-primary"
-          onClick={openCreate}>
+        <Button variant="primary" onClick={openCreate}>
           {t('geoAddProvider')}
-        </button>
-        <button type="button" className="btn btn-ghost" onClick={() => void openAssign()}>
+        </Button>
+        <Button variant="ghost" onClick={() => void openAssign()}>
           {t('geoAssignProvider')}
-        </button>
-        <button
-          type="button"
-          className="btn btn-ghost"
-          onClick={() => void load({force: true})}
+        </Button>
+        <Button variant="ghost" onClick={() => void load({force: true})}
           disabled={loading}>
           {t('geoRefresh')}
-        </button>
+        </Button>
       </div>
       <div className="panel">
         {error ? <p className="error-text">{error}</p> : null}
@@ -376,7 +372,7 @@ export function GeographyProvidersPage() {
       </div>
 
       {createOpen ? (
-        <Modal
+        <Dialog open
           title={t('geoAddProviderTitle')}
           onClose={closeCreate}
           testId="geo-create-provider-modal">
@@ -475,22 +471,18 @@ export function GeographyProvidersPage() {
           </div>
           {createError ? <p className="error-text">{createError}</p> : null}
           <div className="actions">
-            <button
-              type="button"
-              className="btn btn-primary"
-              disabled={creating}
-              onClick={() => void onCreate()}>
+            <Button variant="primary" disabled={creating} onClick={() => void onCreate()}>
               {creating ? t('saving') : t('save')}
-            </button>
-            <button type="button" className="btn btn-ghost" onClick={closeCreate}>
+            </Button>
+            <Button variant="ghost" onClick={closeCreate}>
               {t('cancel')}
-            </button>
+            </Button>
           </div>
-        </Modal>
+        </Dialog>
       ) : null}
 
       {assignOpen ? (
-        <Modal
+        <Dialog open
           title={t('geoAssignProviderTitle')}
           onClose={closeAssign}
           testId="geo-assign-provider-modal">
@@ -515,18 +507,14 @@ export function GeographyProvidersPage() {
           </label>
           {assignError ? <p className="error-text">{assignError}</p> : null}
           <div className="actions">
-            <button
-              type="button"
-              className="btn btn-primary"
-              disabled={assigning || assignLoading || !assignProviderId}
-              onClick={() => void onAssign()}>
+            <Button variant="primary" disabled={assigning || assignLoading || !assignProviderId} onClick={() => void onAssign()}>
               {assigning ? t('saving') : t('geoAssignProvider')}
-            </button>
-            <button type="button" className="btn btn-ghost" onClick={closeAssign}>
+            </Button>
+            <Button variant="ghost" onClick={closeAssign}>
               {t('cancel')}
-            </button>
+            </Button>
           </div>
-        </Modal>
+        </Dialog>
       ) : null}
     </div>
   );

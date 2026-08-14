@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { QuestionnaireEditor } from '../components/QuestionnaireEditor';
+import {Button, Loader} from 'sapvt-ltd-web-packages';
 import {
   createServiceCategory,
   getServiceCategoryById,
@@ -105,7 +106,7 @@ export function CategoryEditPage() {
   };
 
   if (loading) {
-    return <p className="muted">{t('loading')}</p>;
+    return <Loader label={t('loading')} />;
   }
 
   return (
@@ -193,15 +194,10 @@ export function CategoryEditPage() {
         <QuestionnaireEditor value={questionnaire} onChange={setQuestionnaire} />
 
         <div className="actions form-actions">
-          <button
-            type="submit"
-            className="btn btn-primary"
-            data-testid="save-category-btn"
-            disabled={saving}
-          >
+          <Button type="submit" variant="primary" data-testid="save-category-btn" disabled={saving}>
             {saving ? t('saving') : t('save')}
-          </button>
-          <Link className="btn btn-ghost" to="/categories">
+          </Button>
+          <Link className="hs-btn hs-btn--ghost hs-btn--md" to="/categories">
             {t('cancel')}
           </Link>
         </div>

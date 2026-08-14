@@ -1,7 +1,11 @@
 import {useCallback, useEffect, useMemo, useState} from 'react';
 import {Link, useParams} from 'react-router-dom';
 import {useTranslation} from 'react-i18next';
-import {VirtualTable, type VirtualTableColumn} from 'sapvt-ltd-web-packages';
+import {
+  VirtualTable,
+  type VirtualTableColumn,
+  Button,
+} from 'sapvt-ltd-web-packages';
 import {
   clearGeographyListCache,
   getGeographyDistricts,
@@ -10,6 +14,7 @@ import {
   type GeographyJobStats,
   type GeographyMetaState,
 } from '../services/api/geographyApi';
+import {sortByUpdatedThenCreated} from '../utils/sort';
 import '../styles/pages.css';
 
 function formatJobs(stats?: GeographyJobStats): string {
@@ -36,7 +41,7 @@ export function GeographyDistrictsPage() {
     if (force) clearGeographyListCache();
     const cached = !force ? peekGeographyDistricts(stateId) : null;
     if (cached) {
-      setRows(cached.districts);
+      setRows(sortByUpdatedThenCreated(cached.districts));
       setState(cached.state);
       setLoading(false);
     } else {
@@ -45,7 +50,7 @@ export function GeographyDistrictsPage() {
     setError(null);
     try {
       const result = await getGeographyDistricts(stateId, {force});
-      setRows(result.districts);
+      setRows(sortByUpdatedThenCreated(result.districts));
       setState(result.state);
     } catch (err) {
       setError(err instanceof Error ? err.message : t('errorGeneric'));
@@ -101,7 +106,7 @@ export function GeographyDistrictsPage() {
         width: '18%',
         render: (row) => (
           <Link
-            className="btn btn-ghost"
+            className="hs-btn hs-btn--ghost hs-btn--md"
             to={`/geography/districts/${row._id}`}>
             {t('geoViewProviders')}
           </Link>
@@ -124,16 +129,13 @@ export function GeographyDistrictsPage() {
         <p>{t('geoDistrictsLead')}</p>
       </header>
       <div className="filter-row">
-        <Link className="btn btn-ghost" to="/geography">
+        <Link className="hs-btn hs-btn--ghost hs-btn--md" to="/geography">
           {t('back')}
         </Link>
-        <button
-          type="button"
-          className="btn btn-ghost"
-          onClick={() => void load({force: true})}
+        <Button variant="ghost" onClick={() => void load({force: true})}
           disabled={loading}>
           {t('geoRefresh')}
-        </button>
+        </Button>
       </div>
       <div className="panel">
         {error ? <p className="error-text">{error}</p> : null}

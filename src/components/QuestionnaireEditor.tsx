@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import {Button} from 'sapvt-ltd-web-packages';
 import type {
   QuestionnaireQuestion,
   QuestionType,
@@ -113,13 +114,10 @@ export function QuestionnaireEditor({ value, onChange }: Props) {
                   />
                   Required
                 </label>
-                <button
-                  type="button"
-                  className="btn btn-danger"
-                  onClick={() => removeAt(index)}
+                <Button variant="danger" onClick={() => removeAt(index)}
                 >
                   Remove
-                </button>
+                </Button>
               </div>
               {(q.type === 'select' || q.type === 'multiselect') && (
                 <div className="form-row">
@@ -225,14 +223,9 @@ export function QuestionnaireEditor({ value, onChange }: Props) {
             </label>
           </div>
         )}
-        <button
-          type="button"
-          className="btn btn-primary"
-          data-testid="add-question-btn"
-          onClick={addQuestion}
-        >
+        <Button variant="primary" data-testid="add-question-btn" onClick={addQuestion}>
           Add question
-        </button>
+        </Button>
       </div>
     </div>
   );

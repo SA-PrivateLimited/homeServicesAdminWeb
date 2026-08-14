@@ -46,6 +46,7 @@ export interface JobCard {
   comments?: JobComment[];
   createdAt?: string;
   updatedAt?: string;
+  acceptedAt?: string;
   customerNotified?: boolean;
   /** Present when row comes from a pending service request (no job card yet) */
   source?: 'jobCard' | 'serviceRequest';

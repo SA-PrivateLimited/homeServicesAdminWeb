@@ -1,34 +1,64 @@
 import {useCallback, useEffect, useMemo, useState} from 'react';
 import {Navigate} from 'react-router-dom';
 import {useTranslation} from 'react-i18next';
-import {Icon, VirtualTable, type VirtualTableColumn} from 'sapvt-ltd-web-packages';
-import {Modal} from '../components/Modal';
+import {
+  Icon,
+  VirtualTable,
+  type VirtualTableColumn,
+  Button,
+  Dialog,
+  StatusChip,
+} from 'sapvt-ltd-web-packages';
 import {
   SuccessBanner,
   userLabel,
   type SuccessBannerContent,
 } from '../components/SuccessBanner';
 import {
-  createUser,
+  cancelAdminInvitation,
+  inviteAdmin,
+  regenerateAdminActivation,
+  setAdminStatus,
+  updateAdminPermissions,
+  type ActivationInviteResult,
+} from '../services/api/activationApi';
+import {
+  deactivateUser,
   deleteUser,
   getUsersPage,
   resetUserMfa,
+  restoreUser,
   setUserPassword,
   type User,
 } from '../services/api/usersApi';
 import {useAuthStore} from '../store/authStore';
-import {formatPhoneDisplay, localTenDigits, phoneSearchValue, toE164} from '../utils/phone';
+import {
+  ALL_PERMISSION_VALUES,
+  PERMISSION_MODULES,
+  defaultInvitePermissions,
+  isModuleSelected,
+  permissionLabel,
+  toggleModulePermissions,
+} from '../constants/permissions';
+import {sortByUpdatedThenCreated} from '../utils/sort';
 import '../styles/pages.css';
 
 const MIN_PASSWORD_LENGTH = 8;
 const PAGE_SIZE = 50;
 
-function generateAdminPassword(length = 12): string {
-  const alphabet =
-    'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%';
-  const bytes = new Uint8Array(length);
-  crypto.getRandomValues(bytes);
-  return Array.from(bytes, (b) => alphabet[b % alphabet.length]).join('');
+function formatCreatedAt(value?: string): string {
+  if (!value) return '—';
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return '—';
+  return d.toLocaleDateString(undefined, {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  });
+}
+
+async function copyText(text: string): Promise<void> {
+  await navigator.clipboard.writeText(text);
 }
 
 export function AdminsPage() {
@@ -58,10 +88,23 @@ export function AdminsPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [createName, setCreateName] = useState('');
   const [createEmail, setCreateEmail] = useState('');
-  const [createPhone, setCreatePhone] = useState('');
-  const [createPassword, setCreatePassword] = useState('');
+  const [createPermissions, setCreatePermissions] = useState<string[]>(() =>
+    defaultInvitePermissions(),
+  );
   const [createError, setCreateError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
+
+  const [editPermsUser, setEditPermsUser] = useState<User | null>(null);
+  const [editPermissions, setEditPermissions] = useState<string[]>([]);
+  const [editPermsError, setEditPermsError] = useState<string | null>(null);
+  const [savingPerms, setSavingPerms] = useState(false);
+
+  const [inviteResult, setInviteResult] =
+    useState<ActivationInviteResult | null>(null);
+  const [inviteActionBusy, setInviteActionBusy] = useState(false);
+  const [inviteActionError, setInviteActionError] = useState<string | null>(
+    null,
+  );
 
   const [deleteTarget, setDeleteTarget] = useState<User | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -75,8 +118,9 @@ export function AdminsPage() {
         role: 'admin',
         limit: PAGE_SIZE,
         offset: page * PAGE_SIZE,
+        includeInactive: true,
       });
-      setRows(result.items);
+      setRows(sortByUpdatedThenCreated(result.items));
       setTotal(result.total);
     } catch (err) {
       setError(err instanceof Error ? err.message : t('errorGeneric'));
@@ -95,10 +139,6 @@ export function AdminsPage() {
     const timer = window.setTimeout(() => setSuccessBanner(null), 10000);
     return () => window.clearTimeout(timer);
   }, [successBanner]);
-
-  if (!superAdminElevated) {
-    return <Navigate to="/" replace />;
-  }
 
   const closePasswordModal = () => {
     setPasswordUser(null);
@@ -121,10 +161,54 @@ export function AdminsPage() {
     setCreateOpen(false);
     setCreateName('');
     setCreateEmail('');
-    setCreatePhone('');
-    setCreatePassword('');
+    setCreatePermissions(defaultInvitePermissions());
     setCreateError(null);
     setCreating(false);
+  };
+
+  const openEditPermissions = (user: User) => {
+    setEditPermsUser(user);
+    setEditPermissions(
+      Array.isArray(user.permissions) && user.permissions.length
+        ? [...user.permissions]
+        : [...ALL_PERMISSION_VALUES],
+    );
+    setEditPermsError(null);
+  };
+
+  const closeEditPermissions = () => {
+    setEditPermsUser(null);
+    setEditPermissions([]);
+    setEditPermsError(null);
+    setSavingPerms(false);
+  };
+
+  const onSavePermissions = async () => {
+    if (!editPermsUser) return;
+    setSavingPerms(true);
+    setEditPermsError(null);
+    try {
+      await updateAdminPermissions(editPermsUser._id, editPermissions);
+      const {name} = userLabel(editPermsUser);
+      closeEditPermissions();
+      setSuccessBanner({
+        title: t('permissionsUpdatedTitle'),
+        detail: t('permissionsUpdatedDetail', {name}),
+      });
+      await load();
+    } catch (err) {
+      setEditPermsError(
+        err instanceof Error ? err.message : t('errorGeneric'),
+      );
+    } finally {
+      setSavingPerms(false);
+    }
+  };
+
+  const closeInviteModal = () => {
+    setInviteResult(null);
+    setInviteActionError(null);
+    setInviteActionBusy(false);
   };
 
   const onSavePassword = async () => {
@@ -180,36 +264,119 @@ export function AdminsPage() {
       setCreateError(t('emailRequired'));
       return;
     }
-    const ten = localTenDigits(createPhone);
-    if (createPhone.trim() && ten.length !== 10) {
-      setCreateError(t('phoneTenDigits'));
-      return;
-    }
-    if (!createPassword || createPassword.length < MIN_PASSWORD_LENGTH) {
-      setCreateError(t('passwordTooShort'));
-      return;
-    }
     setCreating(true);
     try {
-      const created = await createUser({
+      const result = await inviteAdmin({
         name: createName.trim() || undefined,
         email: createEmail.trim(),
-        phone: ten.length === 10 ? toE164(ten) : undefined,
-        role: 'admin',
-        password: createPassword,
+        permissions: createPermissions,
       });
-      const {name} = userLabel(created);
       closeCreateModal();
-      setSuccessBanner({
-        title: t('userCreatedTitle'),
-        detail: t('userCreatedDetail', {name}),
-      });
+      setInviteResult(result);
       setPage(0);
       await load();
     } catch (err) {
       setCreateError(err instanceof Error ? err.message : t('errorGeneric'));
     } finally {
       setCreating(false);
+    }
+  };
+
+  const issueInviteForUser = async (user: User) => {
+    setBusyId(user._id);
+    setInviteActionError(null);
+    try {
+      const result = await regenerateAdminActivation(user._id);
+      setInviteResult(result);
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t('errorGeneric'));
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const onCopyInviteLink = async () => {
+    if (!inviteResult) return;
+    setInviteActionBusy(true);
+    setInviteActionError(null);
+    try {
+      await copyText(inviteResult.activationLink);
+      setSuccessBanner({
+        title: t('activationLinkCopiedTitle'),
+        detail: t('activationLinkCopiedDetail'),
+      });
+    } catch {
+      setInviteActionError(t('activationCopyFailed'));
+    } finally {
+      setInviteActionBusy(false);
+    }
+  };
+
+  const onRegenerateFromInviteModal = async () => {
+    if (!inviteResult?.admin?._id) return;
+    setInviteActionBusy(true);
+    setInviteActionError(null);
+    try {
+      const result = await regenerateAdminActivation(inviteResult.admin._id);
+      setInviteResult(result);
+      await load();
+    } catch (err) {
+      setInviteActionError(
+        err instanceof Error ? err.message : t('errorGeneric'),
+      );
+    } finally {
+      setInviteActionBusy(false);
+    }
+  };
+
+  const onCancelInvitation = async () => {
+    if (!inviteResult?.admin?._id) return;
+    setInviteActionBusy(true);
+    setInviteActionError(null);
+    try {
+      await cancelAdminInvitation(inviteResult.admin._id);
+      closeInviteModal();
+      setSuccessBanner({
+        title: t('invitationCancelledTitle'),
+        detail: t('invitationCancelledDetail'),
+      });
+      await load();
+    } catch (err) {
+      setInviteActionError(
+        err instanceof Error ? err.message : t('errorGeneric'),
+      );
+    } finally {
+      setInviteActionBusy(false);
+    }
+  };
+
+  const onSetStatus = async (
+    user: User,
+    status: 'ACTIVE' | 'DISABLED' | 'LOCKED' | 'PENDING',
+    reason?: string,
+  ) => {
+    setBusyId(user._id);
+    try {
+      if (status === 'DISABLED') {
+        await deactivateUser(user._id, reason || 'Disabled by Super Admin');
+      } else if (status === 'ACTIVE' && user.adminStatus === 'DISABLED') {
+        await restoreUser(user._id);
+      } else {
+        await setAdminStatus(user._id, status, reason);
+      }
+      setSuccessBanner({
+        title: t('adminStatusUpdatedTitle'),
+        detail: t('adminStatusUpdatedDetail', {
+          name: userLabel(user).name,
+          status,
+        }),
+      });
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t('errorGeneric'));
+    } finally {
+      setBusyId(null);
     }
   };
 
@@ -235,100 +402,147 @@ export function AdminsPage() {
     }
   };
 
+  const togglePermission = (moduleId: string, selected: boolean) => {
+    setCreatePermissions((prev) =>
+      toggleModulePermissions(moduleId, prev, selected),
+    );
+  };
+
+  const toggleEditModule = (moduleId: string, selected: boolean) => {
+    setEditPermissions((prev) =>
+      toggleModulePermissions(moduleId, prev, selected),
+    );
+  };
+
+  const toggleEditPermission = (permission: string) => {
+    setEditPermissions((prev) =>
+      prev.includes(permission)
+        ? prev.filter((p) => p !== permission)
+        : [...prev, permission],
+    );
+  };
+
   const columns = useMemo<VirtualTableColumn<User>[]>(
     () => [
       {
         key: 'name',
-        header: 'Name',
+        header: t('name'),
         filterable: true,
-        filterPlaceholder: 'Search name',
+        filterPlaceholder: t('searchName'),
         filterValue: (row) => row.name || row.displayName || '',
         render: (row) => row.name || row.displayName || '—',
       },
       {
         key: 'email',
-        header: 'Email',
+        header: t('email'),
         filterable: true,
-        filterPlaceholder: 'Filter email',
+        filterPlaceholder: t('searchEmail'),
         filterValue: (row) => row.email || '',
         render: (row) => row.email || '—',
-      },
-      {
-        key: 'phone',
-        header: 'Phone',
-        filterable: true,
-        filterPlaceholder: 'Filter phone',
-        filterValue: (row) => phoneSearchValue(row.phone, row.phoneNumber),
-        render: (row) => formatPhoneDisplay(row.phone, row.phoneNumber),
       },
       {
         key: 'role',
         header: t('role'),
         width: '7rem',
-        render: () => <span className="badge badge-approved">admin</span>,
+        render: () => <StatusChip status="active" label={t('roleAdmin')} />,
+      },
+      {
+        key: 'status',
+        header: t('status'),
+        width: '8rem',
+        render: (row) => {
+          const status = row.adminStatus || 'ACTIVE';
+          return (
+            <StatusChip
+              status={status}
+              label={t(`adminStatus_${status}`)}
+            />
+          );
+        },
+      },
+      {
+        key: 'created',
+        header: t('createdDate'),
+        width: '9rem',
+        render: (row) => formatCreatedAt(row.createdAt),
       },
       {
         key: 'mfa',
         header: t('mfaColumn'),
-        width: '10rem',
+        width: '8rem',
         render: (row) =>
           row.totpEnabled ? (
-            <span className="badge badge-approved">{t('mfaEnabled')}</span>
+            <StatusChip status="active" label={t('mfaEnabled')} />
           ) : (
-            <span className="badge badge-pending">{t('mfaNotSet')}</span>
+            <StatusChip status="pending" label={t('mfaNotSet')} />
           ),
       },
       {
-        key: 'password',
-        header: t('password'),
-        render: (row) => (
-          <button
-            type="button"
-            className="btn btn-ghost"
-            onClick={() => openPasswordModal(row)}>
-            {t('setPassword')}
-          </button>
-        ),
-      },
-      {
         key: 'actions',
-        header: 'Actions',
-        width: '12rem',
+        header: t('actions'),
+        width: '22rem',
         render: (row) => {
           const isSelf =
             currentUser?.id === row._id || currentUser?.email === row.email;
+          const status = row.adminStatus || 'ACTIVE';
+          const pending = status === 'PENDING';
           return (
-            <span className="actions table-actions">
-              <button
-                type="button"
-                className="btn btn-ghost icon-only"
-                disabled={busyId === row._id}
-                aria-label={t('resetMfa')}
-                title={t('resetMfa')}
-                onClick={() => {
+            <span className="actions table-actions admin-action-row">
+              {pending ? (
+                <>
+                  <Button variant="ghost" disabled={busyId === row._id} title={t('copyActivationLink')} onClick={() => void issueInviteForUser(row)}>
+                    {t('inviteLink')}
+                  </Button>
+                  <Button variant="ghost" disabled={busyId === row._id} title={t('regenerateLink')} onClick={() => void issueInviteForUser(row)}>
+                    {t('regenerateLink')}
+                  </Button>
+                </>
+              ) : null}
+              {status === 'ACTIVE' || status === 'LOCKED' ? (
+                <Button variant="ghost" disabled={isSelf || busyId === row._id} onClick={() =>
+                    void onSetStatus(row, 'DISABLED', 'Disabled by Super Admin')
+                  }>
+                  {t('deactivate')}
+                </Button>
+              ) : null}
+              {status === 'DISABLED' || status === 'LOCKED' ? (
+                <Button variant="ghost" disabled={busyId === row._id} onClick={() => void onSetStatus(row, 'ACTIVE')}>
+                  {t('activate')}
+                </Button>
+              ) : null}
+              {status === 'ACTIVE' ? (
+                <Button variant="ghost" disabled={isSelf || busyId === row._id} onClick={() => openPasswordModal(row)}>
+                  {t('resetPassword')}
+                </Button>
+              ) : null}
+              <Button variant="ghost" disabled={busyId === row._id} onClick={() => openEditPermissions(row)}>
+                {t('editPermissions')}
+              </Button>
+              <Button variant="ghost" className="icon-only" disabled={busyId === row._id || pending} aria-label={t('resetMfa')} title={t('resetMfa')} onClick={() => {
                   setMfaTarget(row);
                   setMfaError(null);
                 }}>
                 <Icon name="phonelink_lock" size={18} />
-              </button>
-              <button
-                type="button"
-                className="btn btn-ghost"
-                disabled={isSelf || busyId === row._id}
-                onClick={() => {
+              </Button>
+              <Button variant="ghost" disabled={isSelf || busyId === row._id} onClick={() => {
                   setDeleteTarget(row);
                   setDeleteError(null);
                   setBusyId(null);
                 }}>
                 {t('delete')}
-              </button>
+              </Button>
             </span>
           );
         },
       },
     ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- handlers close over latest state
     [busyId, currentUser?.email, currentUser?.id, t],
   );
+
+  if (!superAdminElevated) {
+    return <Navigate to="/" replace />;
+  }
 
   return (
     <div className="admin-page scale-baseline-80" data-testid="admins-root">
@@ -346,12 +560,12 @@ export function AdminsPage() {
       ) : null}
 
       <div className="filter-row">
-        <button
-          type="button"
-          className="btn btn-primary"
-          onClick={() => setCreateOpen(true)}>
+        <Button variant="primary" onClick={() => {
+            setCreatePermissions(defaultInvitePermissions());
+            setCreateOpen(true);
+          }}>
           {t('addAdmin')}
-        </button>
+        </Button>
       </div>
 
       <div className="panel">
@@ -375,13 +589,13 @@ export function AdminsPage() {
       </div>
 
       {createOpen ? (
-        <Modal
+        <Dialog open
           title={t('addAdminTitle')}
           onClose={closeCreateModal}
           testId="admins-create-modal">
           <p className="muted compact">{t('addAdminLead')}</p>
           <label>
-            {t('name')}
+            {t('fullName')}
             <input
               value={createName}
               onChange={(e) => setCreateName(e.target.value)}
@@ -399,63 +613,163 @@ export function AdminsPage() {
             />
           </label>
           <label>
-            {t('phone')} ({t('optional')})
-            <div className="phone-input-row">
-              <span className="phone-prefix" aria-hidden>
-                +91
-              </span>
-              <input
-                type="tel"
-                inputMode="numeric"
-                maxLength={10}
-                value={createPhone}
-                placeholder={t('phoneTenDigitsHint')}
-                onChange={(e) =>
-                  setCreatePhone(localTenDigits(e.target.value).slice(0, 10))
-                }
-                autoComplete="tel-national"
-              />
-            </div>
+            {t('role')}
+            <input value="admin" disabled readOnly />
           </label>
-          <label>
-            {t('password')} *
-            <div className="password-generate-row">
-              <input
-                type="text"
-                value={createPassword}
-                onChange={(e) => setCreatePassword(e.target.value)}
-                autoComplete="new-password"
-                required
-              />
-              <button
-                type="button"
-                className="btn btn-ghost"
-                onClick={() => setCreatePassword(generateAdminPassword())}>
-                {t('generatePassword')}
-              </button>
+          <fieldset className="permissions-fieldset">
+            <legend>{t('permissions')}</legend>
+            <p className="muted compact">{t('permissionsInviteHint')}</p>
+            <div className="permissions-grid">
+              {PERMISSION_MODULES.map((opt) => (
+                <label key={opt.id} className="permission-check">
+                  <input
+                    type="checkbox"
+                    checked={isModuleSelected(opt.id, createPermissions)}
+                    onChange={(e) =>
+                      togglePermission(opt.id, e.target.checked)
+                    }
+                  />
+                  {opt.label}
+                </label>
+              ))}
             </div>
-          </label>
+          </fieldset>
           {createError ? <p className="error-text">{createError}</p> : null}
           <div className="actions">
-            <button
-              type="button"
-              className="btn btn-primary"
-              disabled={creating}
-              onClick={() => void onCreateAdmin()}>
-              {creating ? t('saving') : t('save')}
-            </button>
-            <button
-              type="button"
-              className="btn btn-ghost"
-              onClick={closeCreateModal}>
+            <Button variant="primary" disabled={creating} onClick={() => void onCreateAdmin()}>
+              {creating ? t('saving') : t('createInvitation')}
+            </Button>
+            <Button variant="ghost" onClick={closeCreateModal}>
               {t('cancel')}
-            </button>
+            </Button>
           </div>
-        </Modal>
+        </Dialog>
+      ) : null}
+
+      {inviteResult ? (
+        <Dialog open
+          title={t('adminCreatedTitle')}
+          onClose={closeInviteModal}
+          testId="admins-invite-modal">
+          <p className="muted compact">{t('adminCreatedLead')}</p>
+          <p className="muted compact">
+            {inviteResult.admin.email} · expires{' '}
+            {formatCreatedAt(inviteResult.activationExpiresAt)}
+          </p>
+          <label>
+            {t('activationLink')}
+            <input
+              type="text"
+              readOnly
+              value={inviteResult.activationLink}
+              onFocus={(e) => e.target.select()}
+            />
+          </label>
+          <div className="mfa-qr-wrap invite-qr">
+            <img
+              src={inviteResult.qrCodeDataUrl}
+              alt="Activation link QR"
+              width={200}
+              height={200}
+            />
+          </div>
+          {inviteActionError ? (
+            <p className="error-text">{inviteActionError}</p>
+          ) : null}
+          <div className="actions wrap-actions">
+            <Button variant="primary" disabled={inviteActionBusy} onClick={() => void onCopyInviteLink()}>
+              {t('copyActivationLink')}
+            </Button>
+            <Button variant="ghost" disabled={inviteActionBusy} onClick={() => void onRegenerateFromInviteModal()}>
+              {t('regenerateLink')}
+            </Button>
+            <Button variant="danger" disabled={inviteActionBusy} onClick={() => void onCancelInvitation()}>
+              {t('cancelInvitation')}
+            </Button>
+            <Button variant="ghost" onClick={closeInviteModal}>
+              {t('done')}
+            </Button>
+          </div>
+        </Dialog>
+      ) : null}
+
+      {editPermsUser ? (
+        <Dialog open
+          title={t('editPermissionsTitle')}
+          onClose={closeEditPermissions}
+          testId="admins-edit-permissions-modal">
+          <p className="muted compact">
+            {t('editPermissionsLead', {name: userLabel(editPermsUser).name})}
+          </p>
+          <dl className="admin-profile-meta">
+            <div>
+              <dt>{t('email')}</dt>
+              <dd>{editPermsUser.email || '—'}</dd>
+            </div>
+            <div>
+              <dt>{t('role')}</dt>
+              <dd>admin</dd>
+            </div>
+            <div>
+              <dt>{t('status')}</dt>
+              <dd>{editPermsUser.adminStatus || 'ACTIVE'}</dd>
+            </div>
+            <div>
+              <dt>{t('mfaColumn')}</dt>
+              <dd>
+                {editPermsUser.totpEnabled
+                  ? t('mfaEnabled')
+                  : t('mfaNotSet')}
+              </dd>
+            </div>
+          </dl>
+          <fieldset className="permissions-fieldset">
+            <legend>{t('permissions')}</legend>
+            <p className="muted compact">{t('permissionsModulesHint')}</p>
+            <div className="permissions-grid">
+              {PERMISSION_MODULES.map((opt) => (
+                <label key={opt.id} className="permission-check">
+                  <input
+                    type="checkbox"
+                    checked={isModuleSelected(opt.id, editPermissions)}
+                    onChange={(e) =>
+                      toggleEditModule(opt.id, e.target.checked)
+                    }
+                  />
+                  {opt.label}
+                </label>
+              ))}
+            </div>
+            <p className="muted compact">{t('permissionsGranularHint')}</p>
+            <div className="permissions-list">
+              {ALL_PERMISSION_VALUES.map((perm) => (
+                <label key={perm} className="permission-check">
+                  <input
+                    type="checkbox"
+                    checked={editPermissions.includes(perm)}
+                    onChange={() => toggleEditPermission(perm)}
+                  />
+                  {permissionLabel(perm)}
+                </label>
+              ))}
+            </div>
+          </fieldset>
+          {editPermsError ? (
+            <p className="error-text">{editPermsError}</p>
+          ) : null}
+          <div className="actions">
+            <Button variant="primary" disabled={savingPerms} onClick={() => void onSavePermissions()}>
+              {savingPerms ? t('saving') : t('save')}
+            </Button>
+            <Button variant="ghost" onClick={closeEditPermissions}>
+              {t('cancel')}
+            </Button>
+          </div>
+        </Dialog>
       ) : null}
 
       {deleteTarget ? (
-        <Modal
+        <Dialog open
           title={t('deleteUserTitle')}
           onClose={() => setDeleteTarget(null)}
           testId="admins-delete-modal">
@@ -464,25 +778,18 @@ export function AdminsPage() {
           </p>
           {deleteError ? <p className="error-text">{deleteError}</p> : null}
           <div className="actions">
-            <button
-              type="button"
-              className="btn btn-primary"
-              disabled={deleting}
-              onClick={() => void onDeleteUser()}>
+            <Button variant="primary" disabled={deleting} onClick={() => void onDeleteUser()}>
               {deleting ? t('saving') : t('confirmDelete')}
-            </button>
-            <button
-              type="button"
-              className="btn btn-ghost"
-              onClick={() => setDeleteTarget(null)}>
+            </Button>
+            <Button variant="ghost" onClick={() => setDeleteTarget(null)}>
               {t('cancel')}
-            </button>
+            </Button>
           </div>
-        </Modal>
+        </Dialog>
       ) : null}
 
       {mfaTarget ? (
-        <Modal
+        <Dialog open
           title={t('resetMfaTitle')}
           onClose={() => setMfaTarget(null)}
           testId="admins-reset-mfa-modal">
@@ -491,25 +798,18 @@ export function AdminsPage() {
           </p>
           {mfaError ? <p className="error-text">{mfaError}</p> : null}
           <div className="actions">
-            <button
-              type="button"
-              className="btn btn-danger"
-              disabled={mfaBusy}
-              onClick={() => void onResetMfa()}>
+            <Button variant="danger" disabled={mfaBusy} onClick={() => void onResetMfa()}>
               {mfaBusy ? t('saving') : t('resetMfa')}
-            </button>
-            <button
-              type="button"
-              className="btn btn-ghost"
-              onClick={() => setMfaTarget(null)}>
+            </Button>
+            <Button variant="ghost" onClick={() => setMfaTarget(null)}>
               {t('cancel')}
-            </button>
+            </Button>
           </div>
-        </Modal>
+        </Dialog>
       ) : null}
 
       {passwordUser ? (
-        <Modal
+        <Dialog open
           title={t('setPasswordTitle')}
           onClose={closePasswordModal}
           testId="admins-set-password-modal">
@@ -537,29 +837,19 @@ export function AdminsPage() {
               autoComplete="new-password"
             />
           </label>
-          <button
-            type="button"
-            className="btn btn-ghost"
-            onClick={() => setShowPassword((v) => !v)}>
+          <Button variant="ghost" onClick={() => setShowPassword((v) => !v)}>
             {showPassword ? t('hidePassword') : t('showPassword')}
-          </button>
+          </Button>
           {passwordError ? <p className="error-text">{passwordError}</p> : null}
           <div className="actions">
-            <button
-              type="button"
-              className="btn btn-primary"
-              disabled={savingPassword}
-              onClick={() => void onSavePassword()}>
+            <Button variant="primary" disabled={savingPassword} onClick={() => void onSavePassword()}>
               {savingPassword ? t('saving') : t('save')}
-            </button>
-            <button
-              type="button"
-              className="btn btn-ghost"
-              onClick={closePasswordModal}>
+            </Button>
+            <Button variant="ghost" onClick={closePasswordModal}>
               {t('cancel')}
-            </button>
+            </Button>
           </div>
-        </Modal>
+        </Dialog>
       ) : null}
     </div>
   );

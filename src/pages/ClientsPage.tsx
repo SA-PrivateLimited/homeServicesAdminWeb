@@ -1,20 +1,28 @@
 import {useCallback, useEffect, useMemo, useState} from 'react';
 import {Navigate} from 'react-router-dom';
 import {useTranslation} from 'react-i18next';
-import {VirtualTable, type VirtualTableColumn} from 'sapvt-ltd-web-packages';
-import {Modal} from '../components/Modal';
+import {
+  VirtualTable,
+  type VirtualTableColumn,
+  Button,
+  Dialog,
+  StatusChip,
+} from 'sapvt-ltd-web-packages';
 import {
   activateClient,
   createClient,
   deleteClient,
   getClients,
   updateClient,
+  uploadClientLogo,
   type BrandingClient,
   type ClientColorPalette,
 } from '../services/api/clientsApi';
 import {useAuthStore} from '../store/authStore';
 import {applyColorPalette} from '../theme';
 import {themeConfig} from '../theme/themeConfig';
+import {getRuntimeConfig} from '../config/runtime';
+import {sortByUpdatedThenCreated} from '../utils/sort';
 import '../styles/pages.css';
 
 const THEME_COLOR_KEYS = Object.keys(
@@ -49,14 +57,22 @@ function clonePalette(p: ClientColorPalette): ClientColorPalette {
   return {...p};
 }
 
-function emptyDraft(): {
+type ClientDraft = {
   _id: string;
   name: string;
+  customerProductName: string;
+  providerProductName: string;
+  logoUrl: string;
   themeColors: ClientColorPalette;
-} {
+};
+
+function emptyDraft(): ClientDraft {
   return {
     _id: '',
     name: '',
+    customerProductName: '',
+    providerProductName: '',
+    logoUrl: '',
     themeColors: clonePalette(themeConfig.homeservices),
   };
 }
@@ -73,6 +89,14 @@ function normalizeColorInput(hex: string): string {
   return '#000000';
 }
 
+function resolveLogoSrc(logoUrl?: string): string {
+  const raw = (logoUrl || '').trim();
+  if (!raw) return '';
+  if (/^https?:\/\//i.test(raw) || raw.startsWith('data:')) return raw;
+  const base = getRuntimeConfig().apiBaseUrl.replace(/\/$/, '');
+  return raw.startsWith('/') ? `${base}${raw}` : `${base}/${raw}`;
+}
+
 export function ClientsPage() {
   const {t} = useTranslation();
   const superAdminElevated = useAuthStore((s) => s.superAdminElevated);
@@ -87,13 +111,14 @@ export function ClientsPage() {
   const [draft, setDraft] = useState(emptyDraft);
   const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
       const data = await getClients();
-      setClients(data.clients);
+      setClients(sortByUpdatedThenCreated(data.clients));
       setActiveClientId(data.activeClientId);
     } catch (err) {
       setError(err instanceof Error ? err.message : t('errorGeneric'));
@@ -131,6 +156,9 @@ export function ClientsPage() {
     setDraft({
       _id: client._id,
       name: client.name,
+      customerProductName: client.customerProductName || '',
+      providerProductName: client.providerProductName || '',
+      logoUrl: client.logoUrl || '',
       themeColors: clonePalette(client.themeColors),
     });
     setFormError(null);
@@ -152,19 +180,22 @@ export function ClientsPage() {
     }
     setSaving(true);
     try {
+      const payload = {
+        name: draft.name.trim(),
+        customerProductName: draft.customerProductName.trim(),
+        providerProductName: draft.providerProductName.trim(),
+        logoUrl: draft.logoUrl.trim(),
+        themeColors: draft.themeColors,
+      };
       if (editingId) {
-        await updateClient(editingId, {
-          name: draft.name.trim(),
-          themeColors: draft.themeColors,
-        });
+        await updateClient(editingId, payload);
         if (editingId === activeClientId) {
           applyColorPalette(draft.themeColors, {clientId: editingId});
         }
       } else {
         await createClient({
           _id: draft._id.trim() || undefined,
-          name: draft.name.trim(),
-          themeColors: draft.themeColors,
+          ...payload,
         });
       }
       closeEditor();
@@ -173,6 +204,21 @@ export function ClientsPage() {
       setFormError(err instanceof Error ? err.message : t('errorGeneric'));
     } finally {
       setSaving(false);
+    }
+  };
+
+  const onUploadLogo = async (file: File | null) => {
+    if (!file || !editingId) return;
+    setUploadingLogo(true);
+    setFormError(null);
+    try {
+      const result = await uploadClientLogo(editingId, file);
+      setDraft((p) => ({...p, logoUrl: result.logoUrl}));
+      await load();
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : t('errorGeneric'));
+    } finally {
+      setUploadingLogo(false);
     }
   };
 
@@ -217,21 +263,45 @@ export function ClientsPage() {
         filterValue: (row) => row.name || '',
         render: (row) => (
           <>
-            <span
-              className="swatch"
-              style={{
-                background:
-                  row.themeColors?.primary || 'var(--color-primary)',
-              }}
-            />
+            {row.logoUrl ? (
+              <img
+                className="client-logo-thumb"
+                src={resolveLogoSrc(row.logoUrl)}
+                alt=""
+                width={28}
+                height={28}
+              />
+            ) : (
+              <span
+                className="swatch"
+                style={{
+                  background:
+                    row.themeColors?.primary || 'var(--color-primary)',
+                }}
+              />
+            )}
             {row.name}
             {row._id === activeClientId ? (
-              <span className="badge badge-approved" style={{marginLeft: 8}}>
-                {t('clientsActive')}
-              </span>
+              <StatusChip
+                status="active"
+                label={t('clientsActive')}
+                style={{marginLeft: 8}}
+              />
             ) : null}
           </>
         ),
+      },
+      {
+        key: 'customer',
+        header: t('clientsColCustomer'),
+        render: (row) => row.customerProductName || row.name || '—',
+      },
+      {
+        key: 'provider',
+        header: t('clientsColProvider'),
+        render: (row) =>
+          row.providerProductName ||
+          (row.name ? `${row.name} Provider` : '—'),
       },
       {
         key: 'id',
@@ -253,30 +323,27 @@ export function ClientsPage() {
         header: t('actions'),
         render: (row) => (
           <div className="actions">
-            <button
-              type="button"
-              className="btn btn-ghost"
+            <Button
+              variant="ghost"
               disabled={busyId === row._id}
               onClick={() => openEdit(row)}>
               {t('edit')}
-            </button>
+            </Button>
             {row._id !== activeClientId ? (
-              <button
-                type="button"
-                className="btn btn-ghost"
+              <Button
+                variant="ghost"
                 disabled={busyId === row._id}
                 onClick={() => void onActivate(row)}>
                 {t('clientsSetActive')}
-              </button>
+              </Button>
             ) : null}
             {row._id !== activeClientId ? (
-              <button
-                type="button"
-                className="btn btn-danger"
+              <Button
+                variant="danger"
                 disabled={busyId === row._id}
                 onClick={() => void onDelete(row)}>
                 {t('delete')}
-              </button>
+              </Button>
             ) : null}
           </div>
         ),
@@ -285,6 +352,8 @@ export function ClientsPage() {
     [activeClientId, busyId, t],
   );
 
+  const logoPreview = resolveLogoSrc(draft.logoUrl);
+
   return (
     <div className="admin-page scale-baseline-80" data-testid="clients-root">
       <header className="page-header row-header">
@@ -292,9 +361,9 @@ export function ClientsPage() {
           <h1>{t('clientsTitle')}</h1>
           <p>{t('clientsLead')}</p>
         </div>
-        <button type="button" className="btn btn-primary" onClick={openCreate}>
+        <Button variant="primary" onClick={openCreate}>
           {t('clientsAdd')}
-        </button>
+        </Button>
       </header>
 
       <div className="panel">
@@ -313,7 +382,8 @@ export function ClientsPage() {
       </div>
 
       {editorOpen ? (
-        <Modal
+        <Dialog
+          open
           title={editingId ? t('clientsEditTitle') : t('clientsAddTitle')}
           onClose={closeEditor}
           className="modal-wide"
@@ -346,6 +416,83 @@ export function ClientsPage() {
             />
           </label>
 
+          <label>
+            {t('clientsCustomerProductName')}
+            <input
+              value={draft.customerProductName}
+              onChange={(e) =>
+                setDraft((p) => ({
+                  ...p,
+                  customerProductName: e.target.value,
+                }))
+              }
+              placeholder={t('clientsCustomerProductPlaceholder')}
+            />
+          </label>
+
+          <label>
+            {t('clientsProviderProductName')}
+            <input
+              value={draft.providerProductName}
+              onChange={(e) =>
+                setDraft((p) => ({
+                  ...p,
+                  providerProductName: e.target.value,
+                }))
+              }
+              placeholder={t('clientsProviderProductPlaceholder')}
+            />
+          </label>
+
+          <label>
+            {t('clientsLogoUrl')}
+            <input
+              value={draft.logoUrl}
+              onChange={(e) =>
+                setDraft((p) => ({...p, logoUrl: e.target.value}))
+              }
+              placeholder={t('clientsLogoUrlPlaceholder')}
+            />
+          </label>
+
+          <div className="client-logo-row">
+            {logoPreview ? (
+              <img
+                className="client-logo-preview"
+                src={logoPreview}
+                alt=""
+                width={64}
+                height={64}
+              />
+            ) : null}
+            {editingId ? (
+              <label className="client-logo-upload">
+                <Button
+                  variant="secondary"
+                  type="button"
+                  disabled={uploadingLogo}
+                  onClick={() =>
+                    document.getElementById('client-logo-file')?.click()
+                  }>
+                  {uploadingLogo ? t('saving') : t('clientsLogoUpload')}
+                </Button>
+                <input
+                  id="client-logo-file"
+                  type="file"
+                  accept="image/*"
+                  hidden
+                  onChange={(e) => {
+                    const file = e.target.files?.[0] || null;
+                    e.target.value = '';
+                    void onUploadLogo(file);
+                  }}
+                />
+              </label>
+            ) : (
+              <p className="muted compact">{t('clientsLogoHint')}</p>
+            )}
+          </div>
+
           <fieldset className="theme-colors-fieldset">
             <legend>{t('clientsThemeColors')}</legend>
             <div className="theme-colors-grid">
@@ -372,22 +519,17 @@ export function ClientsPage() {
           {formError ? <p className="error-text">{formError}</p> : null}
 
           <div className="actions">
-            <button
-              type="button"
-              className="btn btn-primary"
+            <Button
+              variant="primary"
               disabled={saving}
               onClick={() => void onSave()}>
               {saving ? t('saving') : t('save')}
-            </button>
-            <button
-              type="button"
-              className="btn btn-ghost"
-              disabled={saving}
-              onClick={closeEditor}>
+            </Button>
+            <Button variant="ghost" disabled={saving} onClick={closeEditor}>
               {t('cancel')}
-            </button>
+            </Button>
           </div>
-        </Modal>
+        </Dialog>
       ) : null}
     </div>
   );

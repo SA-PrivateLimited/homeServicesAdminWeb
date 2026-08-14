@@ -6,8 +6,10 @@ import {
   Select,
   VirtualTable,
   type VirtualTableColumn,
+  Button,
+  Dialog,
+  StatusChip,
 } from 'sapvt-ltd-web-packages';
-import {Modal} from '../components/Modal';
 import {
   SuccessBanner,
   pinSuccessBanner,
@@ -48,6 +50,7 @@ import {
   toE164,
 } from '../utils/phone';
 import {formatLastUpdated} from '../utils/datetime';
+import {sortByUpdatedThenCreated} from '../utils/sort';
 import {CopyFeedbackButton} from '../components/CopyFeedbackButton';
 import '../styles/pages.css';
 
@@ -63,22 +66,32 @@ function phoneCopyDigits(
   return ten.length === 10 ? ten : '';
 }
 
-const STATUS_OPTIONS = [
-  {value: 'pending', label: 'pending'},
-  {value: 'approved', label: 'approved'},
-  {value: 'rejected', label: 'rejected'},
-] as const;
+const STATUS_VALUES = ['pending', 'approved', 'rejected'] as const;
 
-function statusClass(status?: string): string {
-  const s = (status || '').toLowerCase();
-  if (s === 'approved') return 'badge badge-approved';
-  if (s === 'rejected') return 'badge badge-rejected';
-  if (s === 'pending') return 'badge badge-pending';
-  return 'badge';
+function approvalStatusLabel(
+  status: string,
+  t: (key: string) => string,
+): string {
+  if (
+    status === 'pending' ||
+    status === 'approved' ||
+    status === 'rejected'
+  ) {
+    return t(`filter_${status}`);
+  }
+  return status;
 }
 
 export function ProvidersPage() {
   const {t} = useTranslation();
+  const statusOptions = useMemo(
+    () =>
+      STATUS_VALUES.map((value) => ({
+        value,
+        label: t(`filter_${value}`),
+      })),
+    [t],
+  );
   const [rows, setRows] = useState<Provider[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
@@ -172,7 +185,7 @@ export function ProvidersPage() {
             }
           : {}),
       });
-      setRows(result.items);
+      setRows(sortByUpdatedThenCreated(result.items));
       setTotal(result.total);
     } catch (err) {
       setError(err instanceof Error ? err.message : t('errorGeneric'));
@@ -605,10 +618,10 @@ export function ProvidersPage() {
     () => [
       {
         key: 'name',
-        header: 'Name',
+        header: t('name'),
         width: '8rem',
         filterable: true,
-        filterPlaceholder: 'Search name',
+        filterPlaceholder: t('searchName'),
         filterValue: (row) =>
           row.businessName || row.name || row.displayName || '',
         render: (row) => {
@@ -623,10 +636,10 @@ export function ProvidersPage() {
       },
       {
         key: 'phone',
-        header: 'Phone',
+        header: t('phone'),
         width: '11.5rem',
         filterable: true,
-        filterPlaceholder: 'Search phone',
+        filterPlaceholder: t('searchPhone'),
         filterValue: (row) => phoneSearchValue(row.phone, row.phoneNumber),
         render: (row) => {
           const display = formatPhoneDisplay(row.phone, row.phoneNumber);
@@ -667,7 +680,7 @@ export function ProvidersPage() {
         header: t('address'),
         width: '14rem',
         filterable: true,
-        filterPlaceholder: 'Search address',
+        filterPlaceholder: t('searchAddress'),
         filterValue: (row) => formatAddress(row.location, row.address as never),
         render: (row) => (
           <span
@@ -698,22 +711,22 @@ export function ProvidersPage() {
       },
       {
         key: 'service',
-        header: 'Service',
+        header: t('service'),
         width: '7rem',
         filterable: true,
         filterType: 'multi',
-        filterPlaceholder: 'Filter services',
+        filterPlaceholder: t('filterServices'),
         filterValue: (row) => row.serviceType || '',
         render: (row) => row.serviceType || '—',
       },
       {
         key: 'status',
-        header: 'Status',
+        header: t('status'),
         width: '8.5rem',
         filterable: true,
         filterType: 'multi',
-        filterPlaceholder: 'Filter statuses',
-        filterOptions: [...STATUS_OPTIONS],
+        filterPlaceholder: t('filterStatuses'),
+        filterOptions: statusOptions,
         filterValue: (row) => row.approvalStatus || row.status || '',
         render: (row) => {
           const status = (
@@ -724,24 +737,21 @@ export function ProvidersPage() {
           const editing = statusEditId === row._id;
           return (
             <span className="status-edit-cell">
-              <span className={statusClass(status)}>{status}</span>
+              <StatusChip
+                status={status}
+                label={approvalStatusLabel(status, t)}
+              />
               {row.isActive === false ? (
-                <span className="badge badge-rejected">{t('inactive')}</span>
+                <StatusChip status="cancelled" label={t('inactive')} />
               ) : null}
-              <button
-                type="button"
-                className="btn btn-ghost icon-only"
-                disabled={statusBusyId === row._id}
-                aria-label={t('editStatus')}
-                title={t('editStatus')}
-                onClick={() =>
+              <Button variant="ghost" className="icon-only" disabled={statusBusyId === row._id} aria-label={t('editStatus')} title={t('editStatus')} onClick={() =>
                   setStatusEditId(editing ? null : row._id)
                 }>
                 <Icon name="edit" size={16} />
-              </button>
+              </Button>
               {editing ? (
                 <div className="status-edit-menu" ref={statusMenuRef}>
-                  {STATUS_OPTIONS.map((opt) => (
+                  {statusOptions.map((opt) => (
                     <button
                       key={opt.value}
                       type="button"
@@ -774,18 +784,12 @@ export function ProvidersPage() {
               <span className="pin-cell-actions">
                 {row.hasPin ? (
                   <>
-                    <button
-                      type="button"
-                      className="btn btn-ghost icon-only"
-                      disabled={revealBusyId === userId}
-                      aria-label={pin ? t('hidePassword') : t('revealPin')}
-                      title={pin ? t('hidePassword') : t('revealPin')}
-                      onClick={() => void onRevealPin(row)}>
+                    <Button variant="ghost" className="icon-only" disabled={revealBusyId === userId} aria-label={pin ? t('hidePassword') : t('revealPin')} title={pin ? t('hidePassword') : t('revealPin')} onClick={() => void onRevealPin(row)}>
                       <Icon
                         name={pin ? 'visibility_off' : 'visibility'}
                         size={18}
                       />
-                    </button>
+                    </Button>
                     <CopyFeedbackButton
                       text={pin || ''}
                       disabled={!pin}
@@ -794,18 +798,13 @@ export function ProvidersPage() {
                     />
                   </>
                 ) : (
-                  <button
-                    type="button"
-                    className="btn btn-ghost icon-only"
-                    aria-label={t('generatePin')}
-                    title={t('generatePin')}
-                    onClick={() => {
+                  <Button variant="ghost" className="icon-only" aria-label={t('generatePin')} title={t('generatePin')} onClick={() => {
                       setPinUser(row);
                       setPinValue('');
                       setPinMessage(null);
                     }}>
                     <Icon name="lock_reset" size={18} />
-                  </button>
+                  </Button>
                 )}
               </span>
             </span>
@@ -826,48 +825,32 @@ export function ProvidersPage() {
       },
       {
         key: 'actions',
-        header: 'Actions',
+        header: t('actions'),
         width: '13rem',
         render: (row) => (
           <span className="actions table-actions">
-            <Link className="btn btn-ghost" to={`/providers/${row._id}`}>
+            <Link className="hs-btn hs-btn--ghost hs-btn--md" to={`/providers/${row._id}`}>
               {t('viewUpdate')}
             </Link>
             {row.isActive === false ? (
-              <button
-                type="button"
-                className="btn btn-ghost icon-only"
-                disabled={restoreBusyId === row._id}
-                aria-label={t('restore')}
-                title={t('restore')}
-                onClick={() => void onRestore(row)}>
+              <Button variant="ghost" className="icon-only" disabled={restoreBusyId === row._id} aria-label={t('restore')} title={t('restore')} onClick={() => void onRestore(row)}>
                 <Icon name="safety_check" size={18} />
-              </button>
+              </Button>
             ) : (
-              <button
-                type="button"
-                className="btn btn-ghost icon-only"
-                aria-label={t('deactivate')}
-                title={t('deactivate')}
-                onClick={() => {
+              <Button variant="ghost" className="icon-only" aria-label={t('deactivate')} title={t('deactivate')} onClick={() => {
                   setDeactivateTarget(row);
                   setDeactivateReason('');
                   setDeactivateError(null);
                 }}>
                 <Icon name="safety_check_off" size={18} />
-              </button>
+              </Button>
             )}
-            <button
-              type="button"
-              className="btn btn-ghost icon-only"
-              aria-label={t('delete')}
-              title={t('delete')}
-              onClick={() => {
+            <Button variant="ghost" className="icon-only" aria-label={t('delete')} title={t('delete')} onClick={() => {
                 setDeleteTarget(row);
                 setDeleteError(null);
               }}>
               <Icon name="delete" size={18} />
-            </button>
+            </Button>
           </span>
         ),
       },
@@ -879,6 +862,7 @@ export function ProvidersPage() {
       restoreBusyId,
       statusBusyId,
       statusEditId,
+      statusOptions,
       t,
     ],
   );
@@ -902,12 +886,9 @@ export function ProvidersPage() {
             />
             {t('showInactive')}
           </label>
-          <button
-            type="button"
-            className="btn btn-primary"
-            onClick={() => setCreateOpen(true)}>
+          <Button variant="primary" onClick={() => setCreateOpen(true)}>
             {t('addProvider')}
-          </button>
+          </Button>
         </div>
       </header>
       {successBanner ? (
@@ -959,20 +940,12 @@ export function ProvidersPage() {
                   </div>
                 </div>
                 <div style={{display: 'flex', gap: '0.4rem'}}>
-                  <button
-                    type="button"
-                    className="btn btn-ghost"
-                    disabled={areaDemandsBusyId === d._id}
-                    onClick={() => void onResolveDemand(d, 'dismissed')}>
-                    Dismiss
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-primary"
-                    disabled={areaDemandsBusyId === d._id}
-                    onClick={() => void onResolveDemand(d, 'resolved')}>
-                    Mark resolved
-                  </button>
+                  <Button variant="ghost" disabled={areaDemandsBusyId === d._id} onClick={() => void onResolveDemand(d, 'dismissed')}>
+                    {t('dismiss')}
+                  </Button>
+                  <Button variant="primary" disabled={areaDemandsBusyId === d._id} onClick={() => void onResolveDemand(d, 'resolved')}>
+                    {t('markResolved')}
+                  </Button>
                 </div>
               </li>
             ))}
@@ -987,6 +960,8 @@ export function ProvidersPage() {
             value={filterStateId}
             placeholder={t('geoState')}
             showSearch
+            searchPlaceholder={t('searchState')}
+            emptyMessage={t('noStatesFound')}
             onChange={(value) => {
               setFilterStateId(value);
               setFilterDistrictId(ALL_DISTRICTS);
@@ -1000,6 +975,8 @@ export function ProvidersPage() {
             value={filterDistrictId}
             placeholder={t('geoDistrict')}
             showSearch
+            searchPlaceholder={t('searchDistrict')}
+            emptyMessage={t('noDistrictsFound')}
             disabled={filterStateId === ALL_STATES}
             onChange={(value) => {
               setFilterDistrictId(value);
@@ -1029,7 +1006,7 @@ export function ProvidersPage() {
       </div>
 
       {createOpen ? (
-        <Modal
+        <Dialog open
           title={t('addProviderTitle')}
           onClose={closeCreate}
           testId="providers-create-modal">
@@ -1078,6 +1055,8 @@ export function ProvidersPage() {
                 value={createStateId}
                 placeholder={t('geoState')}
                 showSearch
+                searchPlaceholder={t('searchState')}
+                emptyMessage={t('noStatesFound')}
                 onChange={(value) => {
                   setCreateStateId(value);
                   setCreateDistrictId('');
@@ -1093,6 +1072,8 @@ export function ProvidersPage() {
                 value={createDistrictId}
                 placeholder={t('geoDistrict')}
                 showSearch
+                searchPlaceholder={t('searchDistrict')}
+                emptyMessage={t('noDistrictsFound')}
                 onChange={(value) => {
                   setCreateDistrictId(value);
                   const d = geoDistricts.find((x) => x._id === value);
@@ -1193,25 +1174,18 @@ export function ProvidersPage() {
           </fieldset>
           {createError ? <p className="error-text">{createError}</p> : null}
           <div className="actions">
-            <button
-              type="button"
-              className="btn btn-primary"
-              disabled={creating}
-              onClick={() => void onCreateProvider()}>
+            <Button variant="primary" disabled={creating} onClick={() => void onCreateProvider()}>
               {creating ? t('saving') : t('save')}
-            </button>
-            <button
-              type="button"
-              className="btn btn-ghost"
-              onClick={closeCreate}>
+            </Button>
+            <Button variant="ghost" onClick={closeCreate}>
               {t('cancel')}
-            </button>
+            </Button>
           </div>
-        </Modal>
+        </Dialog>
       ) : null}
 
       {pinUser ? (
-        <Modal
+        <Dialog open
           title={t('setPinTitle')}
           onClose={() => setPinUser(null)}
           testId="providers-set-pin-modal">
@@ -1234,25 +1208,18 @@ export function ProvidersPage() {
           </label>
           {pinMessage ? <p className="error-text">{pinMessage}</p> : null}
           <div className="actions">
-            <button
-              type="button"
-              className="btn btn-primary"
-              disabled={pinBusy}
-              onClick={() => void onSetPin()}>
+            <Button variant="primary" disabled={pinBusy} onClick={() => void onSetPin()}>
               {pinBusy ? t('saving') : t('save')}
-            </button>
-            <button
-              type="button"
-              className="btn btn-ghost"
-              onClick={() => setPinUser(null)}>
+            </Button>
+            <Button variant="ghost" onClick={() => setPinUser(null)}>
               {t('cancel')}
-            </button>
+            </Button>
           </div>
-        </Modal>
+        </Dialog>
       ) : null}
 
       {rejectTarget ? (
-        <Modal
+        <Dialog open
           title={t('rejectProvider')}
           onClose={() => setRejectTarget(null)}>
           <label>
@@ -1265,11 +1232,7 @@ export function ProvidersPage() {
             />
           </label>
           <div className="actions">
-            <button
-              type="button"
-              className="btn btn-danger"
-              disabled={statusBusyId === rejectTarget._id}
-              onClick={() => {
+            <Button variant="danger" disabled={statusBusyId === rejectTarget._id} onClick={() => {
                 if (!rejectReason.trim()) {
                   setError(t('rejectionRequired'));
                   return;
@@ -1277,19 +1240,16 @@ export function ProvidersPage() {
                 void applyStatus(rejectTarget, 'rejected', rejectReason.trim());
               }}>
               {t('reject')}
-            </button>
-            <button
-              type="button"
-              className="btn btn-ghost"
-              onClick={() => setRejectTarget(null)}>
+            </Button>
+            <Button variant="ghost" onClick={() => setRejectTarget(null)}>
               {t('cancel')}
-            </button>
+            </Button>
           </div>
-        </Modal>
+        </Dialog>
       ) : null}
 
       {deactivateTarget ? (
-        <Modal
+        <Dialog open
           title={t('deactivateTitle')}
           onClose={() => setDeactivateTarget(null)}
           testId="providers-deactivate-modal">
@@ -1315,25 +1275,18 @@ export function ProvidersPage() {
             <p className="error-text">{deactivateError}</p>
           ) : null}
           <div className="actions">
-            <button
-              type="button"
-              className="btn btn-danger"
-              disabled={deactivateBusy}
-              onClick={() => void onDeactivate()}>
+            <Button variant="danger" disabled={deactivateBusy} onClick={() => void onDeactivate()}>
               {deactivateBusy ? t('saving') : t('deactivate')}
-            </button>
-            <button
-              type="button"
-              className="btn btn-ghost"
-              onClick={() => setDeactivateTarget(null)}>
+            </Button>
+            <Button variant="ghost" onClick={() => setDeactivateTarget(null)}>
               {t('cancel')}
-            </button>
+            </Button>
           </div>
-        </Modal>
+        </Dialog>
       ) : null}
 
       {deleteTarget ? (
-        <Modal
+        <Dialog open
           title={t('deleteUserTitle')}
           onClose={() => setDeleteTarget(null)}
           testId="providers-delete-modal">
@@ -1348,21 +1301,14 @@ export function ProvidersPage() {
           </p>
           {deleteError ? <p className="error-text">{deleteError}</p> : null}
           <div className="actions">
-            <button
-              type="button"
-              className="btn btn-danger"
-              disabled={deleteBusy}
-              onClick={() => void onDeleteProvider()}>
+            <Button variant="danger" disabled={deleteBusy} onClick={() => void onDeleteProvider()}>
               {deleteBusy ? t('saving') : t('confirmDelete')}
-            </button>
-            <button
-              type="button"
-              className="btn btn-ghost"
-              onClick={() => setDeleteTarget(null)}>
+            </Button>
+            <Button variant="ghost" onClick={() => setDeleteTarget(null)}>
               {t('cancel')}
-            </button>
+            </Button>
           </div>
-        </Modal>
+        </Dialog>
       ) : null}
     </div>
   );

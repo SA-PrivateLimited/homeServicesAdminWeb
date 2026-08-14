@@ -17,6 +17,8 @@ export interface GeographyStateRow {
   providerCount: number;
   avgRating: number;
   totalReviews: number;
+  createdAt?: string;
+  updatedAt?: string;
   jobStats: GeographyJobStats;
 }
 
@@ -28,6 +30,8 @@ export interface GeographyDistrictRow {
   providerCount: number;
   avgRating: number;
   totalReviews: number;
+  createdAt?: string;
+  updatedAt?: string;
   jobStats: GeographyJobStats;
 }
 
@@ -40,6 +44,8 @@ export interface GeographyProviderRow {
   rating?: number;
   totalReviews?: number;
   location?: Provider['location'];
+  createdAt?: string;
+  updatedAt?: string;
   jobStats: GeographyJobStats;
 }
 

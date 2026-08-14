@@ -29,6 +29,12 @@ export interface User {
   deactivatedAt?: string;
   deactivationReason?: string;
   totpEnabled?: boolean;
+  adminStatus?: 'PENDING' | 'ACTIVE' | 'LOCKED' | 'DISABLED';
+  permissions?: string[];
+  hasPendingInvitation?: boolean;
+  activationExpiresAt?: string | null;
+  activationLink?: string;
+  qrCodeDataUrl?: string;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -39,6 +45,7 @@ export interface CreateUserInput {
   phone?: string;
   role: 'customer' | 'provider' | 'admin';
   password?: string;
+  permissions?: string[];
   serviceType?: string;
   serviceCategories?: string[];
   address?: string;

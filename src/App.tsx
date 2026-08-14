@@ -2,8 +2,10 @@ import { useEffect } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { useAuthStore } from './store/authStore';
 import { RequireAuth } from './components/RequireAuth';
+import { RequirePermission } from './components/RequirePermission';
 import { AdminShell } from './layouts/AdminShell';
 import { LoginPage } from './pages/LoginPage';
+import { ActivatePage } from './pages/ActivatePage';
 import { OverviewPage } from './pages/OverviewPage';
 import { ProvidersPage } from './pages/ProvidersPage';
 import { ProviderDetailPage } from './pages/ProviderDetailPage';
@@ -17,6 +19,7 @@ import { ClientsPage } from './pages/ClientsPage';
 import { GeographyStatesPage } from './pages/GeographyStatesPage';
 import { GeographyDistrictsPage } from './pages/GeographyDistrictsPage';
 import { GeographyProvidersPage } from './pages/GeographyProvidersPage';
+import { PERMISSIONS } from './constants/permissions';
 
 export default function App() {
   const hydrate = useAuthStore((s) => s.hydrate);
@@ -29,28 +32,78 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/activate" element={<ActivatePage />} />
         <Route element={<RequireAuth />}>
           <Route element={<AdminShell />}>
-            <Route index element={<OverviewPage />} />
-            <Route path="providers" element={<ProvidersPage />} />
-            <Route path="providers/:providerId" element={<ProviderDetailPage />} />
-            <Route path="geography" element={<GeographyStatesPage />} />
             <Route
-              path="geography/states/:stateId"
-              element={<GeographyDistrictsPage />}
-            />
+              element={
+                <RequirePermission permission={PERMISSIONS.OVERVIEW_VIEW} />
+              }>
+              <Route index element={<OverviewPage />} />
+            </Route>
             <Route
-              path="geography/districts/:districtId"
-              element={<GeographyProvidersPage />}
-            />
-            <Route path="customers" element={<CustomersPage />} />
-            <Route path="admins" element={<AdminsPage />} />
-            <Route path="users" element={<Navigate to="/admins" replace />} />
-            <Route path="jobs" element={<JobsPage />} />
-            <Route path="categories" element={<CategoriesPage />} />
-            <Route path="categories/:categoryId" element={<CategoryEditPage />} />
-            <Route path="contacts" element={<ContactsPage />} />
-            <Route path="clients" element={<ClientsPage />} />
+              element={
+                <RequirePermission permission={PERMISSIONS.PROVIDERS_VIEW} />
+              }>
+              <Route path="providers" element={<ProvidersPage />} />
+              <Route
+                path="providers/:providerId"
+                element={<ProviderDetailPage />}
+              />
+            </Route>
+            <Route
+              element={
+                <RequirePermission permission={PERMISSIONS.GEOGRAPHY_VIEW} />
+              }>
+              <Route path="geography" element={<GeographyStatesPage />} />
+              <Route
+                path="geography/states/:stateId"
+                element={<GeographyDistrictsPage />}
+              />
+              <Route
+                path="geography/districts/:districtId"
+                element={<GeographyProvidersPage />}
+              />
+            </Route>
+            <Route
+              element={
+                <RequirePermission permission={PERMISSIONS.CUSTOMERS_VIEW} />
+              }>
+              <Route path="customers" element={<CustomersPage />} />
+            </Route>
+            <Route
+              element={
+                <RequirePermission permission={PERMISSIONS.ADMINS_VIEW} />
+              }>
+              <Route path="admins" element={<AdminsPage />} />
+              <Route path="users" element={<Navigate to="/admins" replace />} />
+            </Route>
+            <Route
+              element={<RequirePermission permission={PERMISSIONS.JOBS_VIEW} />}>
+              <Route path="jobs" element={<JobsPage />} />
+            </Route>
+            <Route
+              element={
+                <RequirePermission permission={PERMISSIONS.CATEGORIES_VIEW} />
+              }>
+              <Route path="categories" element={<CategoriesPage />} />
+              <Route
+                path="categories/:categoryId"
+                element={<CategoryEditPage />}
+              />
+            </Route>
+            <Route
+              element={
+                <RequirePermission permission={PERMISSIONS.CONTACTS_VIEW} />
+              }>
+              <Route path="contacts" element={<ContactsPage />} />
+            </Route>
+            <Route
+              element={
+                <RequirePermission permission={PERMISSIONS.CLIENTS_VIEW} />
+              }>
+              <Route path="clients" element={<ClientsPage />} />
+            </Route>
           </Route>
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />

@@ -61,7 +61,7 @@ export function handleUnauthorizedSession() {
   handlingUnauthorized = true;
   clearLocalAuthStorage();
   const path = window.location.pathname || '';
-  if (!path.startsWith('/login')) {
+  if (!path.startsWith('/login') && !path.startsWith('/activate')) {
     window.location.assign('/login');
   } else {
     handlingUnauthorized = false;
@@ -129,8 +129,8 @@ async function fetchApiPayload(
         handleUnauthorizedSession();
       }
       const message =
-        (typeof payload.error === 'string' && payload.error) ||
         (typeof payload.message === 'string' && payload.message) ||
+        (typeof payload.error === 'string' && payload.error) ||
         `Request failed (${response.status})`;
       throw new ApiError(message, response.status);
     }
@@ -209,6 +209,14 @@ export function apiPut<T>(
   return apiRequest<T>(endpoint, { ...options, method: 'PUT', body });
 }
 
+export function apiPatch<T>(
+  endpoint: string,
+  body?: unknown,
+  options?: Omit<RequestOptions, 'method' | 'body'>,
+): Promise<T> {
+  return apiRequest<T>(endpoint, { ...options, method: 'PATCH', body });
+}
+
 export function apiDelete<T>(
   endpoint: string,
   options?: Omit<RequestOptions, 'method' | 'body'>,
@@ -264,8 +272,8 @@ export async function apiUploadFormData<T>(
         handleUnauthorizedSession();
       }
       const message =
-        (typeof payload.error === 'string' && payload.error) ||
         (typeof payload.message === 'string' && payload.message) ||
+        (typeof payload.error === 'string' && payload.error) ||
         `Request failed (${response.status})`;
       throw new ApiError(message, response.status);
     }

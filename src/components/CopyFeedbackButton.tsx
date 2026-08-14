@@ -3,7 +3,7 @@
  */
 
 import {useEffect, useRef, useState} from 'react';
-import {Icon} from 'sapvt-ltd-web-packages';
+import {Button, Icon} from 'sapvt-ltd-web-packages';
 import {copyToClipboard} from '../utils/clipboard';
 
 type CopyFeedbackButtonProps = {
@@ -49,9 +49,9 @@ export function CopyFeedbackButton({
   };
 
   return (
-    <button
-      type="button"
-      className={`btn btn-ghost icon-only${copied ? ' copy-feedback-ok' : ''}`}
+    <Button
+      variant="ghost"
+      className={`icon-only${copied ? ' copy-feedback-ok' : ''}`}
       disabled={disabled || !text}
       aria-label={copied ? 'Copied' : ariaLabel}
       title={copied ? 'Copied' : title || ariaLabel}
@@ -60,6 +60,6 @@ export function CopyFeedbackButton({
         name={copied ? 'check_circle' : 'content_copy'}
         size={iconSize}
       />
-    </button>
+    </Button>
   );
 }

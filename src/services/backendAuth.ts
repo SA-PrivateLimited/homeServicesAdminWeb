@@ -10,6 +10,8 @@ export interface AdminUser {
   name?: string;
   role: string;
   totpEnabled?: boolean;
+  /** Capability flags from JWT / profile — never derive from role alone. */
+  permissions?: string[];
 }
 
 export type LoginStepResult =
@@ -33,6 +35,7 @@ export function normalizeUser(user: AdminUser & {_id?: string}): AdminUser {
     ...user,
     id: user.id || user._id || '',
     _id: user._id || user.id,
+    permissions: Array.isArray(user.permissions) ? user.permissions : [],
   };
 }
 
@@ -71,6 +74,12 @@ export async function loginWithBackend(
 ): Promise<LoginStepResult> {
   const data = await apiPost<{
     user?: AdminUser;
+    admin?: {
+      id: string;
+      name?: string;
+      role: string;
+      permissions?: string[];
+    };
     token?: string;
     requiresMfa?: boolean;
     requiresMfaSetup?: boolean;
@@ -106,7 +115,14 @@ export async function loginWithBackend(
     throw new Error('Unexpected login response');
   }
 
-  const user = normalizeUser(data.user);
+  const merged: AdminUser = {
+    ...data.user,
+    permissions:
+      data.user.permissions ??
+      data.admin?.permissions ??
+      [],
+  };
+  const user = normalizeUser(merged);
   persistSession(user, data.token);
   return {kind: 'session', user, token: data.token};
 }

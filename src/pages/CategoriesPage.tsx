@@ -1,7 +1,11 @@
 import {useCallback, useEffect, useMemo, useState} from 'react';
 import {Link} from 'react-router-dom';
 import {useTranslation} from 'react-i18next';
-import {VirtualTable, type VirtualTableColumn} from 'sapvt-ltd-web-packages';
+import {
+  VirtualTable,
+  type VirtualTableColumn,
+  Button,
+} from 'sapvt-ltd-web-packages';
 import {
   deleteServiceCategory,
   getServiceCategories,
@@ -76,9 +80,9 @@ export function CategoriesPage() {
     () => [
       {
         key: 'name',
-        header: 'Name',
+        header: t('name'),
         filterable: true,
-        filterPlaceholder: 'Search name',
+        filterPlaceholder: t('searchName'),
         filterValue: (row) => row.name || '',
         render: (row) => (
           <>
@@ -92,27 +96,27 @@ export function CategoriesPage() {
       },
       {
         key: 'order',
-        header: 'Order',
+        header: t('order'),
         filterable: true,
-        filterPlaceholder: 'Search order',
+        filterPlaceholder: t('searchOrder'),
         filterValue: (row) => String(row.order ?? ''),
         render: (row) => row.order ?? '—',
       },
       {
         key: 'questions',
-        header: 'Questions',
+        header: t('questions'),
         render: (row) => row.questionnaire?.length ?? 0,
       },
       {
         key: 'active',
-        header: 'Active',
+        header: t('activeCol'),
         width: '7rem',
         filterable: true,
         filterType: 'multi',
-        filterPlaceholder: 'Filter active',
+        filterPlaceholder: t('filterActive'),
         filterOptions: [
-          {value: 'Yes', label: 'Yes'},
-          {value: 'No', label: 'No'},
+          {value: 'Yes', label: t('yes')},
+          {value: 'No', label: t('no')},
         ],
         filterValue: (row) => (row.isActive === false ? 'No' : 'Yes'),
         render: (row) => {
@@ -122,7 +126,7 @@ export function CategoriesPage() {
               type="button"
               role="switch"
               aria-checked={active}
-              aria-label={active ? t('active') : 'Inactive'}
+              aria-label={active ? t('active') : t('inactive')}
               className={`hs-toggle${active ? ' is-on' : ''}`}
               disabled={busyId === row._id}
               onClick={() => void onToggleActive(row)}>
@@ -133,19 +137,15 @@ export function CategoriesPage() {
       },
       {
         key: 'actions',
-        header: 'Actions',
+        header: t('actions'),
         render: (row) => (
           <div className="actions">
-            <Link className="btn btn-ghost" to={`/categories/${row._id}`}>
+            <Link className="hs-btn hs-btn--ghost hs-btn--md" to={`/categories/${row._id}`}>
               {t('edit')}
             </Link>
-            <button
-              type="button"
-              className="btn btn-danger"
-              disabled={busyId === row._id}
-              onClick={() => void onDelete(row._id, row.name)}>
+            <Button variant="danger" disabled={busyId === row._id} onClick={() => void onDelete(row._id, row.name)}>
               {t('delete')}
-            </button>
+            </Button>
           </div>
         ),
       },
@@ -160,7 +160,7 @@ export function CategoriesPage() {
           <h1>{t('categoriesTitle')}</h1>
           <p>{t('categoriesLead')}</p>
         </div>
-        <Link className="btn btn-primary" to="/categories/new">
+        <Link className="hs-btn hs-btn--primary hs-btn--md" to="/categories/new">
           {t('addCategory')}
         </Link>
       </header>

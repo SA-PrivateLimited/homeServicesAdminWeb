@@ -4,8 +4,10 @@ import {
   Select,
   VirtualTable,
   type VirtualTableColumn,
+  Button,
+  Dialog,
+  StatusChip,
 } from 'sapvt-ltd-web-packages';
-import {Modal} from '../components/Modal';
 import {
   SuccessBanner,
   type SuccessBannerContent,
@@ -23,19 +25,23 @@ import {
   toE164,
 } from '../utils/phone';
 import {formatLastUpdated} from '../utils/datetime';
+import {sortByUpdatedThenCreated} from '../utils/sort';
 import '../styles/pages.css';
 
 type Status = ContactRecommendation['status'] | 'all';
 
-const STATUS_OPTIONS = [
-  {value: 'pending', label: 'pending'},
-  {value: 'contacted', label: 'contacted'},
-  {value: 'registered', label: 'registered'},
-  {value: 'rejected', label: 'rejected'},
-];
+const STATUS_VALUES = ['pending', 'contacted', 'registered', 'rejected'] as const;
 
 export function ContactsPage() {
   const {t} = useTranslation();
+  const statusOptions = useMemo(
+    () =>
+      STATUS_VALUES.map((value) => ({
+        value,
+        label: t(`contact_${value}`),
+      })),
+    [t],
+  );
   const [filter, setFilter] = useState<Status>('pending');
   const [rows, setRows] = useState<ContactRecommendation[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -63,8 +69,10 @@ export function ContactsPage() {
     setError(null);
     try {
       setRows(
-        await getAllContactRecommendations(
-          filter === 'all' ? undefined : {status: filter},
+        sortByUpdatedThenCreated(
+          await getAllContactRecommendations(
+            filter === 'all' ? undefined : {status: filter},
+          ),
         ),
       );
     } catch (err) {
@@ -165,17 +173,17 @@ export function ContactsPage() {
     () => [
       {
         key: 'provider',
-        header: 'Provider',
+        header: t('provider'),
         filterable: true,
-        filterPlaceholder: 'Search provider',
+        filterPlaceholder: t('searchProvider'),
         filterValue: (row) => row.recommendedProviderName || '',
         render: (row) => row.recommendedProviderName,
       },
       {
         key: 'phone',
-        header: 'Phone',
+        header: t('phone'),
         filterable: true,
-        filterPlaceholder: 'Search phone',
+        filterPlaceholder: t('searchPhone'),
         filterValue: (row) =>
           phoneSearchValue(row.recommendedProviderPhone),
         render: (row) => formatPhoneDisplay(row.recommendedProviderPhone),
@@ -184,16 +192,16 @@ export function ContactsPage() {
         key: 'location',
         header: t('locationAddress'),
         filterable: true,
-        filterPlaceholder: 'Search location',
+        filterPlaceholder: t('searchLocation'),
         filterValue: (row) => row.address || '',
         render: (row) => row.address || '—',
       },
       {
         key: 'service',
-        header: 'Service',
+        header: t('service'),
         filterable: true,
         filterType: 'multi',
-        filterPlaceholder: 'Filter services',
+        filterPlaceholder: t('filterServices'),
         filterValue: (row) => row.serviceType || '',
         render: (row) => row.serviceType,
       },
@@ -201,7 +209,7 @@ export function ContactsPage() {
         key: 'from',
         header: t('sharedBy'),
         filterable: true,
-        filterPlaceholder: 'Search sharer',
+        filterPlaceholder: t('searchSharer'),
         filterValue: (row) =>
           `${row.recommendedByName || ''} ${row.recommendedByPhone || ''} ${row.recommendedByRole || ''}`,
         render: (row) => (
@@ -218,13 +226,18 @@ export function ContactsPage() {
       },
       {
         key: 'status',
-        header: 'Status',
+        header: t('status'),
         filterable: true,
         filterType: 'multi',
-        filterPlaceholder: 'Filter statuses',
-        filterOptions: STATUS_OPTIONS,
+        filterPlaceholder: t('filterStatuses'),
+        filterOptions: statusOptions,
         filterValue: (row) => row.status || '',
-        render: (row) => <span className="badge">{row.status}</span>,
+        render: (row) => {
+          const status = row.status || 'pending';
+          return (
+            <StatusChip status={status} label={t(`contact_${status}`)} />
+          );
+        },
       },
       {
         key: 'updatedAt',
@@ -234,20 +247,16 @@ export function ContactsPage() {
       },
       {
         key: 'actions',
-        header: 'Actions',
+        header: t('actions'),
         width: '9rem',
         render: (row) => (
-          <button
-            type="button"
-            className="btn btn-ghost"
-            disabled={busyId === row._id}
-            onClick={() => openEdit(row)}>
+          <Button variant="ghost" disabled={busyId === row._id} onClick={() => openEdit(row)}>
             {t('updateDetails')}
-          </button>
+          </Button>
         ),
       },
     ],
-    [busyId, t],
+    [busyId, statusOptions, t],
   );
 
   return (
@@ -272,7 +281,11 @@ export function ContactsPage() {
           <button
             key={f}
             type="button"
-            className={filter === f ? 'btn btn-primary' : 'btn btn-ghost'}
+            className={
+              filter === f
+                ? 'hs-btn hs-btn--primary hs-btn--md'
+                : 'hs-btn hs-btn--ghost hs-btn--md'
+            }
             onClick={() => setFilter(f)}>
             {t(`contact_${f}`)}
           </button>
@@ -295,7 +308,7 @@ export function ContactsPage() {
       </div>
 
       {editRow ? (
-        <Modal
+        <Dialog open
           title={t('updateContactTitle')}
           onClose={closeEdit}
           testId="contacts-edit-modal">
@@ -340,12 +353,14 @@ export function ContactsPage() {
               value={editService}
               placeholder={t('selectServiceType')}
               showSearch
+              searchPlaceholder={t('searchProfession')}
+              emptyMessage={t('empty')}
               onChange={setEditService}
             />
           </label>
           <Select
-            label="Status"
-            options={STATUS_OPTIONS}
+            label={t('status')}
+            options={statusOptions}
             value={editStatus}
             onChange={(value) =>
               setEditStatus(value as ContactRecommendation['status'])
@@ -361,18 +376,14 @@ export function ContactsPage() {
           </label>
           {editError ? <p className="error-text">{editError}</p> : null}
           <div className="actions">
-            <button
-              type="button"
-              className="btn btn-primary"
-              disabled={saving}
-              onClick={() => void onSaveDetails()}>
+            <Button variant="primary" disabled={saving} onClick={() => void onSaveDetails()}>
               {saving ? t('saving') : t('save')}
-            </button>
-            <button type="button" className="btn btn-ghost" onClick={closeEdit}>
+            </Button>
+            <Button variant="ghost" onClick={closeEdit}>
               {t('cancel')}
-            </button>
+            </Button>
           </div>
-        </Modal>
+        </Dialog>
       ) : null}
     </div>
   );

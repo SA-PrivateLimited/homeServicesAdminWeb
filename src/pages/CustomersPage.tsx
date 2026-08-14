@@ -5,8 +5,10 @@ import {
   Select,
   VirtualTable,
   type VirtualTableColumn,
+  Button,
+  Dialog,
+  StatusChip,
 } from 'sapvt-ltd-web-packages';
-import {Modal} from '../components/Modal';
 import {
   SuccessBanner,
   pinSuccessBanner,
@@ -37,6 +39,7 @@ import {
   toE164,
 } from '../utils/phone';
 import {formatLastUpdated} from '../utils/datetime';
+import {sortByUpdatedThenCreated} from '../utils/sort';
 import {CopyFeedbackButton} from '../components/CopyFeedbackButton';
 import '../styles/pages.css';
 
@@ -140,7 +143,7 @@ export function CustomersPage() {
             }
           : {}),
       });
-      setRows(result.items);
+      setRows(sortByUpdatedThenCreated(result.items));
       setTotal(result.total);
     } catch (err) {
       setError(err instanceof Error ? err.message : t('errorGeneric'));
@@ -535,10 +538,10 @@ export function CustomersPage() {
     () => [
       {
         key: 'name',
-        header: 'Name',
+        header: t('name'),
         width: '8rem',
         filterable: true,
-        filterPlaceholder: 'Search name',
+        filterPlaceholder: t('searchName'),
         filterValue: (row) => row.name || row.displayName || '',
         render: (row) => (
           <span
@@ -550,10 +553,10 @@ export function CustomersPage() {
       },
       {
         key: 'phone',
-        header: 'Phone',
+        header: t('phone'),
         width: '11.5rem',
         filterable: true,
-        filterPlaceholder: 'Search phone',
+        filterPlaceholder: t('searchPhone'),
         filterValue: (row) => phoneSearchValue(row.phone, row.phoneNumber),
         render: (row) => {
           const display = formatPhoneDisplay(row.phone, row.phoneNumber);
@@ -593,7 +596,7 @@ export function CustomersPage() {
         key: 'address',
         header: t('address'),
         filterable: true,
-        filterPlaceholder: 'Search address',
+        filterPlaceholder: t('searchAddress'),
         filterValue: (row) => formatAddress(row.homeAddress, row.location),
         width: '14rem',
         render: (row) => (
@@ -610,9 +613,9 @@ export function CustomersPage() {
         width: '7rem',
         render: (row) =>
           row.isActive === false ? (
-            <span className="badge badge-rejected">{t('inactive')}</span>
+            <StatusChip status="cancelled" label={t('inactive')} />
           ) : (
-            <span className="badge badge-approved">{t('active')}</span>
+            <StatusChip status="active" label={t('active')} />
           ),
       },
       {
@@ -629,18 +632,12 @@ export function CustomersPage() {
               <span className="pin-cell-actions">
                 {row.hasPin ? (
                   <>
-                    <button
-                      type="button"
-                      className="btn btn-ghost icon-only"
-                      disabled={revealBusyId === row._id}
-                      aria-label={pin ? t('hidePassword') : t('revealPin')}
-                      title={pin ? t('hidePassword') : t('revealPin')}
-                      onClick={() => void onRevealPin(row)}>
+                    <Button variant="ghost" className="icon-only" disabled={revealBusyId === row._id} aria-label={pin ? t('hidePassword') : t('revealPin')} title={pin ? t('hidePassword') : t('revealPin')} onClick={() => void onRevealPin(row)}>
                       <Icon
                         name={pin ? 'visibility_off' : 'visibility'}
                         size={18}
                       />
-                    </button>
+                    </Button>
                     <CopyFeedbackButton
                       text={pin || ''}
                       disabled={!pin}
@@ -649,14 +646,9 @@ export function CustomersPage() {
                     />
                   </>
                 ) : (
-                  <button
-                    type="button"
-                    className="btn btn-ghost icon-only"
-                    aria-label={t('generatePin')}
-                    title={t('generatePin')}
-                    onClick={() => openPinModal(row)}>
+                  <Button variant="ghost" className="icon-only" aria-label={t('generatePin')} title={t('generatePin')} onClick={() => openPinModal(row)}>
                     <Icon name="lock_reset" size={18} />
-                  </button>
+                  </Button>
                 )}
               </span>
             </span>
@@ -671,63 +663,37 @@ export function CustomersPage() {
       },
       {
         key: 'actions',
-        header: 'Actions',
+        header: t('actions'),
         width: '16rem',
         render: (row) => (
           <span className="actions table-actions">
-            <button
-              type="button"
-              className="btn btn-ghost icon-only"
-              aria-label={t('edit')}
-              title={t('edit')}
-              onClick={() => openEdit(row)}>
+            <Button variant="ghost" className="icon-only" aria-label={t('edit')} title={t('edit')} onClick={() => openEdit(row)}>
               <Icon name="edit" size={18} />
-            </button>
+            </Button>
             {row.hasPin ? (
-              <button
-                type="button"
-                className="btn btn-ghost icon-only"
-                aria-label={t('setPin')}
-                title={t('setPin')}
-                onClick={() => openPinModal(row)}>
+              <Button variant="ghost" className="icon-only" aria-label={t('setPin')} title={t('setPin')} onClick={() => openPinModal(row)}>
                 <Icon name="lock_reset" size={18} />
-              </button>
+              </Button>
             ) : null}
             {row.isActive === false ? (
-              <button
-                type="button"
-                className="btn btn-ghost icon-only"
-                disabled={restoreBusyId === row._id}
-                aria-label={t('restore')}
-                title={t('restore')}
-                onClick={() => void onRestore(row)}>
+              <Button variant="ghost" className="icon-only" disabled={restoreBusyId === row._id} aria-label={t('restore')} title={t('restore')} onClick={() => void onRestore(row)}>
                 <Icon name="safety_check" size={18} />
-              </button>
+              </Button>
             ) : (
-              <button
-                type="button"
-                className="btn btn-ghost icon-only"
-                aria-label={t('deactivate')}
-                title={t('deactivate')}
-                onClick={() => {
+              <Button variant="ghost" className="icon-only" aria-label={t('deactivate')} title={t('deactivate')} onClick={() => {
                   setDeactivateTarget(row);
                   setDeactivateReason('');
                   setDeactivateError(null);
                 }}>
                 <Icon name="safety_check_off" size={18} />
-              </button>
+              </Button>
             )}
-            <button
-              type="button"
-              className="btn btn-ghost icon-only"
-              aria-label={t('delete')}
-              title={t('delete')}
-              onClick={() => {
+            <Button variant="ghost" className="icon-only" aria-label={t('delete')} title={t('delete')} onClick={() => {
                 setDeleteTarget(row);
                 setDeleteError(null);
               }}>
               <Icon name="delete" size={18} />
-            </button>
+            </Button>
           </span>
         ),
       },
@@ -754,12 +720,9 @@ export function CustomersPage() {
             />
             {t('showInactive')}
           </label>
-          <button
-            type="button"
-            className="btn btn-primary"
-            onClick={() => setCreateOpen(true)}>
+          <Button variant="primary" onClick={() => setCreateOpen(true)}>
             {t('addCustomer')}
-          </button>
+          </Button>
         </div>
       </header>
       {successBanner ? (
@@ -776,6 +739,8 @@ export function CustomersPage() {
             value={filterStateId}
             placeholder={t('geoState')}
             showSearch
+            searchPlaceholder={t('searchState')}
+            emptyMessage={t('noStatesFound')}
             onChange={(value) => {
               setFilterStateId(value);
               setFilterDistrictId(ALL_DISTRICTS);
@@ -789,6 +754,8 @@ export function CustomersPage() {
             value={filterDistrictId}
             placeholder={t('geoDistrict')}
             showSearch
+            searchPlaceholder={t('searchDistrict')}
+            emptyMessage={t('noDistrictsFound')}
             disabled={filterStateId === ALL_STATES}
             onChange={(value) => {
               setFilterDistrictId(value);
@@ -818,7 +785,7 @@ export function CustomersPage() {
       </div>
 
       {createOpen ? (
-        <Modal
+        <Dialog open
           title={t('addCustomerTitle')}
           onClose={closeCreate}
           testId="customers-create-modal">
@@ -875,6 +842,8 @@ export function CustomersPage() {
                 value={createStateId}
                 placeholder={t('geoState')}
                 showSearch
+                searchPlaceholder={t('searchState')}
+                emptyMessage={t('noStatesFound')}
                 onChange={(value) => {
                   setCreateStateId(value);
                   setCreateDistrictId('');
@@ -890,6 +859,8 @@ export function CustomersPage() {
                 value={createDistrictId}
                 placeholder={t('geoDistrict')}
                 showSearch
+                searchPlaceholder={t('searchDistrict')}
+                emptyMessage={t('noDistrictsFound')}
                 onChange={(value) => {
                   setCreateDistrictId(value);
                   const d = geoDistricts.find((x) => x._id === value);
@@ -955,25 +926,18 @@ export function CustomersPage() {
           </fieldset>
           {createError ? <p className="error-text">{createError}</p> : null}
           <div className="actions">
-            <button
-              type="button"
-              className="btn btn-primary"
-              disabled={creating}
-              onClick={() => void onCreateCustomer()}>
+            <Button variant="primary" disabled={creating} onClick={() => void onCreateCustomer()}>
               {creating ? t('saving') : t('save')}
-            </button>
-            <button
-              type="button"
-              className="btn btn-ghost"
-              onClick={closeCreate}>
+            </Button>
+            <Button variant="ghost" onClick={closeCreate}>
               {t('cancel')}
-            </button>
+            </Button>
           </div>
-        </Modal>
+        </Dialog>
       ) : null}
 
       {editUser ? (
-        <Modal
+        <Dialog open
           title={t('editCustomerTitle')}
           onClose={closeEdit}
           testId="customers-edit-modal">
@@ -1010,6 +974,8 @@ export function CustomersPage() {
                 value={editStateId}
                 placeholder={t('geoState')}
                 showSearch
+                searchPlaceholder={t('searchState')}
+                emptyMessage={t('noStatesFound')}
                 onChange={(value) => {
                   setEditStateId(value);
                   setEditDistrictId('');
@@ -1025,6 +991,8 @@ export function CustomersPage() {
                 value={editDistrictId}
                 placeholder={t('geoDistrict')}
                 showSearch
+                searchPlaceholder={t('searchDistrict')}
+                emptyMessage={t('noDistrictsFound')}
                 onChange={(value) => {
                   setEditDistrictId(value);
                   const d = geoDistricts.find((x) => x._id === value);
@@ -1061,25 +1029,18 @@ export function CustomersPage() {
           </div>
           {editError ? <p className="error-text">{editError}</p> : null}
           <div className="actions">
-            <button
-              type="button"
-              className="btn btn-primary"
-              disabled={editing}
-              onClick={() => void onSaveCustomer()}>
+            <Button variant="primary" disabled={editing} onClick={() => void onSaveCustomer()}>
               {editing ? t('saving') : t('save')}
-            </button>
-            <button
-              type="button"
-              className="btn btn-ghost"
-              onClick={closeEdit}>
+            </Button>
+            <Button variant="ghost" onClick={closeEdit}>
               {t('cancel')}
-            </button>
+            </Button>
           </div>
-        </Modal>
+        </Dialog>
       ) : null}
 
       {pinUser ? (
-        <Modal
+        <Dialog open
           title={t('setPinTitle')}
           onClose={() => setPinUser(null)}
           testId="set-pin-modal">
@@ -1102,25 +1063,18 @@ export function CustomersPage() {
           </label>
           {pinMessage ? <p className="error-text">{pinMessage}</p> : null}
           <div className="actions">
-            <button
-              type="button"
-              className="btn btn-primary"
-              disabled={pinBusy}
-              onClick={() => void onSetPin()}>
+            <Button variant="primary" disabled={pinBusy} onClick={() => void onSetPin()}>
               {pinBusy ? t('saving') : t('save')}
-            </button>
-            <button
-              type="button"
-              className="btn btn-ghost"
-              onClick={() => setPinUser(null)}>
+            </Button>
+            <Button variant="ghost" onClick={() => setPinUser(null)}>
               {t('cancel')}
-            </button>
+            </Button>
           </div>
-        </Modal>
+        </Dialog>
       ) : null}
 
       {deactivateTarget ? (
-        <Modal
+        <Dialog open
           title={t('deactivateTitle')}
           onClose={() => setDeactivateTarget(null)}
           testId="customers-deactivate-modal">
@@ -1145,25 +1099,18 @@ export function CustomersPage() {
             <p className="error-text">{deactivateError}</p>
           ) : null}
           <div className="actions">
-            <button
-              type="button"
-              className="btn btn-danger"
-              disabled={deactivateBusy}
-              onClick={() => void onDeactivate()}>
+            <Button variant="danger" disabled={deactivateBusy} onClick={() => void onDeactivate()}>
               {deactivateBusy ? t('saving') : t('deactivate')}
-            </button>
-            <button
-              type="button"
-              className="btn btn-ghost"
-              onClick={() => setDeactivateTarget(null)}>
+            </Button>
+            <Button variant="ghost" onClick={() => setDeactivateTarget(null)}>
               {t('cancel')}
-            </button>
+            </Button>
           </div>
-        </Modal>
+        </Dialog>
       ) : null}
 
       {deleteTarget ? (
-        <Modal
+        <Dialog open
           title={t('deleteUserTitle')}
           onClose={() => setDeleteTarget(null)}
           testId="customers-delete-modal">
@@ -1172,21 +1119,14 @@ export function CustomersPage() {
           </p>
           {deleteError ? <p className="error-text">{deleteError}</p> : null}
           <div className="actions">
-            <button
-              type="button"
-              className="btn btn-danger"
-              disabled={deleteBusy}
-              onClick={() => void onDeleteUser()}>
+            <Button variant="danger" disabled={deleteBusy} onClick={() => void onDeleteUser()}>
               {deleteBusy ? t('saving') : t('confirmDelete')}
-            </button>
-            <button
-              type="button"
-              className="btn btn-ghost"
-              onClick={() => setDeleteTarget(null)}>
+            </Button>
+            <Button variant="ghost" onClick={() => setDeleteTarget(null)}>
               {t('cancel')}
-            </button>
+            </Button>
           </div>
-        </Modal>
+        </Dialog>
       ) : null}
     </div>
   );
