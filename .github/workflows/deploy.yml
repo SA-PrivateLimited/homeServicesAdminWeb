@@ -17,7 +17,7 @@ permissions:
   contents: read
 
 env:
-  NODE_VERSION: '22'
+  NODE_VERSION: '24'
   AWS_REGION: ${{ vars.AWS_REGION || 'eu-north-1' }}
   AWS_ROLE_ARN: arn:aws:iam::715831355325:role/AkansoWebDeployRole
   S3_BUCKET: admin.akanso.in
@@ -64,7 +64,7 @@ jobs:
 
       - name: Install application dependencies
         working-directory: ${{ env.APP_DIR }}
-        run: npm ci
+        run: npm install --no-audit --no-fund
 
       - name: Production build
         working-directory: ${{ env.APP_DIR }}
@@ -84,6 +84,7 @@ jobs:
           role-to-assume: ${{ env.AWS_ROLE_ARN }}
           role-session-name: github-actions-admin-web
           aws-region: ${{ env.AWS_REGION }}
+          audience: sts.amazonaws.com
 
       - name: Preserve production runtime config.json if present
         id: prod_config
