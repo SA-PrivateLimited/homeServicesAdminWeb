@@ -87,14 +87,40 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
           audience: sts.amazonaws.com
 
-      - name: Preserve production runtime config.json if present
+      - name: Prepare production runtime config.json
         id: prod_config
         run: |
-          if aws s3 cp "s3://${S3_BUCKET}/config.json" /tmp/prod-config.json; then
-            echo "preserved=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "preserved=false" >> "$GITHUB_OUTPUT"
-          fi
+          python3 <<'PY'
+          import json, os, subprocess
+
+          bucket = os.environ["S3_BUCKET"]
+          build = os.environ.get("BUILD_DIR", "web/dist")
+          production = "https://api.akanso.in"
+          cfg = None
+          try:
+              subprocess.check_call(
+                  ["aws", "s3", "cp", f"s3://{bucket}/config.json", "/tmp/prod-config.json"]
+              )
+              with open("/tmp/prod-config.json", encoding="utf-8") as fh:
+                  cfg = json.load(fh)
+          except Exception:
+              built = os.path.join(build, "config.json")
+              if os.path.isfile(built):
+                  with open(built, encoding="utf-8") as fh:
+                      cfg = json.load(fh)
+          if not isinstance(cfg, dict):
+              cfg = {}
+          url = str(cfg.get("apiBaseUrl") or "").strip()
+          if (not url) or ("localhost" in url) or ("127.0.0.1" in url):
+              cfg["apiBaseUrl"] = production
+          elif url.startswith("http://"):
+              cfg["apiBaseUrl"] = "https://" + url[len("http://"):]
+          with open("/tmp/prod-config.json", "w", encoding="utf-8") as fh:
+              json.dump(cfg, fh, indent=2)
+              fh.write("\n")
+          print("Using apiBaseUrl", cfg["apiBaseUrl"])
+          PY
+          echo "preserved=true" >> "$GITHUB_OUTPUT"
 
       - name: Sync build to S3
         run: |
