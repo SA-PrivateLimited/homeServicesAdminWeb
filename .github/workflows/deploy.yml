@@ -126,8 +126,8 @@ jobs:
               --metadata-directive REPLACE
           fi
 
-      - name: Invalidate CloudFront
-        id: invalidate
+      - name: Resolve CloudFront distribution
+        id: cf
         run: |
           set -euo pipefail
           DIST_ID="${CLOUDFRONT_DISTRIBUTION_ID:-}"
@@ -147,6 +147,87 @@ jobs:
           fi
           echo "Using CloudFront distribution ${DIST_ID}"
           echo "dist_id=${DIST_ID}" >> "$GITHUB_OUTPUT"
+
+      - name: Ensure CloudFront SPA fallback
+        env:
+          DIST_ID: ${{ steps.cf.outputs.dist_id }}
+        run: |
+          python3 <<'PY'
+          import json, os, subprocess, sys
+
+          dist_id = (os.environ.get("DIST_ID") or "").strip()
+          if not dist_id or dist_id == "None":
+              sys.exit("DIST_ID is empty")
+
+          payload = json.loads(
+              subprocess.check_output(
+                  ["aws", "cloudfront", "get-distribution-config", "--id", dist_id],
+                  text=True,
+              )
+          )
+          etag = payload["ETag"]
+          cfg = payload["DistributionConfig"]
+          items = list((cfg.get("CustomErrorResponses") or {}).get("Items") or [])
+
+          def is_spa(item, code):
+              return (
+                  int(item.get("ErrorCode", 0)) == code
+                  and item.get("ResponsePagePath") == "/index.html"
+                  and str(item.get("ResponseCode")) == "200"
+              )
+
+          if any(is_spa(i, 403) for i in items) and any(is_spa(i, 404) for i in items):
+              print(f"SPA fallback already configured on {dist_id}")
+              sys.exit(0)
+
+          kept = [i for i in items if int(i.get("ErrorCode", 0)) not in (403, 404)]
+          kept.extend(
+              [
+                  {
+                      "ErrorCode": 403,
+                      "ResponsePagePath": "/index.html",
+                      "ResponseCode": "200",
+                      "ErrorCachingMinTTL": 10,
+                  },
+                  {
+                      "ErrorCode": 404,
+                      "ResponsePagePath": "/index.html",
+                      "ResponseCode": "200",
+                      "ErrorCachingMinTTL": 10,
+                  },
+              ]
+          )
+          cfg["CustomErrorResponses"] = {"Quantity": len(kept), "Items": kept}
+          path = "/tmp/cloudfront-distribution-config.json"
+          with open(path, "w", encoding="utf-8") as fh:
+              json.dump(cfg, fh)
+          subprocess.check_call(
+              [
+                  "aws",
+                  "cloudfront",
+                  "update-distribution",
+                  "--id",
+                  dist_id,
+                  "--if-match",
+                  etag,
+                  "--distribution-config",
+                  f"file://{path}",
+                  "--output",
+                  "text",
+                  "--query",
+                  "Distribution.Id",
+              ]
+          )
+          print(f"Configured SPA fallback on {dist_id}: 403/404 -> /index.html (HTTP 200)")
+          PY
+
+      - name: Invalidate CloudFront
+        id: invalidate
+        env:
+          DIST_ID: ${{ steps.cf.outputs.dist_id }}
+        run: |
+          set -euo pipefail
+          echo "dist_id=${DIST_ID}" >> "$GITHUB_OUTPUT"
           INVALIDATION_ID="$(
             aws cloudfront create-invalidation \
               --distribution-id "${DIST_ID}" \
@@ -164,5 +245,5 @@ jobs:
       - name: Deployment summary
         run: |
           echo "Deployed to s3://${S3_BUCKET}"
-          echo "CloudFront: ${{ steps.invalidate.outputs.dist_id }} invalidation ${{ steps.invalidate.outputs.id }}"
+          echo "CloudFront: ${{ steps.cf.outputs.dist_id }} invalidation ${{ steps.invalidate.outputs.id }}"
           echo "Production: https://admin.akanso.in"
