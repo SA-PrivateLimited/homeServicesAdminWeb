@@ -42,6 +42,11 @@ const NAV: Array<{
   },
   {to: '/contacts', key: 'navContacts', permission: PERMISSIONS.CONTACTS_VIEW},
   {
+    to: '/settings/contact-privacy',
+    key: 'navSettings',
+    permission: PERMISSIONS.CONTACTS_VIEW,
+  },
+  {
     to: '/clients',
     key: 'navClients',
     permission: PERMISSIONS.CLIENTS_VIEW,

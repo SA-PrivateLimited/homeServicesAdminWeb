@@ -15,6 +15,7 @@ import { JobsPage } from './pages/JobsPage';
 import { CategoriesPage } from './pages/CategoriesPage';
 import { CategoryEditPage } from './pages/CategoryEditPage';
 import { ContactsPage } from './pages/ContactsPage';
+import { ContactPrivacyPage } from './pages/ContactPrivacyPage';
 import { ClientsPage } from './pages/ClientsPage';
 import { GeographyStatesPage } from './pages/GeographyStatesPage';
 import { GeographyDistrictsPage } from './pages/GeographyDistrictsPage';
@@ -97,6 +98,10 @@ export default function App() {
                 <RequirePermission permission={PERMISSIONS.CONTACTS_VIEW} />
               }>
               <Route path="contacts" element={<ContactsPage />} />
+              <Route
+                path="settings/contact-privacy"
+                element={<ContactPrivacyPage />}
+              />
             </Route>
             <Route
               element={
