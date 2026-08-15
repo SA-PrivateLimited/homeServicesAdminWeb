@@ -21,7 +21,8 @@ env:
   AWS_REGION: ${{ vars.AWS_REGION || 'eu-north-1' }}
   AWS_ROLE_ARN: arn:aws:iam::715831355325:role/AkansoWebDeployRole
   S3_BUCKET: admin.akanso.in
-  CLOUDFRONT_DISTRIBUTION_ID: E1GCB5ZX81YGSF
+  SITE_HOST: admin.akanso.in
+  CLOUDFRONT_DISTRIBUTION_ID: ${{ vars.CLOUDFRONT_DISTRIBUTION_ID }}
   APP_DIR: web
   BUILD_DIR: web/dist
   UI_PACKAGE_REPO: SA-PrivateLimited/npm-sa-packages
@@ -129,9 +130,26 @@ jobs:
         id: invalidate
         run: |
           set -euo pipefail
+          DIST_ID="${CLOUDFRONT_DISTRIBUTION_ID:-}"
+          if [ -z "${DIST_ID}" ] || [ "${DIST_ID}" = "None" ]; then
+            DIST_ID="$(aws cloudfront list-distributions \
+              --query "DistributionList.Items[?Aliases.Items!=null && contains(Aliases.Items, '${SITE_HOST}')].Id | [0]" \
+              --output text)"
+          fi
+          if [ -z "${DIST_ID}" ] || [ "${DIST_ID}" = "None" ]; then
+            DIST_ID="$(aws cloudfront list-distributions \
+              --query "DistributionList.Items[?Origins.Items[?contains(DomainName, '${S3_BUCKET}')]].Id | [0]" \
+              --output text)"
+          fi
+          if [ -z "${DIST_ID}" ] || [ "${DIST_ID}" = "None" ]; then
+            echo "Could not resolve CloudFront distribution for ${SITE_HOST}"
+            exit 1
+          fi
+          echo "Using CloudFront distribution ${DIST_ID}"
+          echo "dist_id=${DIST_ID}" >> "$GITHUB_OUTPUT"
           INVALIDATION_ID="$(
             aws cloudfront create-invalidation \
-              --distribution-id "${CLOUDFRONT_DISTRIBUTION_ID}" \
+              --distribution-id "${DIST_ID}" \
               --paths "/*" \
               --query 'Invalidation.Id' \
               --output text
@@ -139,12 +157,12 @@ jobs:
           echo "id=${INVALIDATION_ID}" >> "$GITHUB_OUTPUT"
           echo "Created invalidation ${INVALIDATION_ID}"
           aws cloudfront wait invalidation-completed \
-            --distribution-id "${CLOUDFRONT_DISTRIBUTION_ID}" \
+            --distribution-id "${DIST_ID}" \
             --id "${INVALIDATION_ID}"
           echo "Invalidation ${INVALIDATION_ID} completed"
 
       - name: Deployment summary
         run: |
           echo "Deployed to s3://${S3_BUCKET}"
-          echo "CloudFront: ${CLOUDFRONT_DISTRIBUTION_ID} invalidation ${{ steps.invalidate.outputs.id }}"
+          echo "CloudFront: ${{ steps.invalidate.outputs.dist_id }} invalidation ${{ steps.invalidate.outputs.id }}"
           echo "Production: https://admin.akanso.in"
