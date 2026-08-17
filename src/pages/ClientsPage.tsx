@@ -1,4 +1,4 @@
-import {useCallback, useEffect, useMemo, useState} from 'react';
+import {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {Navigate} from 'react-router-dom';
 import {useTranslation} from 'react-i18next';
 import {
@@ -21,7 +21,7 @@ import {
 import {useAuthStore} from '../store/authStore';
 import {applyColorPalette} from '../theme';
 import {themeConfig} from '../theme/themeConfig';
-import {getRuntimeConfig} from '../config/runtime';
+import {resolveLogoUrl} from '../config/runtime';
 import {sortByUpdatedThenCreated} from '../utils/sort';
 import '../styles/pages.css';
 
@@ -90,11 +90,7 @@ function normalizeColorInput(hex: string): string {
 }
 
 function resolveLogoSrc(logoUrl?: string): string {
-  const raw = (logoUrl || '').trim();
-  if (!raw) return '';
-  if (/^https?:\/\//i.test(raw) || raw.startsWith('data:')) return raw;
-  const base = getRuntimeConfig().apiBaseUrl.replace(/\/$/, '');
-  return raw.startsWith('/') ? `${base}${raw}` : `${base}/${raw}`;
+  return resolveLogoUrl(logoUrl);
 }
 
 export function ClientsPage() {
@@ -112,6 +108,8 @@ export function ClientsPage() {
   const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [localLogoPreview, setLocalLogoPreview] = useState<string | null>(null);
+  const logoFileRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -142,12 +140,14 @@ export function ClientsPage() {
     setDraft(emptyDraft());
     setFormError(null);
     setSaving(false);
+    setLocalLogoPreview(null);
   };
 
   const openCreate = () => {
     setEditingId(null);
     setDraft(emptyDraft());
     setFormError(null);
+    setLocalLogoPreview(null);
     setEditorOpen(true);
   };
 
@@ -162,6 +162,7 @@ export function ClientsPage() {
       themeColors: clonePalette(client.themeColors),
     });
     setFormError(null);
+    setLocalLogoPreview(null);
     setEditorOpen(true);
   };
 
@@ -211,13 +212,22 @@ export function ClientsPage() {
     if (!file || !editingId) return;
     setUploadingLogo(true);
     setFormError(null);
+    const localPreview = URL.createObjectURL(file);
+    setLocalLogoPreview(localPreview);
     try {
       const result = await uploadClientLogo(editingId, file);
-      setDraft((p) => ({...p, logoUrl: result.logoUrl}));
+      const nextUrl = result.logoUrl || result.client?.logoUrl || '';
+      if (!nextUrl) {
+        throw new Error(t('errorGeneric'));
+      }
+      setDraft((p) => ({...p, logoUrl: nextUrl}));
+      setLocalLogoPreview(null);
       await load();
     } catch (err) {
+      setLocalLogoPreview(null);
       setFormError(err instanceof Error ? err.message : t('errorGeneric'));
     } finally {
+      URL.revokeObjectURL(localPreview);
       setUploadingLogo(false);
     }
   };
@@ -352,7 +362,7 @@ export function ClientsPage() {
     [activeClientId, busyId, t],
   );
 
-  const logoPreview = resolveLogoSrc(draft.logoUrl);
+  const logoPreview = localLogoPreview || resolveLogoSrc(draft.logoUrl);
 
   return (
     <div className="admin-page scale-baseline-80" data-testid="clients-root">
@@ -463,31 +473,33 @@ export function ClientsPage() {
                 alt=""
                 width={64}
                 height={64}
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).style.visibility =
+                    'hidden';
+                }}
               />
             ) : null}
             {editingId ? (
-              <label className="client-logo-upload">
-                <Button
-                  variant="secondary"
-                  type="button"
-                  disabled={uploadingLogo}
-                  onClick={() =>
-                    document.getElementById('client-logo-file')?.click()
-                  }>
-                  {uploadingLogo ? t('saving') : t('clientsLogoUpload')}
-                </Button>
+              <div className="client-logo-upload">
                 <input
-                  id="client-logo-file"
+                  ref={logoFileRef}
                   type="file"
-                  accept="image/*"
-                  hidden
+                  accept="image/jpeg,image/png,image/webp,image/svg+xml"
+                  className="visually-hidden"
                   onChange={(e) => {
                     const file = e.target.files?.[0] || null;
                     e.target.value = '';
                     void onUploadLogo(file);
                   }}
                 />
-              </label>
+                <Button
+                  variant="secondary"
+                  type="button"
+                  disabled={uploadingLogo}
+                  onClick={() => logoFileRef.current?.click()}>
+                  {uploadingLogo ? t('saving') : t('clientsLogoUpload')}
+                </Button>
+              </div>
             ) : (
               <p className="muted compact">{t('clientsLogoHint')}</p>
             )}
@@ -521,11 +533,11 @@ export function ClientsPage() {
           <div className="actions">
             <Button
               variant="primary"
-              disabled={saving}
+              disabled={saving || uploadingLogo}
               onClick={() => void onSave()}>
               {saving ? t('saving') : t('save')}
             </Button>
-            <Button variant="ghost" disabled={saving} onClick={closeEditor}>
+            <Button variant="ghost" disabled={saving || uploadingLogo} onClick={closeEditor}>
               {t('cancel')}
             </Button>
           </div>

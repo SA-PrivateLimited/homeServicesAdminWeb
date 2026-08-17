@@ -51,12 +51,40 @@ export function setRuntimeBranding(partial: {
   runtimeConfig = next;
 }
 
-/** Resolve relative /uploads paths against API; pass through absolute URLs. */
+function isLoopbackHost(hostname: string): boolean {
+  return (
+    hostname === '127.0.0.1' ||
+    hostname === 'localhost' ||
+    hostname === '::1' ||
+    hostname === '0.0.0.0'
+  );
+}
+
+/**
+ * Resolve logo URLs for display.
+ * Relative /uploads paths are prefixed with the current API host.
+ * Loopback hosts (from local S3 fallback) are rewritten to the current API host
+ * so production admin can still load `/uploads/...` files.
+ */
 export function resolveLogoUrl(logoUrl?: string): string {
   const raw = (logoUrl || '').trim();
   if (!raw) return '';
-  if (/^https?:\/\//i.test(raw) || raw.startsWith('data:')) return raw;
+  if (raw.startsWith('data:') || raw.startsWith('blob:')) return raw;
+
   const base = getApiBaseUrl().replace(/\/$/, '');
+
+  if (/^https?:\/\//i.test(raw)) {
+    try {
+      const parsed = new URL(raw);
+      if (isLoopbackHost(parsed.hostname) && parsed.pathname.startsWith('/uploads/')) {
+        return `${base}${parsed.pathname}${parsed.search}`;
+      }
+    } catch {
+      return raw;
+    }
+    return raw;
+  }
+
   return raw.startsWith('/') ? `${base}${raw}` : `${base}/${raw}`;
 }
 
