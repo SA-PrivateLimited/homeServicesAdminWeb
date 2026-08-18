@@ -7,7 +7,11 @@ import {
   Dialog,
 } from 'sapvt-ltd-web-packages';
 import {useAuthStore} from '../store/authStore';
-import {getBrandLogoSrc, getRuntimeConfig} from '../config/runtime';
+import {
+  getBrandLogoSrc,
+  getRuntimeConfig,
+  RUNTIME_BRANDING_EVENT,
+} from '../config/runtime';
 import {usePermissions} from '../hooks/usePermissions';
 import {PERMISSIONS} from '../constants/permissions';
 import {
@@ -66,8 +70,11 @@ export function AdminShell() {
   const {canAccess} = usePermissions();
   const navigate = useNavigate();
   const location = useLocation();
-  const {brandName} = getRuntimeConfig();
-  const logoSrc = getBrandLogoSrc();
+  const [runtimeBranding, setRuntimeBranding] = useState(() => ({
+    brandName: getRuntimeConfig().brandName,
+    logoSrc: getBrandLogoSrc(),
+  }));
+  const {brandName, logoSrc} = runtimeBranding;
   const shellTitle = brandName?.trim()
     ? `${brandName} Admin`
     : t('appTitle');
@@ -93,6 +100,17 @@ export function AdminShell() {
       return false;
     }
   });
+
+  useEffect(() => {
+    const syncBranding = () => {
+      setRuntimeBranding({
+        brandName: getRuntimeConfig().brandName,
+        logoSrc: getBrandLogoSrc(),
+      });
+    };
+    window.addEventListener(RUNTIME_BRANDING_EVENT, syncBranding);
+    return () => window.removeEventListener(RUNTIME_BRANDING_EVENT, syncBranding);
+  }, []);
 
   useEffect(() => {
     try {
@@ -176,6 +194,15 @@ export function AdminShell() {
               alt=""
               width={36}
               height={36}
+              onError={(e) => {
+                const img = e.currentTarget;
+                if (img.src.endsWith('/logo.png')) {
+                  img.style.display = 'none';
+                  return;
+                }
+                img.onerror = null;
+                img.src = '/logo.png';
+              }}
             />
             {!sidebarCollapsed ? <span>{shellTitle}</span> : null}
           </div>
@@ -363,20 +390,22 @@ export function AdminShell() {
           title={t('actAsSuperAdmin')}
           onClose={() => setElevateOpen(false)}
           testId="superadmin-elevate-modal">
-          <p className="muted compact">{t('actAsSuperAdminLead')}</p>
-          <label>
-            {t('superAdminKey')}
-            <input
-              type="password"
-              inputMode="numeric"
-              maxLength={4}
-              autoComplete="one-time-code"
-              value={code}
-              onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
-            />
-          </label>
+          <p className="modal-lead">{t('actAsSuperAdminLead')}</p>
+          <div className="modal-form">
+            <label>
+              {t('superAdminKey')}
+              <input
+                type="password"
+                inputMode="numeric"
+                maxLength={4}
+                autoComplete="one-time-code"
+                value={code}
+                onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
+              />
+            </label>
+          </div>
           {error ? <p className="error-text">{error}</p> : null}
-          <div className="actions">
+          <div className="modal-actions">
             <Button variant="primary" disabled={busy || code.length !== 4} onClick={() => void onElevate()}>
               {busy ? t('saving') : t('continue')}
             </Button>
@@ -392,39 +421,41 @@ export function AdminShell() {
           title={t('updateSuperAdminKey')}
           onClose={() => setKeyOpen(false)}
           testId="superadmin-key-modal">
-          <p className="muted compact">{t('updateSuperAdminKeyLead')}</p>
-          <label>
-            {t('currentSuperAdminKey')}
-            <input
-              type="password"
-              inputMode="numeric"
-              maxLength={4}
-              value={currentKey}
-              onChange={(e) => setCurrentKey(e.target.value.replace(/\D/g, ''))}
-            />
-          </label>
-          <label>
-            {t('newSuperAdminKey')}
-            <input
-              type="password"
-              inputMode="numeric"
-              maxLength={4}
-              value={newKey}
-              onChange={(e) => setNewKey(e.target.value.replace(/\D/g, ''))}
-            />
-          </label>
-          <label>
-            {t('confirmSuperAdminKey')}
-            <input
-              type="password"
-              inputMode="numeric"
-              maxLength={4}
-              value={confirmKey}
-              onChange={(e) => setConfirmKey(e.target.value.replace(/\D/g, ''))}
-            />
-          </label>
+          <p className="modal-lead">{t('updateSuperAdminKeyLead')}</p>
+          <div className="modal-form">
+            <label>
+              {t('currentSuperAdminKey')}
+              <input
+                type="password"
+                inputMode="numeric"
+                maxLength={4}
+                value={currentKey}
+                onChange={(e) => setCurrentKey(e.target.value.replace(/\D/g, ''))}
+              />
+            </label>
+            <label>
+              {t('newSuperAdminKey')}
+              <input
+                type="password"
+                inputMode="numeric"
+                maxLength={4}
+                value={newKey}
+                onChange={(e) => setNewKey(e.target.value.replace(/\D/g, ''))}
+              />
+            </label>
+            <label>
+              {t('confirmSuperAdminKey')}
+              <input
+                type="password"
+                inputMode="numeric"
+                maxLength={4}
+                value={confirmKey}
+                onChange={(e) => setConfirmKey(e.target.value.replace(/\D/g, ''))}
+              />
+            </label>
+          </div>
           {error ? <p className="error-text">{error}</p> : null}
-          <div className="actions">
+          <div className="modal-actions">
             <Button variant="primary" disabled={ busy || currentKey.length !== 4 || newKey.length !== 4 || confirmKey.length !== 4 } onClick={() => void onUpdateKey()}>
               {busy ? t('saving') : t('save')}
             </Button>

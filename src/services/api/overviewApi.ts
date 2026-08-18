@@ -52,6 +52,12 @@ export interface OverviewStats {
     rejected: number;
   };
   customers: {total: number};
+  users?: {
+    unique: number;
+    customers: number;
+    partners: number;
+    both: number;
+  };
   jobs: {
     total: number;
     byStatus: OverviewJobStatusCounts;

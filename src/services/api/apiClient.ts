@@ -32,6 +32,7 @@ export interface RequestOptions {
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
   body?: unknown;
   headers?: Record<string, string>;
+  cache?: RequestCache;
   timeout?: number;
   skipAuth?: boolean;
   /** When true, 401 does not clear session / redirect (used during logout). */
@@ -80,6 +81,7 @@ async function fetchApiPayload(
     method = 'GET',
     body,
     headers = {},
+    cache = 'default',
     timeout = API_TIMEOUT,
     skipAuth = false,
     skipUnauthorizedRedirect = false,
@@ -112,6 +114,7 @@ async function fetchApiPayload(
       method,
       headers: requestHeaders,
       body: body !== undefined ? JSON.stringify(body) : undefined,
+      cache,
       signal: controller.signal,
     });
 

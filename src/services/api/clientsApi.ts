@@ -42,7 +42,7 @@ export async function getBranding(): Promise<BrandingResponse> {
 }
 
 export async function getClients(): Promise<ClientsListResponse> {
-  return apiGet<ClientsListResponse>('/api/admin/clients');
+  return apiGet<ClientsListResponse>('/api/admin/clients', {cache: 'no-store'});
 }
 
 export async function createClient(

@@ -21,6 +21,12 @@ const FALLBACK: AppRuntimeConfig = {
 };
 
 let runtimeConfig: AppRuntimeConfig = {...FALLBACK};
+export const RUNTIME_BRANDING_EVENT = 'hs-runtime-branding-change';
+
+function notifyRuntimeBrandingChanged() {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new CustomEvent(RUNTIME_BRANDING_EVENT));
+}
 
 export function getRuntimeConfig(): AppRuntimeConfig {
   return runtimeConfig;
@@ -35,6 +41,7 @@ export function setApiBaseUrl(url: string): void {
     ...runtimeConfig,
     apiBaseUrl: url.replace(/\/$/, ''),
   };
+  notifyRuntimeBrandingChanged();
 }
 
 export function setRuntimeBranding(partial: {
@@ -49,6 +56,7 @@ export function setRuntimeBranding(partial: {
     next.logoUrl = partial.logoUrl.trim();
   }
   runtimeConfig = next;
+  notifyRuntimeBrandingChanged();
 }
 
 function isLoopbackHost(hostname: string): boolean {
@@ -99,6 +107,7 @@ export async function loadRuntimeConfig(): Promise<AppRuntimeConfig> {
     });
     if (!res.ok) {
       runtimeConfig = {...FALLBACK};
+      notifyRuntimeBrandingChanged();
       return runtimeConfig;
     }
     const json = (await res.json()) as Partial<{
@@ -124,9 +133,11 @@ export async function loadRuntimeConfig(): Promise<AppRuntimeConfig> {
       logoUrl: json.logoUrl?.trim() || undefined,
       themeColors,
     };
+    notifyRuntimeBrandingChanged();
     return runtimeConfig;
   } catch {
     runtimeConfig = {...FALLBACK};
+    notifyRuntimeBrandingChanged();
     return runtimeConfig;
   }
 }

@@ -22,12 +22,18 @@ export interface GeographyStateRow {
   jobStats: GeographyJobStats;
 }
 
+export interface GeographyServiceBreakdown {
+  service: string;
+  count: number;
+}
+
 export interface GeographyDistrictRow {
   _id: string;
   name: string;
   stateId: string;
   stateName: string;
   providerCount: number;
+  serviceBreakdown?: GeographyServiceBreakdown[];
   avgRating: number;
   totalReviews: number;
   createdAt?: string;
@@ -40,6 +46,11 @@ export interface GeographyProviderRow {
   name: string;
   phone?: string;
   serviceType?: string;
+  services?: Array<{
+    name: string;
+    verificationStatus?: string;
+    active?: boolean;
+  }>;
   approvalStatus?: string;
   rating?: number;
   totalReviews?: number;
@@ -183,6 +194,7 @@ export function peekGeographyDistricts(
 
 export function peekGeographyProviders(districtId: string): {
   providers: GeographyProviderRow[];
+  serviceBreakdown?: GeographyServiceBreakdown[];
   district: {
     _id: string;
     name: string;
@@ -297,6 +309,7 @@ export async function getGeographyProviders(
   options?: {force?: boolean},
 ): Promise<{
   providers: GeographyProviderRow[];
+  serviceBreakdown?: GeographyServiceBreakdown[];
   district: {
     _id: string;
     name: string;
@@ -321,6 +334,7 @@ export async function getGeographyProviders(
   }
   const data = await apiGet<{
     providers: GeographyProviderRow[];
+    serviceBreakdown?: GeographyServiceBreakdown[];
     district: {
       _id: string;
       name: string;

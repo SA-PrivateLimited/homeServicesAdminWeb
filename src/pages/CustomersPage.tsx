@@ -1,4 +1,5 @@
 import {useCallback, useEffect, useMemo, useState} from 'react';
+import {Link} from 'react-router-dom';
 import {useTranslation} from 'react-i18next';
 import {
   Icon,
@@ -41,6 +42,8 @@ import {
 import {formatLastUpdated} from '../utils/datetime';
 import {sortByUpdatedThenCreated} from '../utils/sort';
 import {CopyFeedbackButton} from '../components/CopyFeedbackButton';
+import {PinCopyButton} from '../components/PinCopyButton';
+import {RoleBadges} from '../components/RoleBadges';
 import '../styles/pages.css';
 
 const PAGE_SIZE = 50;
@@ -290,6 +293,7 @@ export function CustomersPage() {
         const pinResult = await setUserPin(
           created._id,
           createPin.trim() || undefined,
+          'customer',
         );
         pinForBanner = pinResult.loginPin;
         setRevealedPins((m) => ({...m, [created._id]: pinResult.loginPin}));
@@ -390,25 +394,23 @@ export function CustomersPage() {
   };
 
   const onRevealPin = async (row: User) => {
-    if (revealedPins[row._id]) {
+    const userId = row._id;
+    if (revealedPins[userId]) {
       setRevealedPins((m) => {
         const next = {...m};
-        delete next[row._id];
+        delete next[userId];
         return next;
       });
       return;
     }
-    setRevealBusyId(row._id);
-    setError(null);
+    setRevealBusyId(userId);
     try {
-      const result = await revealUserPin(row._id);
-      if (!result.loginPin) {
-        setError(t('pinRevealFailed'));
-        return;
+      const result = await revealUserPin(userId, 'customer');
+      if (result.loginPin) {
+        setRevealedPins((m) => ({...m, [userId]: result.loginPin as string}));
       }
-      setRevealedPins((m) => ({...m, [row._id]: result.loginPin as string}));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : t('errorGeneric'));
+    } catch {
+      // silently ignore
     } finally {
       setRevealBusyId(null);
     }
@@ -423,6 +425,7 @@ export function CustomersPage() {
       const result = await setUserPin(
         pinUser._id,
         pinValue.trim() || undefined,
+        'customer',
       );
       const userId = pinUser._id;
       const banner = pinSuccessBanner(t, pinUser, result.loginPin);
@@ -452,7 +455,7 @@ export function CustomersPage() {
         deactivateTarget.name ||
         deactivateTarget.displayName ||
         deactivateTarget._id;
-      await deactivateUser(deactivateTarget._id, deactivateReason.trim());
+      await deactivateUser(deactivateTarget._id, deactivateReason.trim(), 'customer');
       setDeactivateTarget(null);
       setDeactivateReason('');
       setSuccessBanner({
@@ -473,7 +476,7 @@ export function CustomersPage() {
     setRestoreBusyId(row._id);
     setError(null);
     try {
-      await restoreUser(row._id);
+      await restoreUser(row._id, 'customer');
       setSuccessBanner({
         title: t('accountRestoredTitle'),
         detail: t('accountRestoredDetail', {
@@ -544,10 +547,17 @@ export function CustomersPage() {
         filterPlaceholder: t('searchName'),
         filterValue: (row) => row.name || row.displayName || '',
         render: (row) => (
-          <span
-            className="cell-clamp"
-            title={row.name || row.displayName || undefined}>
-            {row.name || row.displayName || '—'}
+          <span className="name-with-roles">
+            <span
+              className="cell-clamp"
+              title={row.name || row.displayName || undefined}>
+              {row.name || row.displayName || '—'}
+            </span>
+            <RoleBadges
+              hasCustomer
+              hasPartner={Boolean(row.hasPartnerProfile)}
+              partnerId={row.hasPartnerProfile ? row._id : undefined}
+            />
           </span>
         ),
       },
@@ -620,8 +630,8 @@ export function CustomersPage() {
       },
       {
         key: 'pin',
-        header: t('loginPin'),
-        width: '12rem',
+        header: t('customerLoginPin'),
+        width: '10rem',
         render: (row) => {
           const pin = revealedPins[row._id];
           return (
@@ -631,25 +641,27 @@ export function CustomersPage() {
               </span>
               <span className="pin-cell-actions">
                 {row.hasPin ? (
-                  <>
-                    <Button variant="ghost" className="icon-only" disabled={revealBusyId === row._id} aria-label={pin ? t('hidePassword') : t('revealPin')} title={pin ? t('hidePassword') : t('revealPin')} onClick={() => void onRevealPin(row)}>
-                      <Icon
-                        name={pin ? 'visibility_off' : 'visibility'}
-                        size={18}
-                      />
-                    </Button>
-                    <CopyFeedbackButton
-                      text={pin || ''}
-                      disabled={!pin}
-                      ariaLabel={t('copyPin')}
-                      title={pin ? t('copyPin') : t('revealPin')}
-                    />
-                  </>
-                ) : (
-                  <Button variant="ghost" className="icon-only" aria-label={t('generatePin')} title={t('generatePin')} onClick={() => openPinModal(row)}>
-                    <Icon name="lock_reset" size={18} />
+                  <Button
+                    variant="ghost"
+                    className="icon-only"
+                    disabled={revealBusyId === row._id}
+                    aria-label={pin ? t('hidePassword') : t('revealPin')}
+                    title={pin ? t('hidePassword') : t('revealPin')}
+                    onClick={() => void onRevealPin(row)}>
+                    <Icon name={pin ? 'visibility_off' : 'visibility'} size={18} />
                   </Button>
-                )}
+                ) : null}
+                {row.hasPin ? (
+                  <PinCopyButton
+                    revealedPin={pin}
+                    fetchPin={async () => {
+                      const result = await revealUserPin(row._id, 'customer');
+                      return result.loginPin ?? null;
+                    }}
+                    ariaLabel={t('copyPin')}
+                    title={t('copyPin')}
+                  />
+                ) : null}
               </span>
             </span>
           );
@@ -670,12 +682,10 @@ export function CustomersPage() {
             <Button variant="ghost" className="icon-only" aria-label={t('edit')} title={t('edit')} onClick={() => openEdit(row)}>
               <Icon name="edit" size={18} />
             </Button>
-            {row.hasPin ? (
-              <Button variant="ghost" className="icon-only" aria-label={t('setPin')} title={t('setPin')} onClick={() => openPinModal(row)}>
-                <Icon name="lock_reset" size={18} />
-              </Button>
-            ) : null}
-            {row.isActive === false ? (
+            <Button variant="ghost" className="icon-only" aria-label={t('resetCustomerPin')} title={t('resetCustomerPin')} onClick={() => openPinModal(row)}>
+              <Icon name="lock_reset" size={18} />
+            </Button>
+            {row.isActive === false || row.customerAccessActive === false ? (
               <Button variant="ghost" className="icon-only" disabled={restoreBusyId === row._id} aria-label={t('restore')} title={t('restore')} onClick={() => void onRestore(row)}>
                 <Icon name="safety_check" size={18} />
               </Button>
@@ -698,7 +708,7 @@ export function CustomersPage() {
         ),
       },
     ],
-    [phoneVerifyBusyId, revealBusyId, revealedPins, restoreBusyId, t],
+    [phoneVerifyBusyId, restoreBusyId, revealBusyId, revealedPins, t],
   );
 
   return (
@@ -789,143 +799,145 @@ export function CustomersPage() {
           title={t('addCustomerTitle')}
           onClose={closeCreate}
           testId="customers-create-modal">
-          <p className="muted compact">{t('addCustomerLead')}</p>
-          <label>
-            {t('name')}
-            <input
-              value={createName}
-              onChange={(e) => setCreateName(e.target.value)}
-              autoComplete="name"
-            />
-          </label>
-          <label>
-            {t('phone')}
-            <div className="phone-input-row">
-              <span className="phone-prefix" aria-hidden>
-                +91
-              </span>
-              <input
-                type="tel"
-                inputMode="numeric"
-                maxLength={10}
-                value={createPhone}
-                placeholder={t('phoneTenDigitsHint')}
-                onChange={(e) =>
-                  setCreatePhone(localTenDigits(e.target.value).slice(0, 10))
-                }
-                autoComplete="tel-national"
-                required
-              />
-            </div>
-          </label>
-          <label>
-            {t('locationAddress')}
-            <input
-              value={createAddress}
-              onChange={(e) => setCreateAddress(e.target.value)}
-              placeholder={t('addressPlaceholder')}
-            />
-          </label>
-          <label>
-            {t('landmarkOptional')}
-            <input
-              value={createLandmark}
-              onChange={(e) => setCreateLandmark(e.target.value)}
-              placeholder={t('landmarkOptional')}
-            />
-          </label>
-          <div className="form-row">
+          <p className="modal-lead">{t('addCustomerLead')}</p>
+          <div className="modal-form">
             <label>
-              {t('geoState')}
-              <Select
-                options={stateOptions}
-                value={createStateId}
-                placeholder={t('geoState')}
-                showSearch
-                searchPlaceholder={t('searchState')}
-                emptyMessage={t('noStatesFound')}
-                onChange={(value) => {
-                  setCreateStateId(value);
-                  setCreateDistrictId('');
-                  setCreateCity('');
-                  setCreatePincode('');
-                }}
+              {t('name')}
+              <input
+                value={createName}
+                onChange={(e) => setCreateName(e.target.value)}
+                autoComplete="name"
               />
             </label>
             <label>
-              {t('geoDistrict')}
-              <Select
-                options={districtOptions}
-                value={createDistrictId}
-                placeholder={t('geoDistrict')}
-                showSearch
-                searchPlaceholder={t('searchDistrict')}
-                emptyMessage={t('noDistrictsFound')}
-                onChange={(value) => {
-                  setCreateDistrictId(value);
-                  const d = geoDistricts.find((x) => x._id === value);
-                  if (d) {
-                    if (!createCity.trim()) setCreateCity(d.name);
-                    if (d.pincode) setCreatePincode(d.pincode);
+              {t('phone')}
+              <div className="phone-input-row">
+                <span className="phone-prefix" aria-hidden>
+                  +91
+                </span>
+                <input
+                  type="tel"
+                  inputMode="numeric"
+                  maxLength={10}
+                  value={createPhone}
+                  placeholder={t('phoneTenDigitsHint')}
+                  onChange={(e) =>
+                    setCreatePhone(localTenDigits(e.target.value).slice(0, 10))
                   }
-                }}
-              />
-            </label>
-          </div>
-          <div className="form-row">
-            <label>
-              {t('geoCity')}
-              <input
-                value={createCity}
-                onChange={(e) => setCreateCity(e.target.value)}
-                placeholder={t('geoDistrict')}
-              />
+                  autoComplete="tel-national"
+                  required
+                />
+              </div>
             </label>
             <label>
-              {t('pincode')}
+              {t('locationAddress')}
               <input
-                type="text"
-                inputMode="numeric"
-                maxLength={6}
-                value={createPincode}
-                onChange={(e) =>
-                  setCreatePincode(e.target.value.replace(/\D/g, '').slice(0, 6))
-                }
-                placeholder="560001"
+                value={createAddress}
+                onChange={(e) => setCreateAddress(e.target.value)}
+                placeholder={t('addressPlaceholder')}
               />
             </label>
-          </div>
-          <fieldset className="pin-create-fieldset">
-            <legend>{t('loginPin')}</legend>
-            <label className="checkbox-inline pin-create-check">
+            <label>
+              {t('landmarkOptional')}
               <input
-                type="checkbox"
-                checked={createGeneratePin}
-                onChange={(e) => {
-                  setCreateGeneratePin(e.target.checked);
-                  if (!e.target.checked) setCreatePin('');
-                }}
+                value={createLandmark}
+                onChange={(e) => setCreateLandmark(e.target.value)}
+                placeholder={t('landmarkOptional')}
               />
-              {t('generatePinOnCreate')}
             </label>
-            {createGeneratePin ? (
+            <div className="modal-form-row">
               <label>
-                {t('loginPin')}
+                {t('geoState')}
+                <Select
+                  options={stateOptions}
+                  value={createStateId}
+                  placeholder={t('geoState')}
+                  showSearch
+                  searchPlaceholder={t('searchState')}
+                  emptyMessage={t('noStatesFound')}
+                  onChange={(value) => {
+                    setCreateStateId(value);
+                    setCreateDistrictId('');
+                    setCreateCity('');
+                    setCreatePincode('');
+                  }}
+                />
+              </label>
+              <label>
+                {t('geoDistrict')}
+                <Select
+                  options={districtOptions}
+                  value={createDistrictId}
+                  placeholder={t('geoDistrict')}
+                  showSearch
+                  searchPlaceholder={t('searchDistrict')}
+                  emptyMessage={t('noDistrictsFound')}
+                  onChange={(value) => {
+                    setCreateDistrictId(value);
+                    const d = geoDistricts.find((x) => x._id === value);
+                    if (d) {
+                      if (!createCity.trim()) setCreateCity(d.name);
+                      if (d.pincode) setCreatePincode(d.pincode);
+                    }
+                  }}
+                />
+              </label>
+            </div>
+            <div className="modal-form-row">
+              <label>
+                {t('geoCity')}
+                <input
+                  value={createCity}
+                  onChange={(e) => setCreateCity(e.target.value)}
+                  placeholder={t('geoDistrict')}
+                />
+              </label>
+              <label>
+                {t('pincode')}
                 <input
                   type="text"
                   inputMode="numeric"
                   maxLength={6}
-                  placeholder={t('pinAutoGenerate')}
-                  value={createPin}
+                  value={createPincode}
                   onChange={(e) =>
-                    setCreatePin(e.target.value.replace(/\D/g, '').slice(0, 6))
+                    setCreatePincode(e.target.value.replace(/\D/g, '').slice(0, 6))
                   }
+                  placeholder="560001"
                 />
               </label>
-            ) : null}
-          </fieldset>
+            </div>
+            <fieldset className="pin-create-fieldset">
+              <legend>{t('loginPin')}</legend>
+              <label className="checkbox-inline pin-create-check">
+                <input
+                  type="checkbox"
+                  checked={createGeneratePin}
+                  onChange={(e) => {
+                    setCreateGeneratePin(e.target.checked);
+                    if (!e.target.checked) setCreatePin('');
+                  }}
+                />
+                {t('generatePinOnCreate')}
+              </label>
+              {createGeneratePin ? (
+                <label>
+                  {t('loginPin')}
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={6}
+                    placeholder={t('pinAutoGenerate')}
+                    value={createPin}
+                    onChange={(e) =>
+                      setCreatePin(e.target.value.replace(/\D/g, '').slice(0, 6))
+                    }
+                  />
+                </label>
+              ) : null}
+            </fieldset>
+          </div>
           {createError ? <p className="error-text">{createError}</p> : null}
-          <div className="actions">
+          <div className="modal-actions">
             <Button variant="primary" disabled={creating} onClick={() => void onCreateCustomer()}>
               {creating ? t('saving') : t('save')}
             </Button>
@@ -941,94 +953,145 @@ export function CustomersPage() {
           title={t('editCustomerTitle')}
           onClose={closeEdit}
           testId="customers-edit-modal">
-          <p className="muted compact">{t('editCustomerLead')}</p>
-          <label>
-            {t('name')}
-            <input
-              value={editName}
-              onChange={(e) => setEditName(e.target.value)}
-              autoComplete="name"
-            />
-          </label>
-          <label>
-            {t('locationAddress')}
-            <input
-              value={editAddress}
-              onChange={(e) => setEditAddress(e.target.value)}
-              placeholder={t('addressPlaceholder')}
-            />
-          </label>
-          <label>
-            {t('landmarkOptional')}
-            <input
-              value={editLandmark}
-              onChange={(e) => setEditLandmark(e.target.value)}
-              placeholder={t('landmarkOptional')}
-            />
-          </label>
-          <div className="form-row">
+          <p className="modal-lead">{t('editCustomerLead')}</p>
+          <div className="modal-form">
             <label>
-              {t('geoState')}
-              <Select
-                options={stateOptions}
-                value={editStateId}
-                placeholder={t('geoState')}
-                showSearch
-                searchPlaceholder={t('searchState')}
-                emptyMessage={t('noStatesFound')}
-                onChange={(value) => {
-                  setEditStateId(value);
-                  setEditDistrictId('');
-                  setEditCity('');
-                  setEditPincode('');
-                }}
+              {t('name')}
+              <input
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                autoComplete="name"
               />
             </label>
             <label>
-              {t('geoDistrict')}
-              <Select
-                options={editDistrictOptions}
-                value={editDistrictId}
-                placeholder={t('geoDistrict')}
-                showSearch
-                searchPlaceholder={t('searchDistrict')}
-                emptyMessage={t('noDistrictsFound')}
-                onChange={(value) => {
-                  setEditDistrictId(value);
-                  const d = geoDistricts.find((x) => x._id === value);
-                  if (d) {
-                    if (!editCity.trim()) setEditCity(d.name);
-                    if (d.pincode) setEditPincode(d.pincode);
+              {t('locationAddress')}
+              <input
+                value={editAddress}
+                onChange={(e) => setEditAddress(e.target.value)}
+                placeholder={t('addressPlaceholder')}
+              />
+            </label>
+            <label>
+              {t('landmarkOptional')}
+              <input
+                value={editLandmark}
+                onChange={(e) => setEditLandmark(e.target.value)}
+                placeholder={t('landmarkOptional')}
+              />
+            </label>
+            <div className="modal-form-row">
+              <label>
+                {t('geoState')}
+                <Select
+                  options={stateOptions}
+                  value={editStateId}
+                  placeholder={t('geoState')}
+                  showSearch
+                  searchPlaceholder={t('searchState')}
+                  emptyMessage={t('noStatesFound')}
+                  onChange={(value) => {
+                    setEditStateId(value);
+                    setEditDistrictId('');
+                    setEditCity('');
+                    setEditPincode('');
+                  }}
+                />
+              </label>
+              <label>
+                {t('geoDistrict')}
+                <Select
+                  options={editDistrictOptions}
+                  value={editDistrictId}
+                  placeholder={t('geoDistrict')}
+                  showSearch
+                  searchPlaceholder={t('searchDistrict')}
+                  emptyMessage={t('noDistrictsFound')}
+                  onChange={(value) => {
+                    setEditDistrictId(value);
+                    const d = geoDistricts.find((x) => x._id === value);
+                    if (d) {
+                      if (!editCity.trim()) setEditCity(d.name);
+                      if (d.pincode) setEditPincode(d.pincode);
+                    }
+                  }}
+                />
+              </label>
+            </div>
+            <div className="modal-form-row">
+              <label>
+                {t('geoCity')}
+                <input
+                  value={editCity}
+                  onChange={(e) => setEditCity(e.target.value)}
+                  placeholder={t('geoDistrict')}
+                />
+              </label>
+              <label>
+                {t('pincode')}
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={6}
+                  value={editPincode}
+                  onChange={(e) =>
+                    setEditPincode(e.target.value.replace(/\D/g, '').slice(0, 6))
                   }
-                }}
-              />
-            </label>
+                  placeholder="560001"
+                />
+              </label>
+            </div>
           </div>
-          <div className="form-row">
-            <label>
-              {t('geoCity')}
-              <input
-                value={editCity}
-                onChange={(e) => setEditCity(e.target.value)}
-                placeholder={t('geoDistrict')}
-              />
-            </label>
-            <label>
-              {t('pincode')}
-              <input
-                type="text"
-                inputMode="numeric"
-                maxLength={6}
-                value={editPincode}
-                onChange={(e) =>
-                  setEditPincode(e.target.value.replace(/\D/g, '').slice(0, 6))
-                }
-                placeholder="560001"
-              />
-            </label>
+          <div className="modal-section">
+            <p className="modal-section__title">{t('accountAccess')}</p>
+            <p className="modal-section__meta">
+              {t('status')}:{' '}
+              {editUser.isActive === false ||
+              editUser.customerAccessActive === false
+                ? t('inactive')
+                : t('active')}
+            </p>
+            <p className="modal-section__meta">
+              {t('customerLoginPin')}: {editUser.hasPin ? '••••••' : '—'}
+            </p>
+            <div className="modal-actions">
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  openPinModal(editUser);
+                }}>
+                {t('resetCustomerPin')}
+              </Button>
+              {editUser.isActive === false ||
+              editUser.customerAccessActive === false ? (
+                <Button
+                  variant="secondary"
+                  disabled={restoreBusyId === editUser._id}
+                  onClick={() => void onRestore(editUser)}>
+                  {t('restoreCustomerAccess')}
+                </Button>
+              ) : (
+                <Button
+                  variant="danger"
+                  onClick={() => {
+                    setDeactivateTarget(editUser);
+                    setDeactivateReason('');
+                    setDeactivateError(null);
+                  }}>
+                  {t('deactivateCustomerAccess')}
+                </Button>
+              )}
+            </div>
+            {editUser.hasPartnerProfile ? (
+              <p className="modal-section__meta">
+                {t('alsoRegisteredAsPartner')}{' '}
+                <Link to={`/providers/${editUser._id}`}>
+                  {t('viewPartnerProfile')}
+                </Link>
+              </p>
+            ) : null}
           </div>
           {editError ? <p className="error-text">{editError}</p> : null}
-          <div className="actions">
+          <div className="modal-actions">
             <Button variant="primary" disabled={editing} onClick={() => void onSaveCustomer()}>
               {editing ? t('saving') : t('save')}
             </Button>
@@ -1041,11 +1104,11 @@ export function CustomersPage() {
 
       {pinUser ? (
         <Dialog open
-          title={t('setPinTitle')}
+          title={t('resetCustomerPin')}
           onClose={() => setPinUser(null)}
           testId="set-pin-modal">
-          <p className="muted compact">{t('setPinLead')}</p>
-          <p className="muted compact">
+          <p className="modal-lead">{t('resetCustomerPinLead')}</p>
+          <p className="modal-lead" style={{fontWeight: 600, color: 'var(--color-text)'}}>
             {pinUser.name || pinUser.displayName || pinUser.phone}
           </p>
           <label>
@@ -1062,7 +1125,7 @@ export function CustomersPage() {
             />
           </label>
           {pinMessage ? <p className="error-text">{pinMessage}</p> : null}
-          <div className="actions">
+          <div className="modal-actions">
             <Button variant="primary" disabled={pinBusy} onClick={() => void onSetPin()}>
               {pinBusy ? t('saving') : t('save')}
             </Button>
@@ -1075,11 +1138,11 @@ export function CustomersPage() {
 
       {deactivateTarget ? (
         <Dialog open
-          title={t('deactivateTitle')}
+          title={t('deactivateCustomerTitle')}
           onClose={() => setDeactivateTarget(null)}
           testId="customers-deactivate-modal">
-          <p className="muted compact">
-            {t('deactivateLead', {
+          <p className="modal-lead">
+            {t('deactivateCustomerLead', {
               name:
                 deactivateTarget.name ||
                 deactivateTarget.displayName ||
@@ -1089,7 +1152,7 @@ export function CustomersPage() {
           <label>
             {t('deactivationReason')}
             <textarea
-              rows={3}
+              rows={4}
               value={deactivateReason}
               onChange={(e) => setDeactivateReason(e.target.value)}
               autoFocus
@@ -1098,9 +1161,9 @@ export function CustomersPage() {
           {deactivateError ? (
             <p className="error-text">{deactivateError}</p>
           ) : null}
-          <div className="actions">
+          <div className="modal-actions">
             <Button variant="danger" disabled={deactivateBusy} onClick={() => void onDeactivate()}>
-              {deactivateBusy ? t('saving') : t('deactivate')}
+              {deactivateBusy ? t('saving') : t('deactivateCustomerAccess')}
             </Button>
             <Button variant="ghost" onClick={() => setDeactivateTarget(null)}>
               {t('cancel')}
@@ -1114,11 +1177,11 @@ export function CustomersPage() {
           title={t('deleteUserTitle')}
           onClose={() => setDeleteTarget(null)}
           testId="customers-delete-modal">
-          <p className="muted compact">
+          <p className="modal-lead">
             {t('deleteUserLead', {name: userLabel(deleteTarget).name})}
           </p>
           {deleteError ? <p className="error-text">{deleteError}</p> : null}
-          <div className="actions">
+          <div className="modal-actions">
             <Button variant="danger" disabled={deleteBusy} onClick={() => void onDeleteUser()}>
               {deleteBusy ? t('saving') : t('confirmDelete')}
             </Button>

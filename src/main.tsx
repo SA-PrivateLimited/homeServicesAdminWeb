@@ -15,6 +15,16 @@ import './styles/global.css';
 import './styles/scaling.css';
 import App from './App';
 
+/* Measure the browser's scrollbar width and expose it as a CSS variable.
+   This lets the body-scroll-lock preserve layout width when overflow:hidden
+   removes the scrollbar (preventing the page from jumping). */
+function measureScrollbarWidth() {
+  const w = window.innerWidth - document.documentElement.clientWidth;
+  document.documentElement.style.setProperty('--scrollbar-width', `${w}px`);
+}
+measureScrollbarWidth();
+window.addEventListener('resize', measureScrollbarWidth);
+
 async function boot() {
   const config = await loadRuntimeConfig();
   applyColorPalette(config.themeColors, {clientId: 'local'});
