@@ -37,6 +37,13 @@ export interface User {
   qrCodeDataUrl?: string;
   createdAt?: string;
   updatedAt?: string;
+  customerProfileEnabled?: boolean;
+  customerAccessActive?: boolean;
+  hasCustomerProfile?: boolean;
+  hasPartnerProfile?: boolean;
+  hasCustomerPin?: boolean;
+  hasPartnerPin?: boolean;
+  pinPurpose?: 'customer' | 'partner';
 }
 
 export interface CreateUserInput {
@@ -114,12 +121,16 @@ export async function deleteUser(userId: string): Promise<{_id: string}> {
 export async function deactivateUser(
   userId: string,
   reason: string,
+  scope: 'customer' | 'partner' | 'account' = 'account',
 ): Promise<User> {
-  return apiPost<User>(`/api/users/${userId}/deactivate`, {reason});
+  return apiPost<User>(`/api/users/${userId}/deactivate`, {reason, scope});
 }
 
-export async function restoreUser(userId: string): Promise<User> {
-  return apiPost<User>(`/api/users/${userId}/restore`, {});
+export async function restoreUser(
+  userId: string,
+  scope: 'customer' | 'partner' | 'account' = 'account',
+): Promise<User> {
+  return apiPost<User>(`/api/users/${userId}/restore`, {scope});
 }
 
 export async function updateUser(
@@ -160,30 +171,37 @@ export async function setUserPassword(
   );
 }
 
+export type PinPurpose = 'customer' | 'partner';
+
 export async function setUserPin(
   userId: string,
   pin?: string,
-): Promise<{_id: string; loginPin: string; hasPin: boolean}> {
-  return apiPut<{_id: string; loginPin: string; hasPin: boolean}>(
+  purpose?: PinPurpose,
+): Promise<{_id: string; loginPin: string; hasPin: boolean; purpose?: PinPurpose}> {
+  return apiPut<{_id: string; loginPin: string; hasPin: boolean; purpose?: PinPurpose}>(
     `/api/users/${userId}/pin`,
-    pin ? {pin} : {},
+    purpose ? {pin, purpose} : pin ? {pin} : {},
   );
 }
 
 export async function revealUserPin(
   userId: string,
+  purpose?: PinPurpose,
 ): Promise<{
   _id: string;
   hasPin: boolean;
   loginPin: string | null;
   recoverable: boolean;
+  purpose?: PinPurpose;
 }> {
+  const qs = purpose ? `?purpose=${purpose}` : '';
   return apiGet<{
     _id: string;
     hasPin: boolean;
     loginPin: string | null;
     recoverable: boolean;
-  }>(`/api/users/${userId}/pin`);
+    purpose?: PinPurpose;
+  }>(`/api/users/${userId}/pin${qs}`);
 }
 
 /** Super Admin: clear admin MFA so they re-enroll on next login. */

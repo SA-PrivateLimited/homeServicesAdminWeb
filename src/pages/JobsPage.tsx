@@ -121,10 +121,54 @@ function addressSearchValue(value?: string | JobAddress | null): string {
     .join(' ');
 }
 
-function providerLabel(p: Provider): string {
-  const name = p.businessName || p.name || p.displayName || p._id;
-  const service = p.serviceType || p.specialization;
-  return service ? `${name} · ${service}` : name;
+function providerName(p: Provider): string {
+  return p.businessName || p.name || p.displayName || p._id;
+}
+
+function normalized(value?: string | null): string {
+  return String(value || '').trim().toLowerCase();
+}
+
+function providerRelevantService(provider: Provider, serviceType?: string | null) {
+  const target = normalized(serviceType);
+  const match = (provider.services || []).find(
+    (svc) => normalized(svc.name) === target,
+  );
+  if (match) return match;
+  if (
+    target &&
+    [provider.serviceType, provider.specialization].some(
+      (value) => normalized(value) === target,
+    )
+  ) {
+    return {
+      name: serviceType || '',
+      verificationStatus: provider.approvalStatus || 'pending',
+      active: provider.isActive !== false,
+      experience: provider.experience,
+      notes: '',
+    };
+  }
+  return null;
+}
+
+function providerLocationLine(provider: Provider): string {
+  const loc =
+    provider.location ||
+    (typeof provider.address === 'object' ? provider.address : undefined) ||
+    provider.currentLocation;
+  if (!loc) return '—';
+  const parts = [loc.district || loc.city, loc.state, loc.pincode].filter(Boolean);
+  return parts.length ? parts.join(', ') : '—';
+}
+
+function isEligibleForJob(provider: Provider, serviceType?: string | null): boolean {
+  const svc = providerRelevantService(provider, serviceType);
+  if (!svc) return false;
+  const verified = normalized(svc.verificationStatus) === 'approved';
+  const active = svc.active !== false;
+  const accountActive = provider.isActive !== false;
+  return verified && active && accountActive;
 }
 
 function commentRoleLabel(
@@ -182,7 +226,11 @@ export function JobsPage() {
   const [viewLoading, setViewLoading] = useState(false);
   const [viewError, setViewError] = useState<string | null>(null);
   const [actionBusy, setActionBusy] = useState(false);
-  const [assignProviderId, setAssignProviderId] = useState('');
+  const [assignPickerOpen, setAssignPickerOpen] = useState(false);
+  const [assignCandidates, setAssignCandidates] = useState<Provider[]>([]);
+  const [assignLoading, setAssignLoading] = useState(false);
+  const [assignSearch, setAssignSearch] = useState('');
+  const [pendingAssignProvider, setPendingAssignProvider] = useState<Provider | null>(null);
   const [commentText, setCommentText] = useState('');
   const [commentBusy, setCommentBusy] = useState(false);
   const [revealedTaskPins, setRevealedTaskPins] = useState<
@@ -307,15 +355,6 @@ export function JobsPage() {
       cancelled = true;
     };
   }, []);
-
-  const providerOptions = useMemo(
-    () =>
-      providers.map((p) => ({
-        value: p._id,
-        label: providerLabel(p),
-      })),
-    [providers],
-  );
 
   const providerPhoneById = useMemo(() => {
     const map = new Map<string, string>();
@@ -443,7 +482,6 @@ export function JobsPage() {
     const full = await getJobCardById(jobId);
     if (full) {
       setViewJob(full);
-      setAssignProviderId(isJobUnassigned(full) ? '' : full.providerId || '');
     }
   };
 
@@ -455,9 +493,6 @@ export function JobsPage() {
       const result = await fn();
       if (result) {
         setViewJob(result);
-        setAssignProviderId(
-          isJobUnassigned(result) ? '' : result.providerId || '',
-        );
       } else {
         await refreshViewJob(viewJob._id);
       }
@@ -471,7 +506,6 @@ export function JobsPage() {
 
   const openView = async (job: JobCard) => {
     setViewJob(job);
-    setAssignProviderId(isJobUnassigned(job) ? '' : job.providerId || '');
     setCommentText('');
     setViewError(null);
     setViewLoading(true);
@@ -479,9 +513,6 @@ export function JobsPage() {
       const full = await getJobCardById(job._id);
       if (full) {
         setViewJob(full);
-        setAssignProviderId(
-          isJobUnassigned(full) ? '' : full.providerId || '',
-        );
       }
     } catch (err) {
       setViewError(err instanceof Error ? err.message : t('errorGeneric'));
@@ -492,28 +523,63 @@ export function JobsPage() {
 
   const closeView = () => {
     setViewJob(null);
-    setAssignProviderId('');
+    setAssignPickerOpen(false);
+    setAssignCandidates([]);
+    setAssignSearch('');
+    setPendingAssignProvider(null);
     setCommentText('');
     setViewError(null);
     setRevealModalPin(false);
   };
 
-  const onAssignOrChange = () => {
-    if (!viewJob || !assignProviderId) {
-      setViewError(t('selectProviderRequired'));
-      return;
+  const openAssignPicker = async () => {
+    if (!viewJob) return;
+    setAssignPickerOpen(true);
+    setPendingAssignProvider(null);
+    setAssignSearch('');
+    setAssignLoading(true);
+    setViewError(null);
+    try {
+      const customerAddress =
+        typeof viewJob.customerAddress === 'object' ? viewJob.customerAddress : undefined;
+      const list = await getProviders({
+        approvalStatus: 'approved',
+        serviceType: viewJob.serviceType,
+        stateId: customerAddress?.stateId,
+        districtId: customerAddress?.districtId,
+        includeInactive: true,
+        limit: 100,
+      });
+      setAssignCandidates(
+        [...list].sort((a, b) => {
+          const aCurrent = a._id === viewJob.providerId ? 1 : 0;
+          const bCurrent = b._id === viewJob.providerId ? 1 : 0;
+          if (aCurrent !== bCurrent) return bCurrent - aCurrent;
+          const aEligible = isEligibleForJob(a, viewJob.serviceType) ? 1 : 0;
+          const bEligible = isEligibleForJob(b, viewJob.serviceType) ? 1 : 0;
+          if (aEligible !== bEligible) return bEligible - aEligible;
+          return providerName(a).localeCompare(providerName(b));
+        }),
+      );
+    } catch (err) {
+      setViewError(err instanceof Error ? err.message : t('errorGeneric'));
+    } finally {
+      setAssignLoading(false);
     }
+  };
+
+  const onConfirmAssignChange = () => {
+    if (!viewJob || !pendingAssignProvider) return;
     const unassigned = isJobUnassigned(viewJob);
-    if (!unassigned && assignProviderId === (viewJob.providerId || '').trim()) {
-      return;
-    }
     void withModalAction(() =>
       assignProviderToJobCard(
         viewJob._id,
-        assignProviderId,
+        pendingAssignProvider._id,
         unassigned ? 'accepted' : viewJob.status || 'accepted',
       ),
     );
+    setPendingAssignProvider(null);
+    setAssignPickerOpen(false);
   };
 
   const onUnassign = () => {
@@ -790,6 +856,22 @@ export function JobsPage() {
 
   const comments = viewJob?.comments ?? [];
   const modalUnassigned = viewJob ? isJobUnassigned(viewJob) : false;
+  const visibleAssignCandidates = useMemo(() => {
+    const term = normalized(assignSearch);
+    return assignCandidates.filter((candidate) => {
+      if (!term) return true;
+      const haystack = [
+        providerName(candidate),
+        candidate.phone,
+        candidate.phoneNumber,
+        providerLocationLine(candidate),
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+      return haystack.includes(term);
+    });
+  }, [assignCandidates, assignSearch]);
 
   return (
     <div className="admin-page scale-baseline-80" data-testid="jobs-root">
@@ -1043,35 +1125,6 @@ export function JobsPage() {
             <h4 className="modal-section-title">
               <Icon name="tune" size={16} /> {t('updateStatus')}
             </h4>
-            <label>
-              {modalUnassigned ? t('assignProvider') : t('changeProvider')}
-              <Select
-                options={providerOptions}
-                value={assignProviderId}
-                placeholder={t('selectProvider')}
-                disabled={actionBusy}
-                showSearch
-                searchPlaceholder={t('searchProvider')}
-                emptyMessage={t('empty')}
-                onChange={setAssignProviderId}
-              />
-            </label>
-            <div className="actions">
-              <Button variant="primary" disabled={ actionBusy || !assignProviderId || (!modalUnassigned && assignProviderId === (viewJob.providerId || '').trim()) } onClick={onAssignOrChange}>
-                <Icon name={modalUnassigned ? 'person_add' : 'swap_horiz'} size={16} />
-                {actionBusy
-                  ? t('saving')
-                  : modalUnassigned
-                    ? t('assignAndConfirm')
-                    : t('changeProvider')}
-              </Button>
-              {!modalUnassigned ? (
-                <Button variant="ghost" disabled={actionBusy} onClick={onUnassign}>
-                  <Icon name="person_remove" size={16} />
-                  {t('unassignProvider')}
-                </Button>
-              ) : null}
-            </div>
             {!modalUnassigned ? (
               <label>
                 {t('updateStatus')}
@@ -1082,7 +1135,48 @@ export function JobsPage() {
                   onChange={onStatusChange}
                 />
               </label>
-            ) : null}
+            ) : (
+              <p className="muted compact">{t('jobUnassignedStatusHint')}</p>
+            )}
+          </section>
+
+          <section className="assign-block">
+            <h4 className="modal-section-title">
+              <Icon name="engineering" size={16} /> {t('assignment')}
+            </h4>
+            <div className="assignment-summary">
+              <div>
+                <p className="muted compact">{t('currentPartner')}</p>
+                {modalUnassigned ? (
+                  <p className="job-party-name">
+                    <StatusChip status="pending" label={t('unassigned')} />
+                  </p>
+                ) : (
+                  <p className="job-party-name">
+                    {viewJob.providerName || '—'}
+                    {viewJob.serviceType ? ` · ${viewJob.serviceType}` : ''}
+                  </p>
+                )}
+              </div>
+              <div className="actions">
+                <Button
+                  variant="primary"
+                  disabled={actionBusy}
+                  onClick={() => void openAssignPicker()}>
+                  <Icon
+                    name={modalUnassigned ? 'person_add' : 'swap_horiz'}
+                    size={16}
+                  />
+                  {modalUnassigned ? t('assignPartner') : t('changePartner')}
+                </Button>
+                {!modalUnassigned ? (
+                  <Button variant="ghost" disabled={actionBusy} onClick={onUnassign}>
+                    <Icon name="person_remove" size={16} />
+                    {t('unassignProvider')}
+                  </Button>
+                ) : null}
+              </div>
+            </div>
           </section>
 
           <section className="job-comments">
@@ -1137,6 +1231,168 @@ export function JobsPage() {
               </Button>
             </div>
           </section>
+        </Dialog>
+      ) : null}
+
+      {viewJob && assignPickerOpen ? (
+        <Dialog
+          open
+          title={t('changePartnerTitle')}
+          onClose={() => {
+            setAssignPickerOpen(false);
+            setPendingAssignProvider(null);
+          }}
+          className="modal--wide">
+          <p className="modal-lead">{t('changePartnerLead')}</p>
+          <div className="assignment-job-context">
+            <div>
+              <strong>{t('service')}</strong>
+              <span>{viewJob.serviceType || '—'}</span>
+            </div>
+            <div>
+              <strong>{t('customer')}</strong>
+              <span>{viewJob.customerName || '—'}</span>
+            </div>
+            <div>
+              <strong>{t('jobLocation')}</strong>
+              <span>{formatAddress(viewJob.customerAddress)}</span>
+            </div>
+            <div>
+              <strong>{t('currentPartner')}</strong>
+              <span>
+                {modalUnassigned
+                  ? t('unassigned')
+                  : `${viewJob.providerName || '—'}${viewJob.serviceType ? ` · ${viewJob.serviceType}` : ''}`}
+              </span>
+            </div>
+          </div>
+          <label>
+            {t('searchPartners')}
+            <input
+              value={assignSearch}
+              onChange={(e) => setAssignSearch(e.target.value)}
+              placeholder={t('searchPartnersPlaceholder')}
+            />
+          </label>
+          {assignLoading ? <p className="muted compact">{t('loading')}</p> : null}
+          {!assignLoading ? (
+            <div className="assignment-candidate-list">
+              {visibleAssignCandidates.map((candidate) => {
+                const relevantService = providerRelevantService(
+                  candidate,
+                  viewJob.serviceType,
+                );
+                const eligible = isEligibleForJob(candidate, viewJob.serviceType);
+                const isCurrent = candidate._id === viewJob.providerId;
+                const location = providerLocationLine(candidate);
+                return (
+                  <div
+                    key={candidate._id}
+                    className={`assignment-candidate-card${eligible ? '' : ' is-ineligible'}${isCurrent ? ' is-current' : ''}`}>
+                    <div className="assignment-candidate-main">
+                      <div className="assignment-candidate-head">
+                        <strong>{providerName(candidate)}</strong>
+                        {isCurrent ? (
+                          <StatusChip status="active" label={t('currentPartner')} />
+                        ) : null}
+                      </div>
+                      <p className="muted compact">
+                        {relevantService?.name || viewJob.serviceType || t('service')}
+                        {' · '}
+                        {normalized(relevantService?.verificationStatus) === 'approved'
+                          ? t('serviceVerified')
+                          : t('servicePending')}
+                        {' · '}
+                        {relevantService?.active === false
+                          ? t('serviceAvailabilityOff')
+                          : t('serviceAvailabilityOn')}
+                      </p>
+                      {relevantService?.experience != null ? (
+                        <p className="muted compact">
+                          {relevantService.experience} {t('years')} {t('experience')}
+                        </p>
+                      ) : null}
+                      {location !== '—' ? (
+                        <p className="muted compact">{location}</p>
+                      ) : null}
+                      {candidate.isAvailable !== undefined ? (
+                        <p className="muted compact">
+                          {candidate.isAvailable ? t('available') : t('unavailable')}
+                        </p>
+                      ) : null}
+                      {(candidate.phone || candidate.phoneNumber) ? (
+                        <p className="muted compact">
+                          {formatPhoneDisplay(candidate.phone, candidate.phoneNumber)}
+                        </p>
+                      ) : null}
+                    </div>
+                    <div className="assignment-candidate-actions">
+                      <Button
+                        variant={isCurrent ? 'ghost' : 'primary'}
+                        disabled={!eligible || actionBusy || isCurrent}
+                        onClick={() => setPendingAssignProvider(candidate)}>
+                        {isCurrent ? t('currentPartner') : t('select')}
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
+              {!visibleAssignCandidates.length ? (
+                <p className="muted">{t('noEligiblePartnersFound')}</p>
+              ) : null}
+            </div>
+          ) : null}
+          <div className="modal-actions">
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setAssignPickerOpen(false);
+                setPendingAssignProvider(null);
+              }}>
+              {t('cancel')}
+            </Button>
+          </div>
+        </Dialog>
+      ) : null}
+
+      {viewJob && pendingAssignProvider ? (
+        <Dialog
+          open
+          title={t('confirmPartnerChangeTitle')}
+          onClose={() => setPendingAssignProvider(null)}>
+          <p className="modal-lead">
+            {modalUnassigned
+              ? t('assignPartnerConfirmLead')
+              : t('changePartnerConfirmLead')}
+          </p>
+          <dl className="detail-list">
+            <div>
+              <dt>{t('currentPartner')}</dt>
+              <dd>
+                {modalUnassigned
+                  ? t('unassigned')
+                  : `${viewJob.providerName || '—'}${viewJob.serviceType ? ` · ${viewJob.serviceType}` : ''}`}
+              </dd>
+            </div>
+            <div>
+              <dt>{t('newPartner')}</dt>
+              <dd>
+                {providerName(pendingAssignProvider)}
+                {viewJob.serviceType ? ` · ${viewJob.serviceType}` : ''}
+              </dd>
+            </div>
+          </dl>
+          {['accepted', 'in-progress'].includes(viewJob.status || '') ? (
+            <p className="muted compact">{t('activeJobReassignWarning')}</p>
+          ) : null}
+          <div className="modal-actions">
+            <Button variant="primary" disabled={actionBusy} onClick={onConfirmAssignChange}>
+              {actionBusy ? t('saving') : t('confirmPartnerChange')}
+            </Button>
+            <Button variant="ghost" onClick={() => setPendingAssignProvider(null)}>
+              {t('cancel')}
+            </Button>
+          </div>
         </Dialog>
       ) : null}
     </div>

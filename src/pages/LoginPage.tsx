@@ -2,7 +2,11 @@ import {useEffect, useState, type FormEvent, type ReactNode} from 'react';
 import {Navigate, useNavigate} from 'react-router-dom';
 import {useTranslation} from 'react-i18next';
 import {useAuthStore} from '../store/authStore';
-import {getBrandLogoSrc, getRuntimeConfig} from '../config/runtime';
+import {
+  getBrandLogoSrc,
+  getRuntimeConfig,
+  RUNTIME_BRANDING_EVENT,
+} from '../config/runtime';
 import './LoginPage.css';
 
 type Step =
@@ -58,7 +62,21 @@ function LoginShowcase({
   return (
     <aside className="login-showcase" aria-hidden>
       <div className="login-showcase-brand">
-        <img src={logoSrc} alt="" width={48} height={48} />
+        <img
+          src={logoSrc}
+          alt=""
+          width={48}
+          height={48}
+          onError={(e) => {
+            const img = e.currentTarget;
+            if (img.src.endsWith('/logo.png')) {
+              img.style.display = 'none';
+              return;
+            }
+            img.onerror = null;
+            img.src = '/logo.png';
+          }}
+        />
         <div>
           <strong>{brandName}</strong>
           <span>Operations & marketplace control</span>
@@ -116,6 +134,15 @@ function LoginBrand({
         alt=""
         width={64}
         height={64}
+        onError={(e) => {
+          const img = e.currentTarget;
+          if (img.src.endsWith('/logo.png')) {
+            img.style.display = 'none';
+            return;
+          }
+          img.onerror = null;
+          img.src = '/logo.png';
+        }}
       />
       <h1>{title}</h1>
       <p className="sub">{subtitle}</p>
@@ -153,8 +180,11 @@ export function LoginPage() {
   const navigate = useNavigate();
   const {user, beginLogin, completeMfaSetup, completeMfaVerify} =
     useAuthStore();
-  const {brandName} = getRuntimeConfig();
-  const logoSrc = getBrandLogoSrc();
+  const [runtimeBranding, setRuntimeBranding] = useState(() => ({
+    brandName: getRuntimeConfig().brandName,
+    logoSrc: getBrandLogoSrc(),
+  }));
+  const {brandName, logoSrc} = runtimeBranding;
   const displayBrand = brandName?.trim() ? `${brandName} Admin` : t('appTitle');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -162,6 +192,17 @@ export function LoginPage() {
   const [step, setStep] = useState<Step>({name: 'credentials'});
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const syncBranding = () => {
+      setRuntimeBranding({
+        brandName: getRuntimeConfig().brandName,
+        logoSrc: getBrandLogoSrc(),
+      });
+    };
+    window.addEventListener(RUNTIME_BRANDING_EVENT, syncBranding);
+    return () => window.removeEventListener(RUNTIME_BRANDING_EVENT, syncBranding);
+  }, []);
 
   if (user) {
     return <Navigate to="/" replace />;

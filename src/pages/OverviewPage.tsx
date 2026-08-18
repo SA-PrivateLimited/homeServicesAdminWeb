@@ -579,6 +579,7 @@ export function OverviewPage() {
   const approvedCount = stats?.providers.approved ?? 0;
   const rejectedCount = stats?.providers.rejected ?? 0;
   const customers = stats?.customers.total ?? 0;
+  const uniqueUsers = stats?.users?.unique ?? providerTotal + customers;
   const jobTotal = stats?.jobs.total ?? 0;
   const jobStatus = stats?.jobs.byStatus;
 
@@ -781,7 +782,7 @@ export function OverviewPage() {
           ? t('overviewCustomersDetail')
           : t('overviewJobsDetail');
 
-  const usersTotal = providerTotal + customers;
+  const usersTotal = uniqueUsers;
 
   return (
     <div className="admin-page scale-baseline-80" data-testid="overview-root">

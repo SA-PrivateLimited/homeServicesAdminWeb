@@ -78,8 +78,20 @@ export function GeographyDistrictsPage() {
       {
         key: 'providers',
         header: t('geoColProviders'),
-        width: '12%',
-        render: (row) => String(row.providerCount ?? 0),
+        width: '20%',
+        render: (row) => (
+          <span>
+            {String(row.providerCount ?? 0)}
+            {row.serviceBreakdown?.length ? (
+              <span className="muted compact geo-service-breakdown">
+                {row.serviceBreakdown
+                  .slice(0, 4)
+                  .map((item) => `${item.service} ${item.count}`)
+                  .join(' · ')}
+              </span>
+            ) : null}
+          </span>
+        ),
       },
       {
         key: 'jobs',

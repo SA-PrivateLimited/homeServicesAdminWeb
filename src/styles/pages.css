@@ -1,7 +1,360 @@
 /**
  * AdminWeb shared UI — keep typography / spacing consistent product-wide.
  * Tokens: --font-size-* and --space-* from global.css
+ *
+ * Spacing system (4-px base):
+ *   --space-1  4px   — icon gaps, tight inline
+ *   --space-2  8px   — label→input, button gaps
+ *   --space-3  12px  — helper-text gap, compact field gap
+ *   --space-4  16px  — normal field-to-field gap
+ *   --space-5  24px  — section separators
+ *   --space-6  32px  — modal outer padding (desktop)
+ *
+ * Ownership rules:
+ *   Modal shell    → outer padding (hs-dialog__body: 20px 24px 24px)
+ *   .modal-form    → field-to-field gap (16px via flex gap)
+ *   .modal-section → section-to-section separation (24px top border)
+ *   .form-actions  → button group top border + gap
+ *   label          → label→input gap (8px)
+ *   .modal-lead    → subtitle under modal title (12px bottom margin)
  */
+
+/* ============================================================
+   MODAL / DIALOG SPACING SYSTEM
+   Overrides for the sapvt-ltd Dialog component (.hs-dialog__*)
+   These are the ONLY place that sets modal shell spacing.
+
+   Architecture:
+     .hs-modal-backdrop  — full-screen overlay, centers the modal
+     .hs-modal           — shell: flex column, viewport-capped, no overflow
+     .hs-dialog__header  — sticky top, never scrolls away
+     .hs-dialog__body    — flex:1, min-height:0, overflow-y:auto  ← ONLY scrolling area
+     .hs-dialog__footer  — sticky bottom (when used)
+     .modal-actions      — when inside the body and is the last item, sticks to bottom
+   ============================================================ */
+
+/* ── Backdrop ─────────────────────────────────────────────── */
+.hs-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* 20px breathing room top & bottom on desktop */
+  padding: 20px 16px;
+  /* Prevent the backdrop itself from scrolling */
+  overflow: hidden;
+}
+
+/* Second nested modal (e.g. deactivate confirmation over edit) */
+.hs-modal-backdrop + .hs-modal-backdrop,
+.hs-modal-backdrop ~ .hs-modal-backdrop {
+  z-index: 1100;
+}
+
+/* Lock the background page when any modal is open — prevents double scroll.
+   padding-right compensates for the scrollbar width disappearing so the
+   fixed sidebar + main content don't jump left when the modal opens. */
+body:has(.hs-modal-backdrop) {
+  overflow: hidden;
+  padding-right: var(--scrollbar-width, 0px);
+}
+
+/* Measure scrollbar width once at root level (JS sets it; CSS fallback = 0) */
+:root {
+  --scrollbar-width: 0px;
+}
+
+/* ── Modal shell ──────────────────────────────────────────── */
+.hs-modal {
+  /* Width: never wider than 480px, never wider than viewport − 32px */
+  width: min(calc(100vw - 32px), 480px);
+  /* Height: use all available viewport minus backdrop padding (2×20px) */
+  max-height: calc(100dvh - 40px);
+  display: block;
+  /* Shell itself must NOT scroll — each zone handles its own overflow */
+  overflow: hidden;
+  background: var(--color-surface, #fff);
+  border-radius: var(--radius-lg, 12px);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.18);
+}
+
+/*
+ * .hs-dialog is the DIRECT child of .hs-modal injected by the Dialog component.
+ * It must stretch to fill .hs-modal completely and itself be a flex column
+ * so that .hs-dialog__body can shrink and scroll.
+ * Without this, the flex: 1 1 0 on .hs-dialog__body has nothing to constrain
+ * its parent height and overflow-y:auto never activates.
+ */
+.hs-dialog {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-height: inherit;
+  overflow: hidden;
+  /* Inherit border-radius from the modal shell */
+  border-radius: inherit;
+}
+
+/* ── Header — sticky, never scrolls away ─────────────────── */
+.hs-dialog__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid var(--color-border);
+  /* Prevent header from shrinking */
+  flex-shrink: 0;
+  /* Stack above scrolled body content */
+  position: relative;
+  z-index: 1;
+  /* Ensure background covers scrolled content that slides under it */
+  background: var(--color-surface, #fff);
+  border-radius: var(--radius-lg, 12px) var(--radius-lg, 12px) 0 0;
+}
+
+.hs-dialog__title {
+  margin: 0;
+  font-size: var(--font-size-md);
+  font-weight: 700;
+  line-height: var(--line-height-tight);
+  color: var(--color-text);
+}
+
+.hs-dialog__close {
+  flex-shrink: 0;
+  min-width: 32px;
+  min-height: 32px;
+  border-radius: var(--radius);
+  display: grid;
+  place-items: center;
+  color: var(--color-text-secondary);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+
+.hs-dialog__close:hover {
+  background: var(--color-bg);
+}
+
+/* ── Body — the ONE scrolling region ─────────────────────── */
+.hs-dialog__body {
+  flex: 0 1 auto;
+  min-height: 0;
+  max-height: calc(100dvh - 140px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  /* Smooth momentum scroll on iOS */
+  -webkit-overflow-scrolling: touch;
+  /* Content layout */
+  padding: 20px 24px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4); /* 16px between every direct child */
+}
+
+/* ── Footer (when used as a separate element) ────────────── */
+.hs-dialog__footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  padding: 16px 24px;
+  border-top: 1px solid var(--color-border);
+  flex-shrink: 0;
+  background: var(--color-surface, #fff);
+  border-radius: 0 0 var(--radius-lg, 12px) var(--radius-lg, 12px);
+}
+
+/* ── Modal lead — subtitle line under title ───────────────── */
+.modal-lead {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-body);
+  color: var(--color-text-secondary);
+}
+
+/* ── Modal form — field stack ─────────────────────────────── */
+.modal-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4); /* 16px between fields */
+}
+
+/* Two-column field row inside a modal */
+.modal-form-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: var(--space-4);
+}
+
+/* ── Modal section — account-access / partner-link etc. ───── */
+/* Visual section break: top border + 24px padding above content */
+.modal-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3); /* 12px between items inside the section */
+  padding-top: var(--space-5); /* 24px */
+  border-top: 1px solid var(--color-border);
+  margin-top: calc(var(--space-5) - var(--space-4)); /* net 24px separation */
+}
+
+.modal-section__title {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.modal-section__meta {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-body);
+  color: var(--color-text-secondary);
+}
+
+/* ── Modal actions — button group ─────────────────────────── */
+/*
+ * Base style: non-sticky button group used mid-modal (e.g. Account Access
+ * action buttons inside a section). Has a light top margin only.
+ */
+.modal-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  margin-top: var(--space-2);
+}
+
+/*
+ * When .modal-actions is the LAST direct child of .hs-dialog__body,
+ * promote it to a sticky footer so Save/Cancel are always reachable.
+ *
+ * :last-child matches when it is the final element in the body,
+ * regardless of preceding siblings.
+ *
+ * The negative margin trick extends the separator border edge-to-edge
+ * across the body's padding area without extra whitespace.
+ */
+.hs-dialog__body > .modal-actions:last-child {
+  margin-top: auto;
+  position: sticky;
+  bottom: -24px; /* offsets the body's 24px padding-bottom */
+  z-index: 2;
+  background: var(--color-surface, #fff);
+  /* Wall-to-wall top separator */
+  margin-left: -24px;
+  margin-right: -24px;
+  padding: var(--space-4) 24px 0;
+  border-top: 1px solid var(--color-border);
+}
+
+/* ── Textarea in modals ───────────────────────────────────── */
+.hs-dialog__body textarea,
+.modal textarea {
+  font-size: var(--font-size-sm);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: var(--space-2) var(--space-3);
+  min-height: 6rem;
+  width: 100%;
+  resize: vertical;
+  background: var(--neutral-white);
+  color: var(--color-text);
+  line-height: var(--line-height-body);
+  font-family: inherit;
+}
+
+.hs-dialog__body textarea:focus,
+.modal textarea:focus {
+  outline: 2px solid var(--primary-color-opacity-35);
+  outline-offset: 1px;
+}
+
+/* ── Label spacing in modals ─────────────────────────────── */
+.hs-dialog__body label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2); /* 8px label→input */
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+/* ── Tablet: reduce width cap ────────────────────────────── */
+@media (max-width: 640px) {
+  .hs-modal-backdrop {
+    padding: 12px;
+    align-items: flex-end; /* sheet slides up from bottom on small screens */
+  }
+
+  .hs-modal {
+    width: 100%;
+    max-width: 100%;
+    max-height: calc(100dvh - 24px);
+    border-radius: var(--radius-lg, 12px) var(--radius-lg, 12px) 0 0;
+  }
+
+  .hs-dialog__header {
+    padding: 16px 16px 12px;
+    border-radius: var(--radius-lg, 12px) var(--radius-lg, 12px) 0 0;
+  }
+
+  .hs-dialog__body {
+    padding: 16px 16px 20px;
+    gap: var(--space-3);
+    max-height: calc(100dvh - 116px);
+  }
+
+  .modal-form-row {
+    grid-template-columns: 1fr;
+  }
+
+  .modal-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .modal-actions .btn,
+  .modal-actions .hs-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* Sticky last-child footer adjusts for smaller body padding on mobile */
+  .hs-dialog__body > .modal-actions:last-child {
+    bottom: -20px;
+    margin-left: -16px;
+    margin-right: -16px;
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+}
+
+/* ── Fallback for browsers without dvh (Safari <15.4) ──────── */
+@supports not (height: 100dvh) {
+  .hs-modal {
+    max-height: calc(100vh - 40px);
+  }
+
+  @media (max-width: 640px) {
+    .hs-modal {
+      max-height: calc(100vh - 24px);
+    }
+
+    .hs-dialog__body {
+      max-height: calc(100vh - 116px);
+    }
+  }
+}
+
+/* ============================================================
+   END MODAL SYSTEM
+   ============================================================ */
 
 .admin-page {
   display: flex;
@@ -274,7 +627,7 @@
 
 .muted {
   color: var(--color-text-secondary);
-  padding: var(--space-4);
+  padding: 0;
   font-size: var(--font-size-sm);
   margin: 0;
 }
@@ -286,7 +639,7 @@
 
 .error-text {
   color: var(--color-error);
-  padding: var(--space-4);
+  padding: 0;
   margin: 0;
   font-size: var(--font-size-sm);
 }
@@ -1116,9 +1469,18 @@ a.hs-btn {
 }
 
 .form-actions {
-  margin-top: var(--space-4);
-  padding-top: var(--space-4);
+  /* In modals: parent gap (16px) + padding-top (12px) = ~28px section break */
+  padding-top: var(--space-3);
   border-top: 1px solid var(--color-border);
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+/* Stand-alone page form (outside a modal): restore top margin */
+.form-panel > .form-actions {
+  margin-top: var(--space-4);
 }
 
 .swatch {
@@ -1160,7 +1522,190 @@ a.hs-btn {
 }
 
 .client-logo-upload {
-  display: inline-flex;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-start;
+}
+
+.modal-title-block {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.modal-title-block p {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 400;
+  color: var(--color-text-secondary);
+}
+
+.theme-section-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.theme-preset-control {
+  min-width: 220px;
+}
+
+.theme-preset-control span {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+.theme-preset-control select {
+  width: 100%;
+}
+
+.theme-section-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.theme-color-section {
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  padding: 16px;
+  background: color-mix(in srgb, var(--color-surface) 96%, var(--color-background));
+}
+
+.theme-color-section__head {
+  margin-bottom: 12px;
+}
+
+.theme-color-section__head h5 {
+  margin: 0 0 4px;
+  font-size: 0.98rem;
+}
+
+.theme-color-section__head p {
+  margin: 0;
+}
+
+.theme-colors-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 16px;
+}
+
+.theme-color-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.theme-color-field > span {
+  font-weight: 600;
+}
+
+.color-input-row {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+}
+
+.color-input-row input[type='color'] {
+  width: 64px;
+  height: 40px;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: transparent;
+}
+
+.assignment-summary,
+.assignment-job-context {
+  display: grid;
+  gap: 12px;
+}
+
+.assignment-summary {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+.assignment-job-context {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-bottom: 12px;
+}
+
+.assignment-job-context > div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.assignment-candidate-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 420px;
+  overflow-y: auto;
+  margin-top: 12px;
+}
+
+.assignment-candidate-card {
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: 12px 14px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: start;
+  background: var(--color-surface);
+}
+
+.assignment-candidate-card.is-ineligible {
+  opacity: 0.72;
+}
+
+.assignment-candidate-card.is-current {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-primary) 30%, transparent);
+}
+
+.assignment-candidate-main,
+.assignment-candidate-actions {
+  min-width: 0;
+}
+
+.assignment-candidate-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+
+@media (max-width: 640px) {
+  .theme-section-heading,
+  .assignment-summary,
+  .assignment-job-context,
+  .assignment-candidate-card {
+    grid-template-columns: 1fr;
+  }
+
+  .theme-section-heading {
+    display: grid;
+  }
+
+  .theme-colors-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .assignment-candidate-actions .btn,
+  .assignment-candidate-actions .hs-btn {
+    width: 100%;
+    justify-content: center;
+  }
 }
 
 .hs-toggle {
@@ -1247,8 +1792,8 @@ a.hs-btn {
 }
 
 .modal {
-  width: min(100%, 32rem);
-  max-height: min(90vh, 40rem);
+  width: min(calc(100vw - 32px), 32rem);
+  max-height: calc(100dvh - 40px);
   overflow: hidden;
   background: var(--color-card);
   border-radius: var(--radius-lg);
@@ -1267,7 +1812,7 @@ a.hs-btn {
   flex-shrink: 0;
   z-index: 2;
   background: var(--color-card);
-  padding: var(--space-4) var(--space-4) var(--space-3);
+  padding: 20px 24px 16px;
   border-bottom: 1px solid var(--color-border);
 }
 
@@ -1277,8 +1822,8 @@ a.hs-btn {
   overflow: auto;
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
-  padding: var(--space-3) var(--space-4) var(--space-4);
+  gap: var(--space-4); /* 16px between fields */
+  padding: 20px 24px 24px;
 }
 
 .modal h3 {
@@ -1345,6 +1890,33 @@ a.hs-btn {
   list-style: none;
   padding: 0;
   margin: 0;
+}
+
+.partner-service-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.partner-service-row:last-child {
+  border-bottom: none;
+}
+
+.service-review-docs {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+
+.service-review-docs li {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
 }
 
 .muted.compact {
@@ -1446,8 +2018,8 @@ a.hs-btn {
 }
 
 .modal--wide {
-  width: min(100%, 36rem);
-  max-height: min(90vh, 44rem);
+  width: min(calc(100vw - 32px), 36rem);
+  /* Inherit the global viewport-relative max-height from .hs-modal */
 }
 
 .detail-list--grid {
@@ -2014,6 +2586,15 @@ a.hs-btn.icon-only {
   .modal {
     width: min(100%, 28rem);
   }
+
+  .modal-body {
+    padding: 16px 16px 20px;
+    gap: var(--space-3);
+  }
+
+  .modal-header {
+    padding: 16px 16px 12px;
+  }
 }
 
 @media (max-width: 520px) {
@@ -2082,8 +2663,8 @@ a.hs-btn.icon-only {
 }
 
 .modal.modal-wide {
-  max-width: min(52rem, 96vw);
-  max-height: 90vh;
+  max-width: min(52rem, calc(100vw - 32px));
+  max-height: calc(100dvh - 40px);
   overflow: auto;
 }
 
@@ -2174,10 +2755,114 @@ a.hs-btn.icon-only {
   margin-top: 0.35rem;
 }
 
-.policy-radio span {
+.role-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin-top: 0.2rem;
+}
+
+.role-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.05rem 0.4rem;
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  background: var(--color-bg);
+  text-decoration: none;
+  line-height: 1.4;
+}
+
+.role-badge--partner {
+  color: var(--color-text);
+}
+
+.name-with-roles {
   display: flex;
   flex-direction: column;
   gap: 0.15rem;
+  min-width: 0;
+}
+
+.provider-services-cell {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.provider-services-cell li {
+  display: flex;
+  flex-direction: column;
+  gap: 0.05rem;
+}
+
+.account-access-block {
+  /* Handled by .modal-section now — keep for backward compat on non-modal uses */
+  margin: 0;
+  padding: var(--space-5) 0 0;
+  border: 0;
+  border-top: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.account-access-block legend {
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  padding: 0;
+  float: left;
+  width: 100%;
+  margin-bottom: var(--space-3);
+}
+
+.also-registered {
+  margin-top: var(--space-2);
+}
+
+.section-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.section-header-row h3 {
+  margin: 0;
+}
+
+.add-service-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.add-service-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.add-service-row span {
+  display: flex;
+  flex-direction: column;
+}
+
+.geo-service-breakdown {
+  display: block;
+  margin-top: 0.15rem;
 }
 
 .sr-only {

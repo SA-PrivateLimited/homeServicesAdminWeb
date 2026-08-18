@@ -30,6 +30,12 @@ export interface ServiceCategory {
   order?: number;
   questionnaire?: QuestionnaireQuestion[];
   requiresVehicle?: boolean;
+  partnerDocuments?: Array<{
+    key: string;
+    label?: string;
+    labelHi?: string;
+    required?: boolean;
+  }>;
 }
 
 export type CategoryInput = Omit<ServiceCategory, '_id'>;

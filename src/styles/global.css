@@ -92,6 +92,8 @@ body {
   font-family: var(--font-body);
   color: var(--color-text);
   overflow-x: hidden;
+  /* Prevent double body scroll — admin app scrolls inside .shell-main */
+  overflow-y: auto;
   background:
     radial-gradient(
       ellipse 80% 50% at 100% 0%,

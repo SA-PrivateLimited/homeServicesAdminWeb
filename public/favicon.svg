@@ -1,5 +1,59 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
-  <rect width="32" height="32" rx="6" fill="#2C5282"/>
-  <path d="M8 22V12l8-5 8 5v10H8z" stroke="#F5F7FA" stroke-width="2" fill="none"/>
-  <circle cx="16" cy="15" r="2.5" fill="#38B2AC"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 850" width="1000" height="850">
+  <title>Akanso Logo Mark</title>
+  <desc>Stylized navy A-shaped home with green roof, window and wave.</desc>
+
+  <!-- Navy A / outer roof -->
+  <path fill="#06254A" d="
+    M500 55
+    L760 655
+    L665 625
+    L610 505
+    L500 270
+    L390 505
+    L335 625
+    L240 655
+    Z"/>
+
+  <!-- White inner opening / separation -->
+  <path fill="#FFFFFF" d="
+    M500 155
+    L405 470
+    L595 470
+    Z"/>
+
+  <!-- Green house roof -->
+  <path fill="#18A82A" d="
+    M275 585
+    L500 390
+    L725 585
+    L675 575
+    L500 445
+    L325 575
+    Z"/>
+
+  <!-- Green house body -->
+  <path fill="#FFFFFF" d="
+    M350 560
+    L500 450
+    L650 560
+    L650 650
+    L350 650
+    Z"/>
+
+  <!-- Window -->
+  <g fill="#18A82A">
+    <rect x="465" y="535" width="32" height="32" rx="1"/>
+    <rect x="505" y="535" width="32" height="32" rx="1"/>
+    <rect x="465" y="575" width="32" height="32" rx="1"/>
+    <rect x="505" y="575" width="32" height="32" rx="1"/>
+  </g>
+
+  <!-- Green flowing base -->
+  <path fill="#18A82A" d="
+    M145 680
+    C275 735 385 710 500 675
+    C635 635 765 640 870 705
+    C745 675 650 690 535 730
+    C385 782 250 775 145 680
+    Z"/>
 </svg>

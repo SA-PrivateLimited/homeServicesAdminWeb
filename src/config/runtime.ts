@@ -21,6 +21,12 @@ const FALLBACK: AppRuntimeConfig = {
 };
 
 let runtimeConfig: AppRuntimeConfig = {...FALLBACK};
+export const RUNTIME_BRANDING_EVENT = 'hs-runtime-branding-change';
+
+function notifyRuntimeBrandingChanged() {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new CustomEvent(RUNTIME_BRANDING_EVENT));
+}
 
 export function getRuntimeConfig(): AppRuntimeConfig {
   return runtimeConfig;
@@ -35,6 +41,7 @@ export function setApiBaseUrl(url: string): void {
     ...runtimeConfig,
     apiBaseUrl: url.replace(/\/$/, ''),
   };
+  notifyRuntimeBrandingChanged();
 }
 
 export function setRuntimeBranding(partial: {
@@ -49,14 +56,43 @@ export function setRuntimeBranding(partial: {
     next.logoUrl = partial.logoUrl.trim();
   }
   runtimeConfig = next;
+  notifyRuntimeBrandingChanged();
 }
 
-/** Resolve relative /uploads paths against API; pass through absolute URLs. */
+function isLoopbackHost(hostname: string): boolean {
+  return (
+    hostname === '127.0.0.1' ||
+    hostname === 'localhost' ||
+    hostname === '::1' ||
+    hostname === '0.0.0.0'
+  );
+}
+
+/**
+ * Resolve logo URLs for display.
+ * Relative /uploads paths are prefixed with the current API host.
+ * Loopback hosts (from local S3 fallback) are rewritten to the current API host
+ * so production admin can still load `/uploads/...` files.
+ */
 export function resolveLogoUrl(logoUrl?: string): string {
   const raw = (logoUrl || '').trim();
   if (!raw) return '';
-  if (/^https?:\/\//i.test(raw) || raw.startsWith('data:')) return raw;
+  if (raw.startsWith('data:') || raw.startsWith('blob:')) return raw;
+
   const base = getApiBaseUrl().replace(/\/$/, '');
+
+  if (/^https?:\/\//i.test(raw)) {
+    try {
+      const parsed = new URL(raw);
+      if (isLoopbackHost(parsed.hostname) && parsed.pathname.startsWith('/uploads/')) {
+        return `${base}${parsed.pathname}${parsed.search}`;
+      }
+    } catch {
+      return raw;
+    }
+    return raw;
+  }
+
   return raw.startsWith('/') ? `${base}${raw}` : `${base}/${raw}`;
 }
 
@@ -71,6 +107,7 @@ export async function loadRuntimeConfig(): Promise<AppRuntimeConfig> {
     });
     if (!res.ok) {
       runtimeConfig = {...FALLBACK};
+      notifyRuntimeBrandingChanged();
       return runtimeConfig;
     }
     const json = (await res.json()) as Partial<{
@@ -96,9 +133,11 @@ export async function loadRuntimeConfig(): Promise<AppRuntimeConfig> {
       logoUrl: json.logoUrl?.trim() || undefined,
       themeColors,
     };
+    notifyRuntimeBrandingChanged();
     return runtimeConfig;
   } catch {
     runtimeConfig = {...FALLBACK};
+    notifyRuntimeBrandingChanged();
     return runtimeConfig;
   }
 }

@@ -31,8 +31,8 @@ import {
   createUser,
   deactivateUser,
   deleteUser,
-  restoreUser,
   revealUserPin,
+  restoreUser,
   setUserPin,
 } from '../services/api/usersApi';
 import {getServiceCategories} from '../services/api/serviceCategoriesApi';
@@ -52,6 +52,9 @@ import {
 import {formatLastUpdated} from '../utils/datetime';
 import {sortByUpdatedThenCreated} from '../utils/sort';
 import {CopyFeedbackButton} from '../components/CopyFeedbackButton';
+import {PinCopyButton} from '../components/PinCopyButton';
+import {RoleBadges} from '../components/RoleBadges';
+import {partnerServiceSummaries} from '../utils/partnerServices';
 import '../styles/pages.css';
 
 const PAGE_SIZE = 50;
@@ -430,6 +433,7 @@ export function ProvidersPage() {
         const pinResult = await setUserPin(
           created._id,
           createPin.trim() || undefined,
+          'partner',
         );
         pinForBanner = pinResult.loginPin;
         setRevealedPins((m) => ({...m, [created._id]: pinResult.loginPin}));
@@ -462,32 +466,6 @@ export function ProvidersPage() {
     }
   };
 
-  const onRevealPin = async (row: Provider) => {
-    const userId = row.userId || row._id;
-    if (revealedPins[userId]) {
-      setRevealedPins((m) => {
-        const next = {...m};
-        delete next[userId];
-        return next;
-      });
-      return;
-    }
-    setRevealBusyId(userId);
-    setError(null);
-    try {
-      const result = await revealUserPin(userId);
-      if (!result.loginPin) {
-        setError(t('pinRevealFailed'));
-        return;
-      }
-      setRevealedPins((m) => ({...m, [userId]: result.loginPin as string}));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : t('errorGeneric'));
-    } finally {
-      setRevealBusyId(null);
-    }
-  };
-
   const onSetPin = async () => {
     if (!pinUser) return;
     setPinBusy(true);
@@ -498,6 +476,7 @@ export function ProvidersPage() {
       const result = await setUserPin(
         userId,
         pinValue.trim() || undefined,
+        'partner',
       );
       setPinUser(null);
       setPinValue('');
@@ -520,6 +499,32 @@ export function ProvidersPage() {
     }
   };
 
+  const onRevealPin = async (row: Provider) => {
+    const userId = row.userId || row._id;
+    if (revealedPins[userId]) {
+      setRevealedPins((m) => {
+        const next = {...m};
+        delete next[userId];
+        return next;
+      });
+      return;
+    }
+    setRevealBusyId(userId);
+    setError(null);
+    try {
+      const result = await revealUserPin(userId, 'partner');
+      if (!result.loginPin) {
+        setError(t('pinRevealFailed'));
+        return;
+      }
+      setRevealedPins((m) => ({...m, [userId]: result.loginPin as string}));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t('errorGeneric'));
+    } finally {
+      setRevealBusyId(null);
+    }
+  };
+
   const onDeactivate = async () => {
     if (!deactivateTarget) return;
     if (!deactivateReason.trim()) {
@@ -534,7 +539,7 @@ export function ProvidersPage() {
         deactivateTarget.name ||
         deactivateTarget.displayName ||
         deactivateTarget._id;
-      await deactivateUser(deactivateTarget._id, deactivateReason.trim());
+      await deactivateUser(deactivateTarget._id, deactivateReason.trim(), 'partner');
       setDeactivateTarget(null);
       setDeactivateReason('');
       setSuccessBanner({
@@ -555,7 +560,7 @@ export function ProvidersPage() {
     setRestoreBusyId(row._id);
     setError(null);
     try {
-      await restoreUser(row._id);
+      await restoreUser(row._id, 'partner');
       setSuccessBanner({
         title: t('accountRestoredTitle'),
         detail: t('accountRestoredDetail', {
@@ -628,8 +633,14 @@ export function ProvidersPage() {
           const label =
             row.businessName || row.name || row.displayName || '—';
           return (
-            <span className="cell-clamp" title={label !== '—' ? label : undefined}>
-              {label}
+            <span className="name-with-roles">
+              <span className="cell-clamp" title={label !== '—' ? label : undefined}>
+                {label}
+              </span>
+              <RoleBadges
+                hasPartner
+                hasCustomer={Boolean(row.hasCustomerProfile)}
+              />
             </span>
           );
         },
@@ -710,18 +721,44 @@ export function ProvidersPage() {
           ),
       },
       {
-        key: 'service',
-        header: t('service'),
-        width: '7rem',
+        key: 'services',
+        header: t('services'),
+        width: '14rem',
         filterable: true,
         filterType: 'multi',
         filterPlaceholder: t('filterServices'),
-        filterValue: (row) => row.serviceType || '',
-        render: (row) => row.serviceType || '—',
+        filterValue: (row) =>
+          partnerServiceSummaries(row)
+            .map((s) => s.name)
+            .join(' '),
+        render: (row) => {
+          const services = partnerServiceSummaries(row);
+          if (!services.length) return '—';
+          return (
+            <ul className="provider-services-cell">
+              {services.map((service) => {
+                const verified = service.verificationStatus === 'approved';
+                const pending = service.verificationStatus !== 'approved';
+                return (
+                  <li key={service.name}>
+                    <strong>{service.name}</strong>
+                    <span className="muted compact">
+                      {verified ? t('serviceVerified') : pending ? t('servicePending') : t('serviceRequiredStatus')}
+                      {' · '}
+                      {service.active
+                        ? t('serviceAvailabilityOn')
+                        : t('serviceAvailabilityOff')}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          );
+        },
       },
       {
         key: 'status',
-        header: t('status'),
+        header: t('accountStatus'),
         width: '8.5rem',
         filterable: true,
         filterType: 'multi',
@@ -741,9 +778,6 @@ export function ProvidersPage() {
                 status={status}
                 label={approvalStatusLabel(status, t)}
               />
-              {row.isActive === false ? (
-                <StatusChip status="cancelled" label={t('inactive')} />
-              ) : null}
               <Button variant="ghost" className="icon-only" disabled={statusBusyId === row._id} aria-label={t('editStatus')} title={t('editStatus')} onClick={() =>
                   setStatusEditId(editing ? null : row._id)
                 }>
@@ -770,8 +804,19 @@ export function ProvidersPage() {
         },
       },
       {
+        key: 'access',
+        header: t('access'),
+        width: '7rem',
+        render: (row) =>
+          row.isActive === false ? (
+            <StatusChip status="cancelled" label={t('inactive')} />
+          ) : (
+            <StatusChip status="active" label={t('active')} />
+          ),
+      },
+      {
         key: 'pin',
-        header: t('loginPin'),
+        header: t('partnerLoginPin'),
         width: '12rem',
         render: (row) => {
           const userId = row.userId || row._id;
@@ -783,29 +828,40 @@ export function ProvidersPage() {
               </span>
               <span className="pin-cell-actions">
                 {row.hasPin ? (
-                  <>
-                    <Button variant="ghost" className="icon-only" disabled={revealBusyId === userId} aria-label={pin ? t('hidePassword') : t('revealPin')} title={pin ? t('hidePassword') : t('revealPin')} onClick={() => void onRevealPin(row)}>
-                      <Icon
-                        name={pin ? 'visibility_off' : 'visibility'}
-                        size={18}
-                      />
-                    </Button>
-                    <CopyFeedbackButton
-                      text={pin || ''}
-                      disabled={!pin}
-                      ariaLabel={t('copyPin')}
-                      title={pin ? t('copyPin') : t('revealPin')}
+                  <Button
+                    variant="ghost"
+                    className="icon-only"
+                    disabled={revealBusyId === userId}
+                    aria-label={pin ? t('hidePassword') : t('revealPin')}
+                    title={pin ? t('hidePassword') : t('revealPin')}
+                    onClick={() => void onRevealPin(row)}>
+                    <Icon
+                      name={pin ? 'visibility_off' : 'visibility'}
+                      size={18}
                     />
-                  </>
-                ) : (
-                  <Button variant="ghost" className="icon-only" aria-label={t('generatePin')} title={t('generatePin')} onClick={() => {
-                      setPinUser(row);
-                      setPinValue('');
-                      setPinMessage(null);
-                    }}>
-                    <Icon name="lock_reset" size={18} />
                   </Button>
-                )}
+                ) : null}
+                <Button
+                  variant="ghost"
+                  className="icon-only"
+                  aria-label={t('resetPartnerPin')}
+                  title={t('resetPartnerPin')}
+                  onClick={() => {
+                    setPinUser(row);
+                    setPinValue('');
+                    setPinMessage(null);
+                  }}>
+                  <Icon name="lock_reset" size={18} />
+                </Button>
+                <PinCopyButton
+                  revealedPin={pin}
+                  fetchPin={async () => {
+                    const result = await revealUserPin(userId, 'partner');
+                    return result.loginPin ?? null;
+                  }}
+                  ariaLabel={t('copyPin')}
+                  title={t('copyPin')}
+                />
               </span>
             </span>
           );
@@ -818,12 +874,6 @@ export function ProvidersPage() {
         render: (row) => formatLastUpdated(row.createdAt),
       },
       {
-        key: 'updatedAt',
-        header: t('lastUpdated'),
-        width: '10rem',
-        render: (row) => formatLastUpdated(row.updatedAt || row.createdAt),
-      },
-      {
         key: 'actions',
         header: t('actions'),
         width: '13rem',
@@ -832,6 +882,13 @@ export function ProvidersPage() {
             <Link className="hs-btn hs-btn--ghost hs-btn--md" to={`/providers/${row._id}`}>
               {t('viewUpdate')}
             </Link>
+            <Button variant="ghost" className="icon-only" aria-label={t('resetPartnerPin')} title={t('resetPartnerPin')} onClick={() => {
+                setPinUser(row);
+                setPinValue('');
+                setPinMessage(null);
+              }}>
+              <Icon name="lock_reset" size={18} />
+            </Button>
             {row.isActive === false ? (
               <Button variant="ghost" className="icon-only" disabled={restoreBusyId === row._id} aria-label={t('restore')} title={t('restore')} onClick={() => void onRestore(row)}>
                 <Icon name="safety_check" size={18} />
@@ -1010,170 +1067,172 @@ export function ProvidersPage() {
           title={t('addProviderTitle')}
           onClose={closeCreate}
           testId="providers-create-modal">
-          <p className="muted compact">{t('addProviderLead')}</p>
-          <label>
-            {t('name')}
-            <input
-              value={createName}
-              onChange={(e) => setCreateName(e.target.value)}
-              autoComplete="name"
-            />
-          </label>
-          <label>
-            {t('phone')}
-            <div className="phone-input-row">
-              <span className="phone-prefix" aria-hidden>
-                +91
-              </span>
-              <input
-                type="tel"
-                inputMode="numeric"
-                maxLength={10}
-                value={createPhone}
-                placeholder={t('phoneTenDigitsHint')}
-                onChange={(e) =>
-                  setCreatePhone(localTenDigits(e.target.value).slice(0, 10))
-                }
-                autoComplete="tel-national"
-                required
-              />
-            </div>
-          </label>
-          <label>
-            {t('locationAddress')}
-            <input
-              value={createAddress}
-              onChange={(e) => setCreateAddress(e.target.value)}
-              placeholder={t('addressPlaceholder')}
-            />
-          </label>
-          <div className="form-row">
+          <p className="modal-lead">{t('addProviderLead')}</p>
+          <div className="modal-form">
             <label>
-              {t('geoState')}
-              <Select
-                options={stateOptions}
-                value={createStateId}
-                placeholder={t('geoState')}
-                showSearch
-                searchPlaceholder={t('searchState')}
-                emptyMessage={t('noStatesFound')}
-                onChange={(value) => {
-                  setCreateStateId(value);
-                  setCreateDistrictId('');
-                  setCreateCity('');
-                  setCreatePincode('');
-                }}
+              {t('name')}
+              <input
+                value={createName}
+                onChange={(e) => setCreateName(e.target.value)}
+                autoComplete="name"
               />
             </label>
             <label>
-              {t('geoDistrict')}
-              <Select
-                options={districtOptions}
-                value={createDistrictId}
-                placeholder={t('geoDistrict')}
-                showSearch
-                searchPlaceholder={t('searchDistrict')}
-                emptyMessage={t('noDistrictsFound')}
-                onChange={(value) => {
-                  setCreateDistrictId(value);
-                  const d = geoDistricts.find((x) => x._id === value);
-                  if (d) {
-                    if (!createCity.trim()) setCreateCity(d.name);
-                    if (d.pincode) setCreatePincode(d.pincode);
+              {t('phone')}
+              <div className="phone-input-row">
+                <span className="phone-prefix" aria-hidden>
+                  +91
+                </span>
+                <input
+                  type="tel"
+                  inputMode="numeric"
+                  maxLength={10}
+                  value={createPhone}
+                  placeholder={t('phoneTenDigitsHint')}
+                  onChange={(e) =>
+                    setCreatePhone(localTenDigits(e.target.value).slice(0, 10))
                   }
-                }}
-              />
-            </label>
-          </div>
-          <div className="form-row">
-            <label>
-              {t('geoCity')}
-              <input
-                value={createCity}
-                onChange={(e) => setCreateCity(e.target.value)}
-                placeholder={t('geoDistrict')}
-              />
+                  autoComplete="tel-national"
+                  required
+                />
+              </div>
             </label>
             <label>
-              {t('pincode')}
+              {t('locationAddress')}
               <input
-                type="text"
-                inputMode="numeric"
-                maxLength={6}
-                value={createPincode}
-                onChange={(e) =>
-                  setCreatePincode(e.target.value.replace(/\D/g, '').slice(0, 6))
-                }
-                placeholder="560001"
+                value={createAddress}
+                onChange={(e) => setCreateAddress(e.target.value)}
+                placeholder={t('addressPlaceholder')}
               />
             </label>
-          </div>
-          <label>
-            {t('serviceType')}
-            <Select
-              options={serviceOptions}
-              value={createService}
-              placeholder={t('selectServiceType')}
-              showSearch
-              onChange={setCreateService}
-            />
-          </label>
-          <div className="form-row">
-            <label>
-              {t('experienceOptional')}
-              <input
-                type="number"
-                min={0}
-                max={50}
-                value={createExperience}
-                onChange={(e) => setCreateExperience(e.target.value)}
-                placeholder="0"
-              />
-            </label>
-            <label>
-              {t('ratingOptional')}
-              <input
-                type="number"
-                min={0}
-                max={5}
-                step={0.1}
-                value={createRating}
-                onChange={(e) => setCreateRating(e.target.value)}
-                placeholder="0"
-              />
-            </label>
-          </div>
-          <fieldset className="pin-create-fieldset">
-            <legend>{t('loginPin')}</legend>
-            <label className="checkbox-inline pin-create-check">
-              <input
-                type="checkbox"
-                checked={createGeneratePin}
-                onChange={(e) => {
-                  setCreateGeneratePin(e.target.checked);
-                  if (!e.target.checked) setCreatePin('');
-                }}
-              />
-              {t('generatePinOnCreate')}
-            </label>
-            {createGeneratePin ? (
+            <div className="modal-form-row">
               <label>
-                {t('loginPin')}
+                {t('geoState')}
+                <Select
+                  options={stateOptions}
+                  value={createStateId}
+                  placeholder={t('geoState')}
+                  showSearch
+                  searchPlaceholder={t('searchState')}
+                  emptyMessage={t('noStatesFound')}
+                  onChange={(value) => {
+                    setCreateStateId(value);
+                    setCreateDistrictId('');
+                    setCreateCity('');
+                    setCreatePincode('');
+                  }}
+                />
+              </label>
+              <label>
+                {t('geoDistrict')}
+                <Select
+                  options={districtOptions}
+                  value={createDistrictId}
+                  placeholder={t('geoDistrict')}
+                  showSearch
+                  searchPlaceholder={t('searchDistrict')}
+                  emptyMessage={t('noDistrictsFound')}
+                  onChange={(value) => {
+                    setCreateDistrictId(value);
+                    const d = geoDistricts.find((x) => x._id === value);
+                    if (d) {
+                      if (!createCity.trim()) setCreateCity(d.name);
+                      if (d.pincode) setCreatePincode(d.pincode);
+                    }
+                  }}
+                />
+              </label>
+            </div>
+            <div className="modal-form-row">
+              <label>
+                {t('geoCity')}
+                <input
+                  value={createCity}
+                  onChange={(e) => setCreateCity(e.target.value)}
+                  placeholder={t('geoDistrict')}
+                />
+              </label>
+              <label>
+                {t('pincode')}
                 <input
                   type="text"
                   inputMode="numeric"
                   maxLength={6}
-                  placeholder={t('pinAutoGenerate')}
-                  value={createPin}
+                  value={createPincode}
                   onChange={(e) =>
-                    setCreatePin(e.target.value.replace(/\D/g, '').slice(0, 6))
+                    setCreatePincode(e.target.value.replace(/\D/g, '').slice(0, 6))
                   }
+                  placeholder="560001"
                 />
               </label>
-            ) : null}
-          </fieldset>
+            </div>
+            <label>
+              {t('serviceType')}
+              <Select
+                options={serviceOptions}
+                value={createService}
+                placeholder={t('selectServiceType')}
+                showSearch
+                onChange={setCreateService}
+              />
+            </label>
+            <div className="modal-form-row">
+              <label>
+                {t('experienceOptional')}
+                <input
+                  type="number"
+                  min={0}
+                  max={50}
+                  value={createExperience}
+                  onChange={(e) => setCreateExperience(e.target.value)}
+                  placeholder="0"
+                />
+              </label>
+              <label>
+                {t('ratingOptional')}
+                <input
+                  type="number"
+                  min={0}
+                  max={5}
+                  step={0.1}
+                  value={createRating}
+                  onChange={(e) => setCreateRating(e.target.value)}
+                  placeholder="0"
+                />
+              </label>
+            </div>
+            <fieldset className="pin-create-fieldset">
+              <legend>{t('loginPin')}</legend>
+              <label className="checkbox-inline pin-create-check">
+                <input
+                  type="checkbox"
+                  checked={createGeneratePin}
+                  onChange={(e) => {
+                    setCreateGeneratePin(e.target.checked);
+                    if (!e.target.checked) setCreatePin('');
+                  }}
+                />
+                {t('generatePinOnCreate')}
+              </label>
+              {createGeneratePin ? (
+                <label>
+                  {t('loginPin')}
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={6}
+                    placeholder={t('pinAutoGenerate')}
+                    value={createPin}
+                    onChange={(e) =>
+                      setCreatePin(e.target.value.replace(/\D/g, '').slice(0, 6))
+                    }
+                  />
+                </label>
+              ) : null}
+            </fieldset>
+          </div>
           {createError ? <p className="error-text">{createError}</p> : null}
-          <div className="actions">
+          <div className="modal-actions">
             <Button variant="primary" disabled={creating} onClick={() => void onCreateProvider()}>
               {creating ? t('saving') : t('save')}
             </Button>
@@ -1186,11 +1245,11 @@ export function ProvidersPage() {
 
       {pinUser ? (
         <Dialog open
-          title={t('setPinTitle')}
+          title={t('resetPartnerPin')}
           onClose={() => setPinUser(null)}
           testId="providers-set-pin-modal">
-          <p className="muted compact">{t('setPinLead')}</p>
-          <p className="muted compact">
+          <p className="modal-lead">{t('resetPartnerPinLead')}</p>
+          <p className="modal-lead" style={{fontWeight: 600, color: 'var(--color-text)'}}>
             {pinUser.name || pinUser.displayName || pinUser.phone}
           </p>
           <label>
@@ -1207,7 +1266,7 @@ export function ProvidersPage() {
             />
           </label>
           {pinMessage ? <p className="error-text">{pinMessage}</p> : null}
-          <div className="actions">
+          <div className="modal-actions">
             <Button variant="primary" disabled={pinBusy} onClick={() => void onSetPin()}>
               {pinBusy ? t('saving') : t('save')}
             </Button>
@@ -1225,13 +1284,13 @@ export function ProvidersPage() {
           <label>
             {t('rejectionReason')}
             <textarea
-              rows={3}
+              rows={4}
               value={rejectReason}
               onChange={(e) => setRejectReason(e.target.value)}
               autoFocus
             />
           </label>
-          <div className="actions">
+          <div className="modal-actions">
             <Button variant="danger" disabled={statusBusyId === rejectTarget._id} onClick={() => {
                 if (!rejectReason.trim()) {
                   setError(t('rejectionRequired'));
@@ -1250,11 +1309,11 @@ export function ProvidersPage() {
 
       {deactivateTarget ? (
         <Dialog open
-          title={t('deactivateTitle')}
+          title={t('deactivatePartnerTitle')}
           onClose={() => setDeactivateTarget(null)}
           testId="providers-deactivate-modal">
-          <p className="muted compact">
-            {t('deactivateLead', {
+          <p className="modal-lead">
+            {t('deactivatePartnerLead', {
               name:
                 deactivateTarget.businessName ||
                 deactivateTarget.name ||
@@ -1265,7 +1324,7 @@ export function ProvidersPage() {
           <label>
             {t('deactivationReason')}
             <textarea
-              rows={3}
+              rows={4}
               value={deactivateReason}
               onChange={(e) => setDeactivateReason(e.target.value)}
               autoFocus
@@ -1274,7 +1333,7 @@ export function ProvidersPage() {
           {deactivateError ? (
             <p className="error-text">{deactivateError}</p>
           ) : null}
-          <div className="actions">
+          <div className="modal-actions">
             <Button variant="danger" disabled={deactivateBusy} onClick={() => void onDeactivate()}>
               {deactivateBusy ? t('saving') : t('deactivate')}
             </Button>
@@ -1290,7 +1349,7 @@ export function ProvidersPage() {
           title={t('deleteUserTitle')}
           onClose={() => setDeleteTarget(null)}
           testId="providers-delete-modal">
-          <p className="muted compact">
+          <p className="modal-lead">
             {t('deleteUserLead', {
               name:
                 deleteTarget.businessName ||
@@ -1300,7 +1359,7 @@ export function ProvidersPage() {
             })}
           </p>
           {deleteError ? <p className="error-text">{deleteError}</p> : null}
-          <div className="actions">
+          <div className="modal-actions">
             <Button variant="danger" disabled={deleteBusy} onClick={() => void onDeleteProvider()}>
               {deleteBusy ? t('saving') : t('confirmDelete')}
             </Button>

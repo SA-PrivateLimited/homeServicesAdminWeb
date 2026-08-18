@@ -16,6 +16,7 @@ import {
   peekGeographyProviders,
   type GeographyJobStats,
   type GeographyProviderRow,
+  type GeographyServiceBreakdown,
 } from '../services/api/geographyApi';
 import {getProvidersPage, type Provider} from '../services/api/providersApi';
 import {getServiceCategories} from '../services/api/serviceCategoriesApi';
@@ -62,6 +63,9 @@ export function GeographyProvidersPage() {
   const [rows, setRows] = useState<GeographyProviderRow[]>(
     () => warm?.providers || [],
   );
+  const [serviceBreakdown, setServiceBreakdown] = useState<
+    GeographyServiceBreakdown[]
+  >(() => warm?.serviceBreakdown || []);
   const [district, setDistrict] = useState<{
     _id: string;
     name: string;
@@ -106,6 +110,7 @@ export function GeographyProvidersPage() {
     const cached = !force ? peekGeographyProviders(districtId) : null;
     if (cached) {
       setRows(sortByUpdatedThenCreated(cached.providers));
+      setServiceBreakdown(cached.serviceBreakdown || []);
       setDistrict(cached.district);
       setLoading(false);
     } else {
@@ -115,6 +120,7 @@ export function GeographyProvidersPage() {
     try {
       const result = await getGeographyProviders(districtId, {force});
       setRows(sortByUpdatedThenCreated(result.providers));
+      setServiceBreakdown(result.serviceBreakdown || []);
       setDistrict(result.district);
     } catch (err) {
       setError(err instanceof Error ? err.message : t('errorGeneric'));
@@ -279,9 +285,15 @@ export function GeographyProvidersPage() {
       },
       {
         key: 'service',
-        header: t('serviceType'),
-        width: '14%',
-        render: (row) => row.serviceType || '—',
+        header: t('services'),
+        width: '18%',
+        render: (row) => {
+          const names = (row.services || [])
+            .map((s) => s.name)
+            .filter(Boolean);
+          if (names.length) return names.join(', ');
+          return row.serviceType || '—';
+        },
       },
       {
         key: 'status',
@@ -333,6 +345,14 @@ export function GeographyProvidersPage() {
           {t('geoProvidersTitle', {district: district?.name || '…'})}
         </h1>
         <p>{t('geoProvidersLead')}</p>
+        {serviceBreakdown.length ? (
+          <p className="muted compact">
+            {t('geoServiceBreakdown')}:{' '}
+            {serviceBreakdown
+              .map((item) => `${item.service} ${item.count}`)
+              .join(' · ')}
+          </p>
+        ) : null}
       </header>
       <div className="filter-row">
         {district ? (
