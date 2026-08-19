@@ -28,11 +28,11 @@ export default defineConfig({
       // Specific subpath first — do not collapse styles.css into index.js
       {
         find: 'sapvt-ltd-web-packages/styles.css',
-        replacement: path.join(webPkg, 'dist/styles.css'),
+        replacement: path.join(webPkg, 'src/styles.css'),
       },
       {
         find: /^sapvt-ltd-web-packages$/,
-        replacement: path.join(webPkg, 'dist/index.js'),
+        replacement: path.join(webPkg, 'src/index.ts'),
       },
     ],
   },
@@ -46,7 +46,7 @@ export default defineConfig({
       allow: ['..'],
     },
     watch: {
-      ignored: ['!**/packages/saPvtLtdWebPackages/dist/**'],
+      ignored: ['!**/packages/saPvtLtdWebPackages/src/**'],
     },
   },
 });
