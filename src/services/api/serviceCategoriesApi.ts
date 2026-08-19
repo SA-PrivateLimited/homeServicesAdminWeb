@@ -22,11 +22,13 @@ export interface QuestionnaireQuestion {
 export interface ServiceCategory {
   _id: string;
   name: string;
+  nameHi?: string;
   icon?: string;
   color?: string;
   description?: string;
   descriptionHi?: string;
   isActive?: boolean;
+  isPopular?: boolean;
   order?: number;
   questionnaire?: QuestionnaireQuestion[];
   requiresVehicle?: boolean;

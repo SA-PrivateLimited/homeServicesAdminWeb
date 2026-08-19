@@ -25,8 +25,10 @@ export function CategoryEditPage() {
   const navigate = useNavigate();
 
   const [name, setName] = useState('');
+  const [nameHi, setNameHi] = useState('');
   const [description, setDescription] = useState('');
   const [descriptionHi, setDescriptionHi] = useState('');
+  const [isPopular, setIsPopular] = useState(false);
   const [icon, setIcon] = useState(DEFAULT_ICON);
   const [color, setColor] = useState(themePrimary);
   const [order, setOrder] = useState(0);
@@ -51,8 +53,10 @@ export function CategoryEditPage() {
           return;
         }
         setName(cat.name);
+        setNameHi(cat.nameHi || '');
         setDescription(cat.description || '');
         setDescriptionHi(cat.descriptionHi || '');
+        setIsPopular(Boolean(cat.isPopular));
         setIcon(cat.icon || DEFAULT_ICON);
         setColor(cat.color || themePrimary());
         setOrder(cat.order ?? 0);
@@ -82,12 +86,14 @@ export function CategoryEditPage() {
     setError(null);
     const payload = {
       name: name.trim(),
+      nameHi: nameHi.trim() || undefined,
       description: description.trim() || undefined,
       descriptionHi: descriptionHi.trim() || undefined,
       icon: icon.trim() || DEFAULT_ICON,
       color: color.trim() || themePrimary(),
       order: Number(order) || 0,
       isActive,
+      isPopular,
       requiresVehicle,
       questionnaire,
     };
@@ -125,14 +131,26 @@ export function CategoryEditPage() {
       <form className="panel form-panel" onSubmit={onSubmit}>
         <div className="form-row">
           <label>
-            {t('name')}
+            {t('name')} (English) *
             <input
               data-testid="category-name-input"
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
+              placeholder="e.g. Plumber"
             />
           </label>
+          <label>
+            {t('nameHi', 'Category name (Hindi)')} *
+            <input
+              value={nameHi}
+              onChange={(e) => setNameHi(e.target.value)}
+              placeholder="e.g. प्लंबर"
+              lang="hi"
+            />
+          </label>
+        </div>
+        <div className="form-row">
           <label>
             {t('order')}
             <input
@@ -141,20 +159,29 @@ export function CategoryEditPage() {
               onChange={(e) => setOrder(Number(e.target.value))}
             />
           </label>
+          <label className="checkbox-label" style={{alignSelf: 'flex-end', paddingBottom: '6px'}}>
+            <input
+              type="checkbox"
+              checked={isPopular}
+              onChange={(e) => setIsPopular(e.target.checked)}
+            />
+            {t('isPopular', 'Show in Popular Services')}
+          </label>
         </div>
         <div className="form-row">
           <label>
-            {t('description')}
+            {t('description')} (English)
             <input
               value={description}
               onChange={(e) => setDescription(e.target.value)}
             />
           </label>
           <label>
-            {t('descriptionHi')}
+            {t('descriptionHi')} (Hindi)
             <input
               value={descriptionHi}
               onChange={(e) => setDescriptionHi(e.target.value)}
+              lang="hi"
             />
           </label>
         </div>
