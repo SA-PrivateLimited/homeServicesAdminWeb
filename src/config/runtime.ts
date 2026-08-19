@@ -19,6 +19,7 @@ const FALLBACK: AppRuntimeConfig = {
   brandName: 'Admin',
   themeColors: themeConfig[DEFAULT_CLIENT],
 };
+const PRODUCTION_API_BASE_URL = 'https://api.akanso.in';
 
 let runtimeConfig: AppRuntimeConfig = {...FALLBACK};
 export const RUNTIME_BRANDING_EVENT = 'hs-runtime-branding-change';
@@ -33,13 +34,13 @@ export function getRuntimeConfig(): AppRuntimeConfig {
 }
 
 export function getApiBaseUrl(): string {
-  return runtimeConfig.apiBaseUrl;
+  return sanitizeApiBaseUrl(runtimeConfig.apiBaseUrl);
 }
 
 export function setApiBaseUrl(url: string): void {
   runtimeConfig = {
     ...runtimeConfig,
-    apiBaseUrl: url.replace(/\/$/, ''),
+    apiBaseUrl: sanitizeApiBaseUrl(url),
   };
   notifyRuntimeBrandingChanged();
 }
@@ -66,6 +67,57 @@ function isLoopbackHost(hostname: string): boolean {
     hostname === '::1' ||
     hostname === '0.0.0.0'
   );
+}
+
+function isLocalBrowserHost(): boolean {
+  if (typeof window === 'undefined') return true;
+  return /^(localhost|127\.0\.0\.1)$/i.test(window.location.hostname);
+}
+
+/**
+ * Never call localhost APIs from deployed HTTPS origins.
+ * Keep localhost behavior for local development.
+ */
+export function sanitizeApiBaseUrl(url: string): string {
+  const trimmed = String(url || '')
+    .trim()
+    .replace(/\/$/, '');
+
+  if (isLocalBrowserHost()) {
+    let next = trimmed || FALLBACK.apiBaseUrl;
+    if (typeof window !== 'undefined') {
+      const pageHost = window.location.hostname;
+      try {
+        const parsed = new URL(next);
+        const apiHost = parsed.hostname;
+        if (
+          (apiHost === 'localhost' || apiHost === '127.0.0.1') &&
+          (pageHost === 'localhost' || pageHost === '127.0.0.1') &&
+          apiHost !== pageHost
+        ) {
+          parsed.hostname = pageHost;
+          next = parsed.toString().replace(/\/$/, '');
+        }
+      } catch {
+        /* keep next */
+      }
+    }
+    return next;
+  }
+
+  if (!trimmed || /localhost|127\.0\.0\.1/i.test(trimmed)) {
+    return PRODUCTION_API_BASE_URL;
+  }
+
+  if (
+    typeof window !== 'undefined' &&
+    window.location.protocol === 'https:' &&
+    trimmed.startsWith('http://')
+  ) {
+    return trimmed.replace(/^http:\/\//i, 'https://');
+  }
+
+  return trimmed;
 }
 
 /**
@@ -106,7 +158,10 @@ export async function loadRuntimeConfig(): Promise<AppRuntimeConfig> {
       cache: 'no-store',
     });
     if (!res.ok) {
-      runtimeConfig = {...FALLBACK};
+      runtimeConfig = {
+        ...FALLBACK,
+        apiBaseUrl: sanitizeApiBaseUrl(FALLBACK.apiBaseUrl),
+      };
       notifyRuntimeBrandingChanged();
       return runtimeConfig;
     }
@@ -117,10 +172,7 @@ export async function loadRuntimeConfig(): Promise<AppRuntimeConfig> {
       themeColors: Partial<ClientColorPalette>;
     }>;
 
-    const apiBaseUrl = (json.apiBaseUrl || FALLBACK.apiBaseUrl).replace(
-      /\/$/,
-      '',
-    );
+    const apiBaseUrl = sanitizeApiBaseUrl(json.apiBaseUrl || FALLBACK.apiBaseUrl);
 
     const themeColors: ClientColorPalette = {
       ...FALLBACK.themeColors,
@@ -136,7 +188,10 @@ export async function loadRuntimeConfig(): Promise<AppRuntimeConfig> {
     notifyRuntimeBrandingChanged();
     return runtimeConfig;
   } catch {
-    runtimeConfig = {...FALLBACK};
+    runtimeConfig = {
+      ...FALLBACK,
+      apiBaseUrl: sanitizeApiBaseUrl(FALLBACK.apiBaseUrl),
+    };
     notifyRuntimeBrandingChanged();
     return runtimeConfig;
   }

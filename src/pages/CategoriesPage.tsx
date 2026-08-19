@@ -80,7 +80,7 @@ export function CategoriesPage() {
     () => [
       {
         key: 'name',
-        header: t('name'),
+        header: `${t('name')} (EN)`,
         filterable: true,
         filterPlaceholder: t('searchName'),
         filterValue: (row) => row.name || '',
@@ -91,7 +91,32 @@ export function CategoriesPage() {
               style={{background: row.color || 'var(--color-primary)'}}
             />
             {row.name}
+            {row.isPopular ? (
+              <span
+                title="Popular"
+                style={{
+                  marginLeft: 6,
+                  fontSize: 10,
+                  padding: '1px 5px',
+                  borderRadius: 4,
+                  background: 'var(--color-warning-100, #fef3c7)',
+                  color: 'var(--color-warning-800, #92400e)',
+                  fontWeight: 700,
+                  verticalAlign: 'middle',
+                }}>
+                ★
+              </span>
+            ) : null}
           </>
+        ),
+      },
+      {
+        key: 'nameHi',
+        header: `${t('nameHi', 'Name')} (HI)`,
+        render: (row) => (
+          <span lang="hi" style={{fontSize: 13}}>
+            {row.nameHi || <span style={{color: 'var(--color-danger, #ef4444)', fontSize: 11}}>missing</span>}
+          </span>
         ),
       },
       {

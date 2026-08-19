@@ -1,26 +1,41 @@
-# .claude/agents — Persona Index
+# `.claude/agents` — HomeServicesAdminWeb Agent Suite
 
-Each file defines the role, inputs, outputs, and rules for one stage of the 7-stage pipeline.
+Local personas for the AdminWeb repo. Each file is self-sufficient and embeds Akanso AdminWeb context.
 
-| File | Stage | Role |
-|------|-------|------|
-| `product-manager.md` | 1 — Spec | Reconciles Jira + Figma into `FEATURE_SPEC.md` |
-| `planner.md` | 2 — Plan | Turns spec into surgical `IMPLEMENTATION_PLAN.md` |
-| `tester.md` | 3 — Test | Writes failing tests (TDD) before implementation |
-| `frontend.md` | 4 — Implement | Writes feature code; makes tests pass |
-| `verifier.md` | 5 — Verify | Runs tests, TypeScript, AC trace, boundary checks |
-| `reviewer.md` | 6 — Review | Full code review → `REVIEW.md` |
-| `reporter.md` | 7 — Report | Final scorecard → `COMPLETION_REPORT.md` |
+## Repo context
 
-## How the pipeline is started
+AdminWeb is the Akanso admin and operations dashboard.
 
-In Cursor Agent mode, paste:
+### Main surfaces
+- providers/partners
+- customers
+- jobs
+- categories
+- geography
+- contacts
+- admins
+- clients
 
-```
-Read agent-context/[ticket-id]/AGENT_KICKOFF.md and implement [ticket-id] by executing the full 7-stage pipeline it describes. Follow each stage's persona in .claude/agents/.
-```
+## Shared assumptions
 
-The `AGENT_KICKOFF.md` file drives the rest. Do not run stages manually.
+- AdminWeb is a separate app from CustomerWeb and ProviderWeb
+- permission-gated routes are real
+- Super Admin elevation exists
+- long dialogs and dense tables are normal
+- existing operational functionality should not be removed casually
 
-## _unused/
-Archived personas that are no longer active. Do not reference these in the pipeline.
+## Personas
+
+| File | Stage | Purpose |
+|------|-------|---------|
+| `product-manager.md` | 1 — Spec | Turn requests into scoped AdminWeb feature specs |
+| `planner.md` | 2 — Plan | Decide what AdminWeb files and layers should change |
+| `tester.md` | 3 — Test | Write high-value tests for AdminWeb changes |
+| `frontend.md` | 4 — Implement | Implement AdminWeb frontend changes |
+| `verifier.md` | 5 — Verify | Verify builds, behavior, and admin regression risk |
+| `reviewer.md` | 6 — Review | Review AdminWeb changes for operational safety |
+| `reporter.md` | 7 — Report | Summarize changes, verification, and remaining risk |
+
+## How to use
+
+Read the persona for your current stage before doing anything. Follow its inputs, outputs, and gate checklist.

@@ -1,5 +1,5 @@
 ---
-description: Always-active project conventions (Home Services Web)
+description: Always-active project conventions (HomeServicesAdminWeb)
 alwaysApply: true
 ---
 
@@ -23,6 +23,11 @@ Zustand in `src/store/` when needed. API in `src/services/api/`.
 
 ## Routing
 React Router — register pages in `App.tsx`.
+
+## Product expectations
+- AdminWeb is desktop-first but still needs responsive behavior.
+- Preserve permission-gated routes and Super Admin elevation.
+- Do not remove operational actions casually during redesigns.
 
 ## PR size
 Prefer PRs under ~400 lines changed.

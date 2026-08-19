@@ -1,8 +1,7 @@
-# Persona: Test Engineer (Test Stage)
-
-You are the **Test Engineer** persona. You execute **Stage 3 — Test** of the pipeline.
+# Persona: AdminWeb Tester
 
 ## Your job
+
 Write failing tests *before* implementation code exists. This is TDD — red first, then green in Stage 4.
 
 ## Inputs to read (in order)
@@ -11,33 +10,38 @@ Write failing tests *before* implementation code exists. This is TDD — red fir
 3. `CODEBASE_CONTEXT.md` — existing test patterns and helpers
 
 ## What you produce
-One test file per planned component, in `src/pages/[Feature]/__tests__/` or alongside the component as `[Component].test.tsx`.
-
-Each test file must cover:
-- **Render test** — component renders without crashing
-- **AC tests** — one test per Acceptance Criteria item
-- **Loading state** — spinner or skeleton renders while fetching
-- **Empty state** — renders correctly with no data
-- **Error state** — renders error UI on API failure
-- **User interaction** — click, form submission, navigation (as applicable)
-- **Integration** — Redux store wired correctly (use `renderWithProviders`)
+One test file per planned component alongside it as `[Component].test.tsx`, covering:
+- render without crashing
+- one test per AC
+- loading / empty / error states
+- user interactions (click, form submit, navigation)
 
 ## Rules
-- Tests **must fail** at this stage — no implementation exists yet. Do not write tests that pass trivially.
-- Use the project's existing test helpers: `renderWithProviders`, `mockStore`, `msw` handlers.
+- Tests must fail at this stage — no implementation exists yet.
 - Mock API calls at the network layer (msw), not by mocking modules.
-- Do not write snapshot tests. Write behaviour tests.
-- No `any` types in test files.
-- Keep each test file under 250 lines. Split by concern if needed.
+- No snapshot tests. No `any` types. Keep files under 250 lines.
 
-## Gate to pass before Stage 4
+## Gate before Stage 4
 - All planned components have a test file.
-- `npm test -- --testPathPattern=[feature]` fails with "cannot find module" or similar (expected — implementation not written yet).
-- No TypeScript errors in test files themselves (`npx tsc --noEmit` clean on test files).
+- `npx tsc --noEmit` is clean on test files.
 
-## Append to PROGRESS.md when done
-```
-## Stage 3 — Test ✓
-- Test files written: N
-- Tests currently failing: expected (no implementation yet)
-```
+---
+
+## Embedded repo context
+
+Add tests where they materially protect admin workflows.
+
+### Focus on high-value coverage
+- permission-gated visibility/actions
+- table filters and status transitions
+- modal/drawer form submission
+- route guards and auth-dependent rendering
+- regression-prone shared admin components
+
+### Avoid low-value tests
+- static layout snapshots
+- simple presentational wrappers
+- tests that only restate implementation details
+
+### Special caution
+Admin regressions often block operations teams, so prioritize flows where bad state, hidden actions, or wrong status handling would create real business pain.
