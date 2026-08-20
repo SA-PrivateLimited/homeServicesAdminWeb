@@ -14,6 +14,7 @@ import { AdminsPage } from './pages/AdminsPage';
 import { JobsPage } from './pages/JobsPage';
 import { CategoriesPage } from './pages/CategoriesPage';
 import { CategoryEditPage } from './pages/CategoryEditPage';
+import { CategorySectionsPage } from './pages/CategorySectionsPage';
 import { ContactsPage } from './pages/ContactsPage';
 import { ContactPrivacyPage } from './pages/ContactPrivacyPage';
 import { ClientsPage } from './pages/ClientsPage';
@@ -91,6 +92,10 @@ export default function App() {
               <Route
                 path="categories/:categoryId"
                 element={<CategoryEditPage />}
+              />
+              <Route
+                path="category-sections"
+                element={<CategorySectionsPage />}
               />
             </Route>
             <Route

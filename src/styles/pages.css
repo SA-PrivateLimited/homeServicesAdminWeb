@@ -1422,6 +1422,111 @@ a.hs-btn {
   padding: var(--space-4);
 }
 
+.panel.form-panel {
+  /* Let package Select/MultiSelect dropdowns paint and scroll outside the card */
+  overflow: visible;
+}
+
+.panel.panel--dropdown-safe {
+  overflow: visible;
+}
+
+.panel.panel--dropdown-safe .hs-vtable__scroll {
+  overflow: auto;
+}
+
+.category-section-cell {
+  min-width: 14rem;
+  max-width: 18rem;
+}
+
+.category-section-cell .hs-dd__panel {
+  z-index: 50;
+}
+
+.category-section-cell .hs-dd__list {
+  max-height: 220px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+.category-inline-input {
+  display: block;
+  width: 100%;
+  min-width: 6rem;
+  font: inherit;
+  font-size: var(--font-size-sm);
+  padding: 6px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm, 6px);
+  background: var(--color-card);
+  color: var(--color-text);
+}
+
+.category-inline-input:focus {
+  outline: 2px solid color-mix(in srgb, var(--color-primary) 45%, transparent);
+  outline-offset: 1px;
+}
+
+.category-search-terms-cell {
+  display: block;
+  width: 100%;
+  min-width: 14rem;
+  max-width: 20rem;
+  min-height: 2.75rem;
+  resize: vertical;
+  font: inherit;
+  font-size: var(--font-size-sm);
+  font-weight: 400;
+  line-height: 1.35;
+  padding: 6px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm, 6px);
+  background: var(--color-card);
+  color: var(--color-text);
+}
+
+.category-search-terms-cell:focus {
+  outline: 2px solid color-mix(in srgb, var(--color-primary) 45%, transparent);
+  outline-offset: 1px;
+}
+
+.category-search-terms-cell:disabled {
+  opacity: 0.65;
+}
+
+.category-discovery {
+  margin: var(--space-2) 0 var(--space-5);
+  padding: 0;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+}
+
+.category-discovery > h3 {
+  margin: 0 0 var(--space-2);
+  font-size: var(--font-size-md);
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.category-discovery > .muted {
+  margin: 0 0 var(--space-3);
+}
+
+/* Ensure section Select list can scroll inside the anchored panel */
+.category-discovery .hs-dd__panel {
+  overflow: hidden;
+}
+
+.category-discovery .hs-dd__list {
+  max-height: 220px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
 .form-row {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));

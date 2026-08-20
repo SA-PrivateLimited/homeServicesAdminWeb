@@ -44,6 +44,11 @@ const NAV: Array<{
     key: 'navCategories',
     permission: PERMISSIONS.CATEGORIES_VIEW,
   },
+  {
+    to: '/category-sections',
+    key: 'navCategorySections',
+    permission: PERMISSIONS.CATEGORIES_VIEW,
+  },
   {to: '/contacts', key: 'navContacts', permission: PERMISSIONS.CONTACTS_VIEW},
   {
     to: '/settings/contact-privacy',
