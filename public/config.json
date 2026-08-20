@@ -1,5 +1,5 @@
 {
-  "apiBaseUrl": "https://api.akanso.in",
+  "apiBaseUrl": "http://localhost:3001",
   "themeColors": {
     "primary": "#3182CE",
     "primaryDark": "#2C5282",

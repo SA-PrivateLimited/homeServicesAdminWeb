@@ -56,6 +56,12 @@ const NAV: Array<{
     permission: PERMISSIONS.CLIENTS_VIEW,
     superAdminOnly: true,
   },
+  {
+    to: '/launch',
+    key: 'navLaunch',
+    permission: PERMISSIONS.CLIENTS_VIEW,
+    superAdminOnly: true,
+  },
 ];
 
 const SIDEBAR_COLLAPSED_KEY = 'hs-admin-sidebar-collapsed';
@@ -274,7 +280,12 @@ export function AdminShell() {
                 title={t('exitSuperAdmin')}
                 onClick={() => {
                   exitSuperAdmin();
-                  if (window.location.pathname.startsWith('/admins')) {
+                  const path = window.location.pathname;
+                  if (
+                    path.startsWith('/admins') ||
+                    path.startsWith('/clients') ||
+                    path.startsWith('/launch')
+                  ) {
                     navigate('/', {replace: true});
                   }
                 }}>

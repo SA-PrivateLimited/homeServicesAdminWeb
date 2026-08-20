@@ -17,6 +17,7 @@ import { CategoryEditPage } from './pages/CategoryEditPage';
 import { ContactsPage } from './pages/ContactsPage';
 import { ContactPrivacyPage } from './pages/ContactPrivacyPage';
 import { ClientsPage } from './pages/ClientsPage';
+import { LaunchPage } from './pages/LaunchPage';
 import { GeographyStatesPage } from './pages/GeographyStatesPage';
 import { GeographyDistrictsPage } from './pages/GeographyDistrictsPage';
 import { GeographyProvidersPage } from './pages/GeographyProvidersPage';
@@ -108,6 +109,12 @@ export default function App() {
                 <RequirePermission permission={PERMISSIONS.CLIENTS_VIEW} />
               }>
               <Route path="clients" element={<ClientsPage />} />
+            </Route>
+            <Route
+              element={
+                <RequirePermission permission={PERMISSIONS.CLIENTS_VIEW} />
+              }>
+              <Route path="launch" element={<LaunchPage />} />
             </Route>
           </Route>
         </Route>
