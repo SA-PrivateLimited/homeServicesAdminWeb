@@ -2983,3 +2983,41 @@ a.hs-btn.icon-only {
 }
 
 
+
+.feedback-detail__message {
+  margin: 0 0 12px;
+  white-space: pre-wrap;
+  font-size: 15px;
+  line-height: 1.45;
+  color: var(--text);
+}
+
+.feedback-detail .admin-textarea,
+.admin-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 72px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  font: inherit;
+  resize: vertical;
+}
+
+.row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+button.linkish {
+  border: none;
+  background: none;
+  padding: 0;
+  color: var(--primary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}

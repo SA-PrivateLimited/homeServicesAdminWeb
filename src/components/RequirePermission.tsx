@@ -10,6 +10,7 @@ const FALLBACK_ORDER: Array<{to: string; permission: Permission}> = [
   {to: '/categories', permission: PERMISSIONS.CATEGORIES_VIEW},
   {to: '/geography', permission: PERMISSIONS.GEOGRAPHY_VIEW},
   {to: '/contacts', permission: PERMISSIONS.CONTACTS_VIEW},
+  {to: '/feedbacks', permission: PERMISSIONS.CONTACTS_VIEW},
   {to: '/clients', permission: PERMISSIONS.CLIENTS_VIEW},
   {to: '/admins', permission: PERMISSIONS.ADMINS_VIEW},
 ];
