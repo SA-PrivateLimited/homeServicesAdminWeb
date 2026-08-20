@@ -50,6 +50,7 @@ const NAV: Array<{
     permission: PERMISSIONS.CATEGORIES_VIEW,
   },
   {to: '/contacts', key: 'navContacts', permission: PERMISSIONS.CONTACTS_VIEW},
+  {to: '/feedbacks', key: 'navFeedbacks', permission: PERMISSIONS.CONTACTS_VIEW},
   {
     to: '/settings/contact-privacy',
     key: 'navSettings',

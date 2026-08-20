@@ -16,6 +16,7 @@ import { CategoriesPage } from './pages/CategoriesPage';
 import { CategoryEditPage } from './pages/CategoryEditPage';
 import { CategorySectionsPage } from './pages/CategorySectionsPage';
 import { ContactsPage } from './pages/ContactsPage';
+import { FeedbacksPage } from './pages/FeedbacksPage';
 import { ContactPrivacyPage } from './pages/ContactPrivacyPage';
 import { ClientsPage } from './pages/ClientsPage';
 import { GeographyStatesPage } from './pages/GeographyStatesPage';
@@ -103,6 +104,7 @@ export default function App() {
                 <RequirePermission permission={PERMISSIONS.CONTACTS_VIEW} />
               }>
               <Route path="contacts" element={<ContactsPage />} />
+              <Route path="feedbacks" element={<FeedbacksPage />} />
               <Route
                 path="settings/contact-privacy"
                 element={<ContactPrivacyPage />}
