@@ -26,13 +26,21 @@ export interface ActivationPasswordResult {
   message?: string;
 }
 
+function currentAdminWebOrigin(): string | undefined {
+  if (typeof window === 'undefined') return undefined;
+  return window.location.origin;
+}
+
 /** Super Admin: create PENDING admin + one-time activation link (no email). */
 export async function inviteAdmin(input: {
   name?: string;
   email: string;
   permissions?: string[];
 }): Promise<ActivationInviteResult> {
-  return apiPost<ActivationInviteResult>('/api/users/admins/invite', input);
+  return apiPost<ActivationInviteResult>('/api/users/admins/invite', {
+    ...input,
+    adminWebOrigin: currentAdminWebOrigin(),
+  });
 }
 
 export async function regenerateAdminActivation(
@@ -40,7 +48,7 @@ export async function regenerateAdminActivation(
 ): Promise<ActivationInviteResult> {
   return apiPost<ActivationInviteResult>(
     `/api/users/${userId}/activation/regenerate`,
-    {},
+    {adminWebOrigin: currentAdminWebOrigin()},
   );
 }
 
