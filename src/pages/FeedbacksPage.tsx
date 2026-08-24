@@ -208,7 +208,7 @@ export function FeedbacksPage() {
       </div>
 
       <VirtualTable
-        rows={rows}
+        data={rows}
         columns={columns}
         loading={loading}
         rowKey={(row) => row._id}

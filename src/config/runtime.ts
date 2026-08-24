@@ -76,7 +76,16 @@ export function sanitizeApiBaseUrl(url: string): string {
     .replace(/\/$/, '');
 
   if (isLocalBrowserHost()) {
-    let next = trimmed || FALLBACK.apiBaseUrl;
+    const envOverride = import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, '');
+    let next = envOverride || trimmed || FALLBACK.apiBaseUrl;
+    // Local dev: config.json may still point at production — use local backend instead.
+    if (
+      !envOverride &&
+      !import.meta.env.PROD &&
+      /api\.akanso\.in/i.test(next)
+    ) {
+      next = FALLBACK.apiBaseUrl;
+    }
     if (typeof window !== 'undefined') {
       const pageHost = window.location.hostname;
       try {

@@ -17,6 +17,7 @@ import {
   getProviderById,
   resolveUploadUrl,
   updateProvider,
+  updateProviderServiceAvailability,
   updateProviderServiceProfile,
   updateProviderServiceQualification,
   uploadProviderDocument,
@@ -195,6 +196,33 @@ function isPartnerServiceActive(p: Provider | null, name: string): boolean {
   return !inactive.includes(name.toLowerCase());
 }
 
+function primaryServiceName(p: Provider | null): string {
+  return (
+    p?.serviceType ||
+    p?.specialization ||
+    partnerServiceNames(p)[0] ||
+    ''
+  );
+}
+
+/** Per-service experience, falling back to account experience on primary service. */
+function serviceExperienceOf(
+  p: Provider | null,
+  serviceName: string,
+): number | null | undefined {
+  const fromQual = serviceQualificationOf(p, serviceName)?.experience;
+  if (fromQual != null) return fromQual;
+  const primary = primaryServiceName(p);
+  if (
+    primary &&
+    serviceName.toLowerCase() === primary.toLowerCase() &&
+    p?.experience != null
+  ) {
+    return p.experience;
+  }
+  return null;
+}
+
 export function ProviderDetailPage() {
   const {providerId} = useParams();
   const {t} = useTranslation();
@@ -237,6 +265,7 @@ export function ProviderDetailPage() {
   const [rating, setRating] = useState('');
   const [serviceFee, setServiceFee] = useState(0);
   const [serviceBusy, setServiceBusy] = useState(false);
+  const [availabilityBusy, setAvailabilityBusy] = useState<string | null>(null);
   const [reviewService, setReviewService] = useState<string | null>(null);
   const [serviceRejectReason, setServiceRejectReason] = useState('');
   const [manageService, setManageService] = useState<string | null>(null);
@@ -550,6 +579,34 @@ export function ProviderDetailPage() {
       setManageError(err instanceof Error ? err.message : t('errorGeneric'));
     } finally {
       setManageBusy(false);
+    }
+  };
+
+  const onToggleServiceAvailability = async (svcName: string) => {
+    if (!providerId || !provider) return;
+    if (serviceVerificationOf(provider, svcName) !== 'approved') return;
+    const currentlyActive = isPartnerServiceActive(provider, svcName);
+    setAvailabilityBusy(svcName);
+    setError(null);
+    try {
+      const updated = await updateProviderServiceAvailability(
+        providerId,
+        svcName,
+        !currentlyActive,
+      );
+      setProvider(updated);
+      setSuccessBanner({
+        title: currentlyActive
+          ? t('serviceDeactivatedTitle')
+          : t('serviceActivatedTitle'),
+        detail: currentlyActive
+          ? t('serviceDeactivatedDetail', {service: svcName})
+          : t('serviceActivatedDetail', {service: svcName}),
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t('errorGeneric'));
+    } finally {
+      setAvailabilityBusy(null);
     }
   };
 
@@ -1134,6 +1191,7 @@ export function ProviderDetailPage() {
           </Button>
         </div>
         <p className="muted compact">{t('partnerServicesLead')}</p>
+        <p className="muted compact">{t('partnerServicesAvailabilityLead')}</p>
         {listedServices.length === 0 ? (
           <p className="muted">{t('partnerServicesEmpty')}</p>
         ) : (
@@ -1155,33 +1213,68 @@ export function ProviderDetailPage() {
                       : t('servicePending');
               return (
                 <li key={svcName} className="partner-service-row">
-                  <div className="feedback-job-meta">
-                    <strong>
-                      {svcName}
-                      {isPrimary ? ` · ${t('primaryService')}` : ''}
-                    </strong>
-                    <p className="muted compact">
-                      {statusLabel}
-                      {' · '}
-                      {active
-                        ? t('serviceAvailabilityOn')
-                        : t('serviceAvailabilityOff')}
-                    </p>
-                    {qualification?.experience != null ? (
+                  <div className="partner-service-main">
+                    <div className="feedback-job-meta">
+                      <strong>
+                        {svcName}
+                        {isPrimary ? ` · ${t('primaryService')}` : ''}
+                      </strong>
                       <p className="muted compact">
-                        {t('experience')}: {qualification.experience} {t('years')}
+                        {statusLabel}
+                        {' · '}
+                        {active
+                          ? t('serviceAvailabilityOn')
+                          : t('serviceAvailabilityOff')}
                       </p>
-                    ) : null}
-                    {serviceInformationOf(qualification) ? (
-                      <p className="muted compact">
-                        {t('serviceInformation')}: {serviceInformationOf(qualification)}
-                      </p>
-                    ) : null}
-                    {status === 'rejected' && qualification?.rejectionReason ? (
-                      <p className="muted compact">
-                        {t('rejectionReason')}: {qualification.rejectionReason}
-                      </p>
-                    ) : null}
+                      {status !== 'approved' ? (
+                        <p className="muted compact">
+                          {t('serviceAvailabilityVerifyFirst')}
+                        </p>
+                      ) : null}
+                      {serviceExperienceOf(provider, svcName) != null ? (
+                        <p className="muted compact">
+                          {t('experience')}: {serviceExperienceOf(provider, svcName)}{' '}
+                          {t('years')}
+                        </p>
+                      ) : null}
+                      {serviceInformationOf(qualification) ? (
+                        <p className="muted compact">
+                          {t('serviceInformation')}: {serviceInformationOf(qualification)}
+                        </p>
+                      ) : null}
+                      {status === 'rejected' && qualification?.rejectionReason ? (
+                        <p className="muted compact">
+                          {t('rejectionReason')}: {qualification.rejectionReason}
+                        </p>
+                      ) : null}
+                    </div>
+                    <div className="partner-service-availability">
+                      <span className="partner-service-availability-label">
+                        {t('serviceAvailabilityForCustomers')}
+                      </span>
+                      <button
+                        type="button"
+                        className={`service-availability-toggle${active ? ' is-on' : ''}${
+                          status !== 'approved' ||
+                          availabilityBusy === svcName ||
+                          serviceBusy
+                            ? ' is-disabled'
+                            : ''
+                        }`}
+                        role="switch"
+                        aria-checked={active}
+                        aria-label={t('serviceAvailabilityToggle', {
+                          service: svcName,
+                        })}
+                        disabled={
+                          status !== 'approved' ||
+                          availabilityBusy === svcName ||
+                          serviceBusy
+                        }
+                        onClick={() => void onToggleServiceAvailability(svcName)}>
+                        <span className="service-availability-toggle-knob" />
+                      </button>
+                    </div>
                   </div>
                   <div className="service-row-actions">
                     <Button
@@ -1272,8 +1365,8 @@ export function ProviderDetailPage() {
             <div>
               <dt>{t('experience')}</dt>
               <dd>
-                {reviewQual?.experience != null
-                  ? `${reviewQual.experience} ${t('years')}`
+                {serviceExperienceOf(provider, reviewService) != null
+                  ? `${serviceExperienceOf(provider, reviewService)} ${t('years')}`
                   : <span className="muted">{t('notProvided')}</span>}
               </dd>
             </div>
