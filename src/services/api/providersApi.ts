@@ -157,6 +157,18 @@ export async function updateProviderServiceQualification(
   });
 }
 
+/** Admin toggles whether a verified service is visible to customers / accepts new jobs. */
+export async function updateProviderServiceAvailability(
+  providerId: string,
+  serviceName: string,
+  active: boolean,
+): Promise<Provider> {
+  return apiPut<Provider>(`/api/providers/${providerId}/service-availability`, {
+    serviceName,
+    active,
+  });
+}
+
 /**
  * Update per-service profile fields (experience, notes) without touching
  * other services or the partner account verification status.

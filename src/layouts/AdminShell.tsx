@@ -30,6 +30,11 @@ const NAV: Array<{
 }> = [
   {to: '/', end: true, key: 'navOverview', permission: PERMISSIONS.OVERVIEW_VIEW},
   {to: '/providers', key: 'navProviders', permission: PERMISSIONS.PROVIDERS_VIEW},
+  {
+    to: '/settings/partner-verification',
+    key: 'navPartnerVerification',
+    permission: PERMISSIONS.PROVIDERS_VIEW,
+  },
   {to: '/geography', key: 'navGeography', permission: PERMISSIONS.GEOGRAPHY_VIEW},
   {to: '/customers', key: 'navCustomers', permission: PERMISSIONS.CUSTOMERS_VIEW},
   {

@@ -18,6 +18,7 @@ import { CategorySectionsPage } from './pages/CategorySectionsPage';
 import { ContactsPage } from './pages/ContactsPage';
 import { FeedbacksPage } from './pages/FeedbacksPage';
 import { ContactPrivacyPage } from './pages/ContactPrivacyPage';
+import { PartnerVerificationPage } from './pages/PartnerVerificationPage';
 import { ClientsPage } from './pages/ClientsPage';
 import { GeographyStatesPage } from './pages/GeographyStatesPage';
 import { GeographyDistrictsPage } from './pages/GeographyDistrictsPage';
@@ -52,6 +53,10 @@ export default function App() {
               <Route
                 path="providers/:providerId"
                 element={<ProviderDetailPage />}
+              />
+              <Route
+                path="settings/partner-verification"
+                element={<PartnerVerificationPage />}
               />
             </Route>
             <Route
