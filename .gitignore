@@ -30,3 +30,6 @@ agent-context/
 .env
 .env.*
 !.env.example
+
+# Local runtime API/branding. Production config.json is stored on S3.
+/public/config.json
