@@ -1,0 +1,132 @@
+.bulk-partners-panel {
+  margin-bottom: 1rem;
+  padding: 0;
+  overflow: hidden;
+}
+
+.bulk-partners-panel__toggle {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  width: 100%;
+  padding: 1rem;
+  border: none;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+}
+
+.bulk-partners-panel__toggle h2 {
+  font-size: 1.05rem;
+  margin: 0 0 0.25rem;
+}
+
+.bulk-partners-panel__toggle p {
+  margin: 0;
+  opacity: 0.8;
+  font-size: 0.9rem;
+}
+
+.bulk-partners-panel__chevron {
+  flex-shrink: 0;
+  margin-top: 0.15rem;
+  transition: transform 0.2s ease;
+}
+
+.bulk-partners-panel--expanded .bulk-partners-panel__chevron {
+  transform: rotate(180deg);
+}
+
+.bulk-partners-panel__body {
+  padding: 0 1rem 1rem;
+  border-top: 1px solid var(--border, #e5e5e5);
+}
+
+.bulk-partners-panel__defaults {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: 0.75rem;
+  margin: 1rem 0;
+}
+
+.bulk-partners-panel__paste {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.bulk-partners-panel__paste textarea {
+  width: 100%;
+  min-height: 5.5rem;
+  resize: vertical;
+  font-family: inherit;
+  font-size: var(--font-size-sm, 0.875rem);
+}
+
+.bulk-partners-panel__paste-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.bulk-partners-panel__table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--border, #e5e5e5);
+  border-radius: 8px;
+}
+
+.bulk-partners-panel__table {
+  width: 100%;
+  min-width: 56rem;
+  border-collapse: collapse;
+  font-size: var(--font-size-sm, 0.875rem);
+}
+
+.bulk-partners-panel__table th,
+.bulk-partners-panel__table td {
+  padding: 0.5rem 0.6rem;
+  border-bottom: 1px solid var(--border, #e5e5e5);
+  vertical-align: middle;
+}
+
+.bulk-partners-panel__table th {
+  text-align: left;
+  font-weight: 600;
+  background: var(--surface-muted, rgba(0, 0, 0, 0.03));
+  white-space: nowrap;
+}
+
+.bulk-partners-panel__table tr:last-child td {
+  border-bottom: none;
+}
+
+.bulk-partners-panel__table input {
+  width: 100%;
+  min-width: 5rem;
+  font: inherit;
+}
+
+.bulk-partners-panel__status--success {
+  color: var(--color-success, #15803d);
+}
+
+.bulk-partners-panel__status--failed {
+  color: var(--color-danger, #b91c1c);
+}
+
+.bulk-partners-panel__gender-note {
+  margin: 0.5rem 0 0;
+  font-size: 0.82rem;
+  opacity: 0.75;
+}
+
+.bulk-partners-panel__footer-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}

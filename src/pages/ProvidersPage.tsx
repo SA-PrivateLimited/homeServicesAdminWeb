@@ -51,6 +51,7 @@ import {
 } from '../utils/phone';
 import {formatLastUpdated} from '../utils/datetime';
 import {sortByUpdatedThenCreated} from '../utils/sort';
+import {BulkPartnersPanel} from '../components/providers/BulkPartnersPanel';
 import {CopyFeedbackButton} from '../components/CopyFeedbackButton';
 import {PinCopyButton} from '../components/PinCopyButton';
 import {RoleBadges} from '../components/RoleBadges';
@@ -1009,6 +1010,16 @@ export function ProvidersPage() {
           </ul>
         </section>
       ) : null}
+
+      <BulkPartnersPanel
+        geoStates={geoStates}
+        geoDistricts={geoDistricts}
+        serviceOptions={serviceOptions}
+        onProviderCreated={async () => {
+          setPage(0);
+          await load();
+        }}
+      />
 
       <div className="filter-row">
         <div className="filter-inline" style={{minWidth: '12rem'}}>
