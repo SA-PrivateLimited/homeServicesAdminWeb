@@ -8,6 +8,7 @@ import { LoginPage } from './pages/LoginPage';
 import { ActivatePage } from './pages/ActivatePage';
 import { OverviewPage } from './pages/OverviewPage';
 import { ProvidersPage } from './pages/ProvidersPage';
+import { PartnerBulkOnboardingPage } from './pages/PartnerBulkOnboardingPage';
 import { ProviderDetailPage } from './pages/ProviderDetailPage';
 import { CustomersPage } from './pages/CustomersPage';
 import { AdminsPage } from './pages/AdminsPage';
@@ -52,6 +53,10 @@ export default function App() {
                 <RequirePermission permission={PERMISSIONS.PROVIDERS_VIEW} />
               }>
               <Route path="providers" element={<ProvidersPage />} />
+              <Route
+                path="partners/bulk-onboarding"
+                element={<PartnerBulkOnboardingPage />}
+              />
               <Route
                 path="providers/:providerId"
                 element={<ProviderDetailPage />}

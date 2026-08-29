@@ -26,6 +26,8 @@ export interface BulkPartnersPanelProps {
   geoDistricts: GeographyMetaDistrict[];
   serviceOptions: ServiceOption[];
   onProviderCreated: () => void | Promise<void>;
+  /** Full-page route: always expanded, no collapse toggle */
+  standalone?: boolean;
 }
 
 function statusLabel(
@@ -43,11 +45,14 @@ export function BulkPartnersPanel({
   geoDistricts,
   serviceOptions,
   onProviderCreated,
+  standalone = false,
 }: BulkPartnersPanelProps) {
   const {t} = useTranslation();
   const stored = loadBulkDraftFromStorage();
 
-  const [expanded, setExpanded] = useState(stored?.expanded ?? false);
+  const [expanded, setExpanded] = useState(
+    standalone ? true : (stored?.expanded ?? false),
+  );
   const [pasteText, setPasteText] = useState(stored?.pasteText ?? '');
   const [stateId, setStateId] = useState(stored?.stateId ?? '');
   const [districtId, setDistrictId] = useState(stored?.districtId ?? '');
@@ -91,9 +96,11 @@ export function BulkPartnersPanel({
       districtId,
       city,
       pincode,
-      expanded,
+      expanded: standalone ? true : expanded,
     });
-  }, [rows, pasteText, stateId, districtId, city, pincode, expanded]);
+  }, [rows, pasteText, stateId, districtId, city, pincode, expanded, standalone]);
+
+  const isExpanded = standalone || expanded;
 
   const updateRow = useCallback(
     (id: string, patch: Partial<ProviderBulkDraftRow>) => {
@@ -199,103 +206,118 @@ export function BulkPartnersPanel({
     (r) => r.status === 'pending' || r.status === 'failed',
   ).length;
 
+  const successCount = rows.filter((r) => r.status === 'success').length;
+  const failedCount = rows.filter((r) => r.status === 'failed').length;
+
   return (
     <section
-      className={`card bulk-partners-panel${expanded ? ' bulk-partners-panel--expanded' : ''}`}
+      className={`bulk-partners-panel${isExpanded ? ' bulk-partners-panel--expanded' : ''}${standalone ? ' bulk-partners-panel--standalone' : ' card'}`}
       data-testid="bulk-partners-panel"
       aria-label={t('bulkPartnersTitle')}>
-      <button
-        type="button"
-        className="bulk-partners-panel__toggle"
-        aria-expanded={expanded}
-        aria-label={
-          expanded ? t('bulkPartnersCollapse') : t('bulkPartnersExpand')
-        }
-        onClick={() => setExpanded((v) => !v)}>
-        <div>
-          <h2>{t('bulkPartnersTitle')}</h2>
-          <p>{t('bulkPartnersLead')}</p>
-        </div>
-        <Icon
-          name="expand_more"
-          size={22}
-          className="bulk-partners-panel__chevron"
-        />
-      </button>
-
-      {expanded ? (
-        <div className="bulk-partners-panel__body">
-          <div className="bulk-partners-panel__defaults">
-            <label>
-              {t('geoState')}
-              <Select
-                options={stateOptions}
-                value={stateId}
-                placeholder={t('geoState')}
-                showSearch
-                searchPlaceholder={t('searchState')}
-                emptyMessage={t('noStatesFound')}
-                onChange={(value) => {
-                  setStateId(value);
-                  setDistrictId('');
-                  setCity('');
-                  setPincode('');
-                }}
-              />
-            </label>
-            <label>
-              {t('geoDistrict')}
-              <Select
-                options={districtOptions}
-                value={districtId}
-                placeholder={t('geoDistrict')}
-                showSearch
-                searchPlaceholder={t('searchDistrict')}
-                emptyMessage={t('noDistrictsFound')}
-                disabled={!stateId}
-                onChange={(value) => {
-                  setDistrictId(value);
-                  const d = geoDistricts.find((x) => x._id === value);
-                  if (d) {
-                    if (!city.trim()) setCity(d.name);
-                    if (d.pincode) setPincode(d.pincode);
-                  }
-                }}
-              />
-            </label>
-            <label>
-              {t('geoCity')}
-              <input
-                value={city}
-                onChange={(e) => setCity(e.target.value)}
-                placeholder={t('geoDistrict')}
-              />
-            </label>
-            <label>
-              {t('pincode')}
-              <input
-                type="text"
-                inputMode="numeric"
-                maxLength={6}
-                value={pincode}
-                onChange={(e) =>
-                  setPincode(e.target.value.replace(/\D/g, '').slice(0, 6))
-                }
-                placeholder="560001"
-              />
-            </label>
+      {standalone ? null : (
+        <button
+          type="button"
+          className="bulk-partners-panel__toggle"
+          aria-expanded={isExpanded}
+          aria-label={
+            isExpanded ? t('bulkPartnersCollapse') : t('bulkPartnersExpand')
+          }
+          onClick={() => setExpanded((v) => !v)}>
+          <div>
+            <h2>{t('bulkPartnersTitle')}</h2>
+            <p>{t('bulkPartnersLead')}</p>
           </div>
+          <Icon
+            name="expand_more"
+            size={22}
+            className="bulk-partners-panel__chevron"
+          />
+        </button>
+      )}
 
-          <div className="bulk-partners-panel__paste">
-            <label>
-              {t('bulkPartnersPasteLabel')}
+      {isExpanded ? (
+        <div className={`bulk-partners-panel__body${standalone ? ' bulk-partners-panel__body--standalone' : ''}`}>
+          <section className="bulk-partners-section" aria-labelledby="bulk-partners-step-location">
+            <div className="bulk-partners-section__head">
+              <h3 id="bulk-partners-step-location">{t('bulkPartnersStepLocation')}</h3>
+              <p>{t('bulkPartnersStepLocationLead')}</p>
+            </div>
+            <div className="bulk-partners-field-grid">
+              <div className="bulk-partners-field">
+                <span className="bulk-partners-field__label">{t('geoState')}</span>
+                <Select
+                  options={stateOptions}
+                  value={stateId}
+                  placeholder={t('geoState')}
+                  showSearch
+                  searchPlaceholder={t('searchState')}
+                  emptyMessage={t('noStatesFound')}
+                  onChange={(value) => {
+                    setStateId(value);
+                    setDistrictId('');
+                    setCity('');
+                    setPincode('');
+                  }}
+                />
+              </div>
+              <div className="bulk-partners-field">
+                <span className="bulk-partners-field__label">{t('geoDistrict')}</span>
+                <Select
+                  options={districtOptions}
+                  value={districtId}
+                  placeholder={t('geoDistrict')}
+                  showSearch
+                  searchPlaceholder={t('searchDistrict')}
+                  emptyMessage={t('noDistrictsFound')}
+                  disabled={!stateId}
+                  onChange={(value) => {
+                    setDistrictId(value);
+                    const d = geoDistricts.find((x) => x._id === value);
+                    if (d) {
+                      if (!city.trim()) setCity(d.name);
+                      if (d.pincode) setPincode(d.pincode);
+                    }
+                  }}
+                />
+              </div>
+              <div className="bulk-partners-field">
+                <span className="bulk-partners-field__label">{t('geoCity')}</span>
+                <input
+                  value={city}
+                  onChange={(e) => setCity(e.target.value)}
+                  placeholder={t('geoDistrict')}
+                />
+              </div>
+              <div className="bulk-partners-field">
+                <span className="bulk-partners-field__label">{t('pincode')}</span>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={6}
+                  value={pincode}
+                  onChange={(e) =>
+                    setPincode(e.target.value.replace(/\D/g, '').slice(0, 6))
+                  }
+                  placeholder="560001"
+                />
+              </div>
+            </div>
+          </section>
+
+          <section className="bulk-partners-section" aria-labelledby="bulk-partners-step-paste">
+            <div className="bulk-partners-section__head">
+              <h3 id="bulk-partners-step-paste">{t('bulkPartnersStepPaste')}</h3>
+              <p>{t('bulkPartnersStepPasteLead')}</p>
+            </div>
+            <div className="bulk-partners-field bulk-partners-paste">
+              <span className="bulk-partners-field__label">{t('bulkPartnersPasteLabel')}</span>
               <textarea
                 value={pasteText}
                 placeholder={t('bulkPartnersPastePlaceholder')}
                 onChange={(e) => setPasteText(e.target.value)}
               />
-            </label>
-            <div className="bulk-partners-panel__paste-actions">
+            </div>
+            <div className="bulk-partners-paste-actions">
               <Button variant="primary" onClick={onLoadRows}>
                 {t('bulkPartnersLoadRows')}
               </Button>
@@ -307,12 +329,25 @@ export function BulkPartnersPanel({
               </Button>
             </div>
             {loadError ? <p className="error-text">{loadError}</p> : null}
-          </div>
+          </section>
 
-          {rows.length > 0 ? (
-            <>
-              <div className="bulk-partners-panel__table-wrap">
-                <table className="bulk-partners-panel__table">
+          <section className="bulk-partners-section" aria-labelledby="bulk-partners-step-review">
+            <div className="bulk-partners-section__head">
+              <h3 id="bulk-partners-step-review">{t('bulkPartnersStepReview')}</h3>
+              <p>{t('bulkPartnersStepReviewLead')}</p>
+            </div>
+
+            {rows.length > 0 ? (
+              <>
+                <p className="bulk-partners-summary">
+                  {t('bulkPartnersRowSummary', {
+                    pending: pendingCount,
+                    success: successCount,
+                    failed: failedCount,
+                  })}
+                </p>
+                <div className="bulk-partners-table-wrap">
+                  <table className="bulk-partners-table">
                   <thead>
                     <tr>
                       <th>{t('phone')}</th>
@@ -335,9 +370,9 @@ export function BulkPartnersPanel({
                           : '—');
                       const statusClass =
                         row.status === 'success'
-                          ? 'bulk-partners-panel__status--success'
+                          ? 'bulk-partners-status--success'
                           : row.status === 'failed'
-                            ? 'bulk-partners-panel__status--failed'
+                            ? 'bulk-partners-status--failed'
                             : '';
                       const readOnly = row.status === 'success' || row.status === 'inserting';
 
@@ -437,26 +472,36 @@ export function BulkPartnersPanel({
                     })}
                   </tbody>
                 </table>
-              </div>
-              <p className="bulk-partners-panel__gender-note">
-                {t('bulkPartnersGenderNote')}
-              </p>
-              <div className="bulk-partners-panel__footer-actions">
-                <Button
-                  variant="primary"
-                  disabled={insertAllBusy || pendingCount === 0}
-                  onClick={() => void onInsertAllPending()}>
-                  {insertAllBusy
-                    ? t('bulkPartnersInsertAllBusy')
-                    : t('bulkPartnersInsertAll', {count: pendingCount})}
+                </div>
+                <p className="bulk-partners-gender-note">
+                  {t('bulkPartnersGenderNote')}
+                </p>
+                <div className="bulk-partners-footer-actions">
+                  <Button
+                    variant="primary"
+                    disabled={insertAllBusy || pendingCount === 0}
+                    onClick={() => void onInsertAllPending()}>
+                    {insertAllBusy
+                      ? t('bulkPartnersInsertAllBusy')
+                      : t('bulkPartnersInsertAll', {count: pendingCount})}
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <div className="bulk-partners-empty">
+                <Icon
+                  name="table_rows"
+                  size={40}
+                  className="bulk-partners-empty__icon"
+                />
+                <h4>{t('bulkPartnersEmptyTitle')}</h4>
+                <p>{t('bulkPartnersEmptyHint')}</p>
+                <Button variant="ghost" onClick={() => downloadBulkTemplate()}>
+                  {t('bulkPartnersDownloadTemplate')}
                 </Button>
               </div>
-            </>
-          ) : (
-            <p style={{opacity: 0.75, fontSize: '0.9rem', margin: 0}}>
-              {t('bulkPartnersEmptyTable')}
-            </p>
-          )}
+            )}
+          </section>
         </div>
       ) : null}
     </section>
