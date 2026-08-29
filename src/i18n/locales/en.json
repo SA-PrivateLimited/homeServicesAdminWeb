@@ -645,5 +645,21 @@
   "partnerVerificationConfirmBody": "This affects how new and updated Partner profiles go live. Existing approved Partners are not changed. Continue?",
   "partnerVerificationSavedTitle": "Partner verification policy updated",
   "partnerVerificationSavedDetail": "New profile submissions will follow the selected policy.",
-  "partnerVerificationNoPermission": "You can view this setting but you do not have permission to change it."
+  "partnerVerificationNoPermission": "You can view this setting but you do not have permission to change it.",
+  "navProviderOpenRequests": "Open requests",
+  "providerOpenRequestsTitle": "Partner open requests",
+  "providerOpenRequestsLead": "Control whether approved Partners must be online to receive and accept new open customer requests. Turn on when partner density is low.",
+  "providerOpenRequestsPolicyLabel": "Offline partner matching",
+  "providerOpenRequestsCurrent": "Currently selected: {{mode}}",
+  "providerOpenRequestsOption_OFF": "Online required",
+  "providerOpenRequestsOption_ON": "Allow offline partners",
+  "providerOpenRequestsHelp_OFF": "Open requests reach only Partners who toggled Online. Best when you have enough active Partners in each area.",
+  "providerOpenRequestsHelp_ON": "Approved Partners in the area receive open requests even while Offline. They can accept without going Online first. Use for early launch or sparse areas.",
+  "providerOpenRequestsConfirmTitle": "Change open request matching?",
+  "providerOpenRequestsConfirmBodyOn": "Offline Partners will start receiving open customer requests and can accept them without going Online. Continue?",
+  "providerOpenRequestsConfirmBodyOff": "Only Online Partners will receive new open requests. Offline Partners must go Online to accept. Continue?",
+  "providerOpenRequestsSavedTitle": "Open request matching updated",
+  "providerOpenRequestsSavedDetailOn": "Offline Partners can now receive and accept open requests.",
+  "providerOpenRequestsSavedDetailOff": "Open requests now require Partners to be Online.",
+  "providerOpenRequestsNoPermission": "You can view this setting but you do not have permission to change it."
 }

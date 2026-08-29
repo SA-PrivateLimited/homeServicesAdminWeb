@@ -646,5 +646,21 @@
   "partnerVerificationConfirmBody": "यह नए/updated Partner profiles पर लागू होगा। जारी रखें?",
   "partnerVerificationSavedTitle": "Partner verification policy updated",
   "partnerVerificationSavedDetail": "अब profile submissions इस policy के अनुसार live होंगे।",
-  "partnerVerificationNoPermission": "आप यह setting देख सकते हैं, बदल नहीं सकते।"
+  "partnerVerificationNoPermission": "आप यह setting देख सकते हैं, बदल नहीं सकते।",
+  "navProviderOpenRequests": "Open requests",
+  "providerOpenRequestsTitle": "Partner open requests",
+  "providerOpenRequestsLead": "चुनें कि approved Partners को नए open customer requests के लिए Online होना ज़रूरी है या नहीं। Partner कम हों तो ON रखें।",
+  "providerOpenRequestsPolicyLabel": "Offline partner matching",
+  "providerOpenRequestsCurrent": "वर्तमान: {{mode}}",
+  "providerOpenRequestsOption_OFF": "Online required",
+  "providerOpenRequestsOption_ON": "Allow offline partners",
+  "providerOpenRequestsHelp_OFF": "Open requests सिर्फ Online Partners को मिलेंगे। जब हर area में काफी active Partners हों।",
+  "providerOpenRequestsHelp_ON": "Approved Partners को Offline होते हुए भी open requests मिल सकेंगे और Online किए बिना accept कर सकेंगे। Early launch / कम Partners के लिए।",
+  "providerOpenRequestsConfirmTitle": "Open request matching बदलें?",
+  "providerOpenRequestsConfirmBodyOn": "Offline Partners को open customer requests मिलेंगे और Online किए बिना accept कर सकेंगे। जारी रखें?",
+  "providerOpenRequestsConfirmBodyOff": "सिर्फ Online Partners को नए open requests मिलेंगे। Offline Partners को Online होना होगा। जारी रखें?",
+  "providerOpenRequestsSavedTitle": "Open request matching updated",
+  "providerOpenRequestsSavedDetailOn": "Offline Partners अब open requests receive और accept कर सकते हैं।",
+  "providerOpenRequestsSavedDetailOff": "Open requests के लिए Partners को Online होना होगा।",
+  "providerOpenRequestsNoPermission": "आप यह setting देख सकते हैं, बदल नहीं सकते।"
 }

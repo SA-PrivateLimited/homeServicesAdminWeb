@@ -35,6 +35,11 @@ const NAV: Array<{
     key: 'navPartnerVerification',
     permission: PERMISSIONS.PROVIDERS_VIEW,
   },
+  {
+    to: '/settings/provider-open-requests',
+    key: 'navProviderOpenRequests',
+    permission: PERMISSIONS.PROVIDERS_VIEW,
+  },
   {to: '/geography', key: 'navGeography', permission: PERMISSIONS.GEOGRAPHY_VIEW},
   {to: '/customers', key: 'navCustomers', permission: PERMISSIONS.CUSTOMERS_VIEW},
   {
