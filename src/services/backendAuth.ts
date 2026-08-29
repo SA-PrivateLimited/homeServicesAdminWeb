@@ -158,7 +158,11 @@ export async function verifyMfaWithBackend(
 /** Best-effort server logout; always clear local session afterward. */
 export async function logoutWithBackend(): Promise<void> {
   try {
-    await apiPost('/api/auth/logout', {}, {skipUnauthorizedRedirect: true});
+    await apiPost(
+      '/api/auth/logout',
+      { appContext: 'admin' },
+      { skipAuth: true, skipUnauthorizedRedirect: true, skipRefresh: true },
+    );
   } catch {
     // ignore — local clear still proceeds
   }

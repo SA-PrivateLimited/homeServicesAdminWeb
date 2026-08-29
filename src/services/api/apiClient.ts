@@ -8,6 +8,7 @@ import {
   SUPER_ADMIN_TOKEN_KEY,
   getStoredSuperAdminToken,
 } from './superAdminApi';
+import { refreshAccessToken } from '../sessionRefresh';
 
 export interface ApiResponse<T> {
   success: boolean;
@@ -37,6 +38,8 @@ export interface RequestOptions {
   skipAuth?: boolean;
   /** When true, 401 does not clear session / redirect (used during logout). */
   skipUnauthorizedRedirect?: boolean;
+  skipRefresh?: boolean;
+  authRetried?: boolean;
 }
 
 export class ApiError extends Error {
@@ -85,6 +88,8 @@ async function fetchApiPayload(
     timeout = API_TIMEOUT,
     skipAuth = false,
     skipUnauthorizedRedirect = false,
+    skipRefresh = false,
+    authRetried = false,
   } = options;
 
   const authToken = skipAuth ? null : await getAuthToken();
@@ -116,6 +121,7 @@ async function fetchApiPayload(
       body: body !== undefined ? JSON.stringify(body) : undefined,
       cache,
       signal: controller.signal,
+      credentials: 'include',
     });
 
     const payload = (await response.json().catch(() => ({}))) as Record<
@@ -125,6 +131,18 @@ async function fetchApiPayload(
 
     if (!response.ok) {
       if (
+        response.status === 401 &&
+        !skipAuth &&
+        !skipUnauthorizedRedirect &&
+        !skipRefresh &&
+        !authRetried
+      ) {
+        const refreshed = await refreshAccessToken();
+        if (refreshed) {
+          return fetchApiPayload(endpoint, { ...options, authRetried: true });
+        }
+        handleUnauthorizedSession();
+      } else if (
         response.status === 401 &&
         !skipAuth &&
         !skipUnauthorizedRedirect
@@ -261,6 +279,7 @@ export async function apiUploadFormData<T>(
       headers: requestHeaders,
       body: formData,
       signal: controller.signal,
+      credentials: 'include',
     });
     const payload = (await response.json().catch(() => ({}))) as Record<
       string,
@@ -268,6 +287,21 @@ export async function apiUploadFormData<T>(
     >;
     if (!response.ok) {
       if (
+        response.status === 401 &&
+        !options?.skipAuth &&
+        !options?.skipUnauthorizedRedirect &&
+        !options?.skipRefresh &&
+        !options?.authRetried
+      ) {
+        const refreshed = await refreshAccessToken();
+        if (refreshed) {
+          return apiUploadFormData(endpoint, formData, {
+            ...options,
+            authRetried: true,
+          });
+        }
+        handleUnauthorizedSession();
+      } else if (
         response.status === 401 &&
         !options?.skipAuth &&
         !options?.skipUnauthorizedRedirect

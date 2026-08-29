@@ -17,6 +17,8 @@ import {
   getStoredSuperAdminToken,
   updateSuperAdminKey,
 } from '../services/api/superAdminApi';
+import { refreshAccessToken } from '../services/sessionRefresh';
+import { ApiError } from '../services/api/apiClient';
 
 interface AuthState {
   user: AdminUser | null;
@@ -63,7 +65,27 @@ export const useAuthStore = create<AuthState>((set) => ({
         hydrated: true,
         superAdminElevated: Boolean(getStoredSuperAdminToken()),
       });
-    } catch {
+    } catch (err) {
+      const hardAuthFailure =
+        err instanceof ApiError && (err.status === 401 || err.status === 403);
+      if (hardAuthFailure) {
+        const refreshed = await refreshAccessToken();
+        if (refreshed) {
+          try {
+            const user = await fetchCurrentAdmin();
+            persistSession(user, refreshed);
+            set({
+              user,
+              token: refreshed,
+              hydrated: true,
+              superAdminElevated: Boolean(getStoredSuperAdminToken()),
+            });
+            return;
+          } catch {
+            /* fall through */
+          }
+        }
+      }
       clearSuperAdminToken();
       await clearBackendSession();
       set({
