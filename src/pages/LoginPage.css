@@ -95,6 +95,42 @@
   color: var(--color-text);
 }
 
+.field-password {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.field-password input {
+  width: 100%;
+  padding-right: calc(var(--space-3) + 2rem);
+}
+
+.field-password-toggle {
+  position: absolute;
+  right: var(--space-2);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border: none;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.field-password-toggle:hover {
+  color: var(--color-text);
+  background: color-mix(in srgb, var(--primary-color) 8%, transparent);
+}
+
+.field-password-toggle:focus-visible {
+  outline: 2px solid var(--primary-color-opacity-35);
+  outline-offset: 1px;
+}
+
 .field input:focus {
   outline: 2px solid var(--primary-color-opacity-35);
   border-color: var(--primary-color);

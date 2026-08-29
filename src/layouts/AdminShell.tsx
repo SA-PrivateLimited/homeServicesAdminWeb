@@ -26,20 +26,11 @@ const NAV: Array<{
   end?: boolean;
   key: string;
   permission?: string;
+  anyOf?: string[];
   superAdminOnly?: boolean;
 }> = [
   {to: '/', end: true, key: 'navOverview', permission: PERMISSIONS.OVERVIEW_VIEW},
   {to: '/providers', key: 'navProviders', permission: PERMISSIONS.PROVIDERS_VIEW},
-  {
-    to: '/settings/partner-verification',
-    key: 'navPartnerVerification',
-    permission: PERMISSIONS.PROVIDERS_VIEW,
-  },
-  {
-    to: '/settings/provider-open-requests',
-    key: 'navProviderOpenRequests',
-    permission: PERMISSIONS.PROVIDERS_VIEW,
-  },
   {to: '/geography', key: 'navGeography', permission: PERMISSIONS.GEOGRAPHY_VIEW},
   {to: '/customers', key: 'navCustomers', permission: PERMISSIONS.CUSTOMERS_VIEW},
   {
@@ -62,9 +53,9 @@ const NAV: Array<{
   {to: '/contacts', key: 'navContacts', permission: PERMISSIONS.CONTACTS_VIEW},
   {to: '/feedbacks', key: 'navFeedbacks', permission: PERMISSIONS.CONTACTS_VIEW},
   {
-    to: '/settings/contact-privacy',
-    key: 'navSettings',
-    permission: PERMISSIONS.CONTACTS_VIEW,
+    to: '/settings/permissions',
+    key: 'navPermissions',
+    anyOf: [PERMISSIONS.CONTACTS_VIEW, PERMISSIONS.PROVIDERS_VIEW],
   },
   {
     to: '/clients',
@@ -83,7 +74,7 @@ export function AdminShell() {
   const exitSuperAdmin = useAuthStore((s) => s.exitSuperAdmin);
   const changeSuperAdminKey = useAuthStore((s) => s.changeSuperAdminKey);
   const superAdminElevated = useAuthStore((s) => s.superAdminElevated);
-  const {canAccess} = usePermissions();
+  const {canAccess, hasAnyPermission} = usePermissions();
   const navigate = useNavigate();
   const location = useLocation();
   const [runtimeBranding, setRuntimeBranding] = useState(() => ({
@@ -245,7 +236,9 @@ export function AdminShell() {
         <nav className="sidebar-nav" aria-label="Admin">
           {NAV.filter((item) => {
             if (item.superAdminOnly && !superAdminElevated) return false;
-            if (item.permission && !canAccess(item.permission)) return false;
+            if (item.anyOf?.length) {
+              if (!hasAnyPermission(item.anyOf)) return false;
+            } else if (item.permission && !canAccess(item.permission)) return false;
             return true;
           }).map((item) => (
             <NavLink
@@ -253,7 +246,11 @@ export function AdminShell() {
               to={item.to}
               end={Boolean(item.end)}
               className={({isActive}) =>
-                isActive ? 'nav-link active' : 'nav-link'
+                isActive ||
+                (item.to.startsWith('/settings/permissions') &&
+                  location.pathname.startsWith('/settings/permissions'))
+                  ? 'nav-link active'
+                  : 'nav-link'
               }
               title={t(item.key)}>
               <span className="nav-link-abbr" aria-hidden>
