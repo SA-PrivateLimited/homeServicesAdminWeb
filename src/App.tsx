@@ -20,6 +20,7 @@ import { FeedbacksPage } from './pages/FeedbacksPage';
 import { ContactPrivacyPage } from './pages/ContactPrivacyPage';
 import { PartnerVerificationPage } from './pages/PartnerVerificationPage';
 import { ProviderOpenRequestsPage } from './pages/ProviderOpenRequestsPage';
+import { PermissionsPage, PermissionsIndexRedirect } from './pages/PermissionsPage';
 import { ClientsPage } from './pages/ClientsPage';
 import { GeographyStatesPage } from './pages/GeographyStatesPage';
 import { GeographyDistrictsPage } from './pages/GeographyDistrictsPage';
@@ -62,6 +63,24 @@ export default function App() {
               <Route
                 path="settings/provider-open-requests"
                 element={<ProviderOpenRequestsPage />}
+              />
+            </Route>
+            <Route
+              element={
+                <RequirePermission
+                  anyOf={[
+                    PERMISSIONS.PROVIDERS_VIEW,
+                    PERMISSIONS.CONTACTS_VIEW,
+                  ]}
+                />
+              }>
+              <Route
+                path="settings/permissions"
+                element={<PermissionsIndexRedirect />}
+              />
+              <Route
+                path="settings/permissions/:tab"
+                element={<PermissionsPage />}
               />
             </Route>
             <Route

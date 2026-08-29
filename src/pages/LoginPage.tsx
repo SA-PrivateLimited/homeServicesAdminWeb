@@ -188,6 +188,7 @@ export function LoginPage() {
   const displayBrand = brandName?.trim() ? `${brandName} Admin` : t('appTitle');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [mfaCode, setMfaCode] = useState('');
   const [step, setStep] = useState<Step>({name: 'credentials'});
   const [error, setError] = useState<string | null>(null);
@@ -384,15 +385,62 @@ export function LoginPage() {
       </div>
       <div className="field">
         <label htmlFor="password">{t('password')}</label>
-        <input
-          id="password"
-          data-testid="password-input"
-          type="password"
-          autoComplete="current-password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-        />
+        <div className="field-password">
+          <input
+            id="password"
+            data-testid="password-input"
+            type={showPassword ? 'text' : 'password'}
+            autoComplete="current-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
+          <button
+            type="button"
+            className="field-password-toggle"
+            aria-label={showPassword ? t('hidePassword') : t('showPassword')}
+            aria-pressed={showPassword}
+            onClick={() => setShowPassword((value) => !value)}>
+            {showPassword ? (
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                aria-hidden="true">
+                <path
+                  d="M3 3l18 18M10.58 10.58A2 2 0 0012 15a2 2 0 001.41-.59M9.88 4.24A10.94 10.94 0 0112 5c5 0 9.27 3.11 11 7.5a11.8 11.8 0 01-4.12 4.7M6.11 6.11A11.75 11.75 0 002 12.5C3.73 16.39 8 19.5 12 19.5c1.05 0 2.06-.16 3-.45"
+                  stroke="currentColor"
+                  strokeWidth="1.75"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            ) : (
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                aria-hidden="true">
+                <path
+                  d="M2 12.5C3.73 8.11 8 5 12 5s8.27 3.11 10 7.5c-1.73 4.39-6 7.5-10 7.5S3.73 16.89 2 12.5z"
+                  stroke="currentColor"
+                  strokeWidth="1.75"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <circle
+                  cx="12"
+                  cy="12.5"
+                  r="3"
+                  stroke="currentColor"
+                  strokeWidth="1.75"
+                />
+              </svg>
+            )}
+          </button>
+        </div>
       </div>
       <button
         className="login-submit"
