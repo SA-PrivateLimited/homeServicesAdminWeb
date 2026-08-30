@@ -178,7 +178,7 @@ function LoginShell({
 export function LoginPage() {
   const {t} = useTranslation();
   const navigate = useNavigate();
-  const {user, beginLogin, completeMfaSetup, completeMfaVerify} =
+  const {user, beginLogin, completeMfaSetup, completeMfaVerify, resetAuthenticator} =
     useAuthStore();
   const [runtimeBranding, setRuntimeBranding] = useState(() => ({
     brandName: getRuntimeConfig().brandName,
@@ -190,6 +190,9 @@ export function LoginPage() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [mfaCode, setMfaCode] = useState('');
+  const [resetMode, setResetMode] = useState(false);
+  const [resetPassword, setResetPassword] = useState('');
+  const [showResetPassword, setShowResetPassword] = useState(false);
   const [step, setStep] = useState<Step>({name: 'credentials'});
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -232,9 +235,13 @@ export function LoginPage() {
           email: result.email,
         });
         setMfaCode('');
+        setResetMode(false);
+        setResetPassword('');
         return;
       }
       setPassword('');
+      setResetMode(false);
+      setResetPassword('');
       setStep({
         name: 'mfa_setup',
         mfaToken: result.mfaToken,
@@ -256,6 +263,23 @@ export function LoginPage() {
     setError(null);
     setLoading(true);
     try {
+      if (step.name === 'mfa' && resetMode) {
+        const setup = await resetAuthenticator(
+          step.mfaToken,
+          resetPassword,
+        );
+        setResetMode(false);
+        setResetPassword('');
+        setMfaCode('');
+        setStep({
+          name: 'mfa_setup',
+          mfaToken: setup.mfaToken,
+          email: setup.email,
+          secret: setup.secret,
+          qrCodeDataUrl: setup.qrCodeDataUrl,
+        });
+        return;
+      }
       if (step.name === 'mfa_setup') {
         await completeMfaSetup(step.mfaToken, mfaCode.trim());
       } else {
@@ -272,6 +296,8 @@ export function LoginPage() {
   const backToCredentials = () => {
     setStep({name: 'credentials'});
     setMfaCode('');
+    setResetMode(false);
+    setResetPassword('');
     setError(null);
   };
 
@@ -327,38 +353,99 @@ export function LoginPage() {
     return (
       <LoginShell testId="login-mfa" onSubmit={onMfa} {...shellProps}>
         <LoginBrand
-          title={t('mfaVerifyTitle')}
-          subtitle={t('mfaVerifyLead')}
+          title={resetMode ? t('mfaResetLoginTitle') : t('mfaVerifyTitle')}
+          subtitle={
+            resetMode ? t('mfaResetLoginLead') : t('mfaVerifyLead')
+          }
           logoSrc={logoSrc}
         />
         {error ? <p className="login-error">{error}</p> : null}
-        <div className="field">
-          <label htmlFor="mfa-code">{t('mfaCode')}</label>
-          <input
-            id="mfa-code"
-            data-testid="mfa-code-input"
-            type="text"
-            inputMode="numeric"
-            autoComplete="one-time-code"
-            maxLength={6}
-            value={mfaCode}
-            onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, ''))}
-            required
-            autoFocus
-          />
-        </div>
+        {resetMode ? (
+          <div className="field">
+            <label htmlFor="mfa-reset-password">{t('password')}</label>
+            <div className="field-password">
+              <input
+                id="mfa-reset-password"
+                data-testid="mfa-reset-password-input"
+                type={showResetPassword ? 'text' : 'password'}
+                autoComplete="current-password"
+                value={resetPassword}
+                onChange={(e) => setResetPassword(e.target.value)}
+                required
+                autoFocus
+              />
+              <button
+                type="button"
+                className="field-password-toggle"
+                aria-label={
+                  showResetPassword ? t('hidePassword') : t('showPassword')
+                }
+                aria-pressed={showResetPassword}
+                onClick={() => setShowResetPassword((value) => !value)}>
+                {showResetPassword ? t('hidePassword') : t('showPassword')}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="field">
+            <label htmlFor="mfa-code">{t('mfaCode')}</label>
+            <input
+              id="mfa-code"
+              data-testid="mfa-code-input"
+              type="text"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              maxLength={6}
+              value={mfaCode}
+              onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, ''))}
+              required
+              autoFocus
+            />
+          </div>
+        )}
         <button
           className="login-submit"
           type="submit"
-          disabled={loading || mfaCode.length !== 6}>
-          {loading ? t('signingIn') : t('signIn')}
+          disabled={
+            loading ||
+            (resetMode ? resetPassword.length < 1 : mfaCode.length !== 6)
+          }>
+          {loading
+            ? t('signingIn')
+            : resetMode
+              ? t('mfaResetConfirm')
+              : t('signIn')}
         </button>
-        <button
-          type="button"
-          className="login-back"
-          onClick={backToCredentials}>
-          {t('back')}
-        </button>
+        {resetMode ? (
+          <button
+            type="button"
+            className="login-back"
+            onClick={() => {
+              setResetMode(false);
+              setResetPassword('');
+              setError(null);
+            }}>
+            {t('back')}
+          </button>
+        ) : (
+          <>
+            <button
+              type="button"
+              className="login-back"
+              onClick={() => {
+                setResetMode(true);
+                setError(null);
+              }}>
+              {t('mfaResetLoginAction')}
+            </button>
+            <button
+              type="button"
+              className="login-back"
+              onClick={backToCredentials}>
+              {t('back')}
+            </button>
+          </>
+        )}
       </LoginShell>
     );
   }

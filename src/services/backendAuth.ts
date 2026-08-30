@@ -101,14 +101,7 @@ export async function loginWithBackend(
     data.qrCodeDataUrl &&
     data.otpauthUrl
   ) {
-    return {
-      kind: 'mfa_setup',
-      mfaToken: data.mfaToken,
-      email: data.email,
-      secret: data.secret,
-      otpauthUrl: data.otpauthUrl,
-      qrCodeDataUrl: data.qrCodeDataUrl,
-    };
+    return parseMfaSetupPayload(data);
   }
 
   if (!data.user || !data.token) {
@@ -153,6 +146,48 @@ export async function verifyMfaWithBackend(
   const user = normalizeUser(data.user);
   persistSession(user, data.token);
   return {user, token: data.token};
+}
+
+function parseMfaSetupPayload(data: {
+  requiresMfaSetup?: boolean;
+  mfaToken?: string;
+  email?: string;
+  secret?: string;
+  otpauthUrl?: string;
+  qrCodeDataUrl?: string;
+}): Extract<LoginStepResult, {kind: 'mfa_setup'}> {
+  if (
+    !data.mfaToken ||
+    !data.secret ||
+    !data.qrCodeDataUrl ||
+    !data.otpauthUrl
+  ) {
+    throw new Error('Unexpected MFA setup response');
+  }
+  return {
+    kind: 'mfa_setup',
+    mfaToken: data.mfaToken,
+    email: data.email,
+    secret: data.secret,
+    otpauthUrl: data.otpauthUrl,
+    qrCodeDataUrl: data.qrCodeDataUrl,
+  };
+}
+
+/** After password login: confirm password again and receive a new authenticator QR. */
+export async function resetMfaWithBackend(
+  mfaToken: string,
+  password: string,
+): Promise<Extract<LoginStepResult, {kind: 'mfa_setup'}>> {
+  const data = await apiPost<{
+    requiresMfaSetup?: boolean;
+    mfaToken?: string;
+    email?: string;
+    secret?: string;
+    otpauthUrl?: string;
+    qrCodeDataUrl?: string;
+  }>('/api/auth/mfa/reset', {mfaToken, password}, {skipAuth: true});
+  return parseMfaSetupPayload(data);
 }
 
 /** Best-effort server logout; always clear local session afterward. */
