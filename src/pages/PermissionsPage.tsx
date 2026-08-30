@@ -5,13 +5,15 @@ import {PERMISSIONS} from '../constants/permissions';
 import {ContactPrivacySettings} from '../components/permissions/ContactPrivacySettings';
 import {PartnerVerificationSettings} from '../components/permissions/PartnerVerificationSettings';
 import {ProviderOpenRequestsSettings} from '../components/permissions/ProviderOpenRequestsSettings';
+import {JobCommentsSettings} from '../components/permissions/JobCommentsSettings';
 import '../styles/pages.css';
 import './PermissionsPage.css';
 
 export type PermissionsTabId =
   | 'contact-privacy'
   | 'partner-verification'
-  | 'open-requests';
+  | 'open-requests'
+  | 'job-chat';
 
 const TAB_DEFS: Array<{
   id: PermissionsTabId;
@@ -36,6 +38,12 @@ const TAB_DEFS: Array<{
     labelKey: 'permissionsTabOpenRequests',
     leadKey: 'providerOpenRequestsLead',
     permission: PERMISSIONS.PROVIDERS_VIEW,
+  },
+  {
+    id: 'job-chat',
+    labelKey: 'permissionsTabJobChat',
+    leadKey: 'jobCommentsLead',
+    permission: PERMISSIONS.JOBS_VIEW,
   },
 ];
 
@@ -110,6 +118,7 @@ export function PermissionsPage() {
           <PartnerVerificationSettings />
         ) : null}
         {activeTab === 'open-requests' ? <ProviderOpenRequestsSettings /> : null}
+        {activeTab === 'job-chat' ? <JobCommentsSettings /> : null}
       </div>
     </div>
   );
