@@ -9,6 +9,7 @@ import {
   logoutWithBackend,
   persistSession,
   getStoredJwt,
+  resetMfaWithBackend,
   verifyMfaWithBackend,
 } from '../services/backendAuth';
 import {
@@ -30,6 +31,10 @@ interface AuthState {
   beginLogin: (email: string, password: string) => Promise<LoginStepResult>;
   completeMfaSetup: (mfaToken: string, code: string) => Promise<void>;
   completeMfaVerify: (mfaToken: string, code: string) => Promise<void>;
+  resetAuthenticator: (
+    mfaToken: string,
+    password: string,
+  ) => Promise<Extract<LoginStepResult, {kind: 'mfa_setup'}>>;
   elevateToSuperAdmin: (code: string) => Promise<void>;
   exitSuperAdmin: () => void;
   changeSuperAdminKey: (currentCode: string, newCode: string) => Promise<void>;
@@ -116,6 +121,10 @@ export const useAuthStore = create<AuthState>((set) => ({
     const {user, token} = await verifyMfaWithBackend(mfaToken, code);
     clearSuperAdminToken();
     set({user, token, superAdminElevated: false});
+  },
+
+  resetAuthenticator: async (mfaToken, password) => {
+    return resetMfaWithBackend(mfaToken, password);
   },
 
   elevateToSuperAdmin: async (code) => {
