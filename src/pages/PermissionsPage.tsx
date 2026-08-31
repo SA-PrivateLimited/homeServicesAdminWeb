@@ -18,31 +18,26 @@ export type PermissionsTabId =
 const TAB_DEFS: Array<{
   id: PermissionsTabId;
   labelKey: string;
-  leadKey: string;
   permission: string;
 }> = [
   {
     id: 'contact-privacy',
     labelKey: 'permissionsTabContactPrivacy',
-    leadKey: 'contactPrivacyLead',
     permission: PERMISSIONS.CONTACTS_VIEW,
   },
   {
     id: 'partner-verification',
     labelKey: 'permissionsTabPartnerVerification',
-    leadKey: 'partnerVerificationLead',
     permission: PERMISSIONS.PROVIDERS_VIEW,
   },
   {
     id: 'open-requests',
     labelKey: 'permissionsTabOpenRequests',
-    leadKey: 'providerOpenRequestsLead',
     permission: PERMISSIONS.PROVIDERS_VIEW,
   },
   {
     id: 'job-chat',
     labelKey: 'permissionsTabJobChat',
-    leadKey: 'jobCommentsLead',
     permission: PERMISSIONS.JOBS_VIEW,
   },
 ];
@@ -81,8 +76,6 @@ export function PermissionsPage() {
     return <Navigate to={`/settings/permissions/${activeTab}`} replace />;
   }
 
-  const activeDef = visibleTabs.find((item) => item.id === activeTab)!;
-
   return (
     <div className="admin-page scale-baseline-80" data-testid="permissions-root">
       <header className="page-header">
@@ -112,7 +105,6 @@ export function PermissionsPage() {
         className="permissions-tab-panel"
         role="tabpanel"
         aria-labelledby={`permissions-tab-${activeTab}`}>
-        <p className="permissions-tab-lead">{t(activeDef.leadKey)}</p>
         {activeTab === 'contact-privacy' ? <ContactPrivacySettings /> : null}
         {activeTab === 'partner-verification' ? (
           <PartnerVerificationSettings />
