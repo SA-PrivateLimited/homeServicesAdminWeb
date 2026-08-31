@@ -42,18 +42,9 @@ function providerOptionLabel(p: Provider): string {
   return [name, phone, loc].filter(Boolean).join(' · ');
 }
 
-async function fetchAllProvidersForAssign(): Promise<Provider[]> {
-  const pageSize = 100;
-  const first = await getProvidersPage({limit: pageSize, offset: 0});
-  const all = [...first.items];
-  let offset = first.items.length;
-  while (offset < first.total) {
-    const next = await getProvidersPage({limit: pageSize, offset});
-    if (!next.items.length) break;
-    all.push(...next.items);
-    offset += next.items.length;
-  }
-  return all;
+async function fetchProvidersForAssign(): Promise<Provider[]> {
+  const page = await getProvidersPage({limit: 100, offset: 0});
+  return page.items;
 }
 
 export function GeographyProvidersPage() {
@@ -177,7 +168,7 @@ export function GeographyProvidersPage() {
     setAssignProviderId('');
     setAssignLoading(true);
     try {
-      const providers = await fetchAllProvidersForAssign();
+      const providers = await fetchProvidersForAssign();
       const inDistrict = new Set(rows.map((r) => r._id));
       const eligible = providers.filter((p) => !inDistrict.has(p._id));
       const byId: Record<string, Provider> = {};
