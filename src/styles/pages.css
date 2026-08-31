@@ -2928,6 +2928,13 @@ a.hs-btn.icon-only {
   margin-top: var(--space-2);
 }
 
+.contact-privacy-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+}
+
 .policy-radios {
   display: flex;
   flex-direction: column;

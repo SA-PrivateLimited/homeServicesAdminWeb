@@ -69,8 +69,8 @@ const NAV: Array<{
     superAdminOnly: true,
   },
   {
-    to: '/launch',
-    key: 'navLaunch',
+    to: '/greeting',
+    key: 'navGreeting',
     permission: PERMISSIONS.CLIENTS_VIEW,
     superAdminOnly: true,
   },
@@ -302,6 +302,7 @@ export function AdminShell() {
                   if (
                     path.startsWith('/admins') ||
                     path.startsWith('/clients') ||
+                    path.startsWith('/greeting') ||
                     path.startsWith('/launch')
                   ) {
                     navigate('/', {replace: true});
