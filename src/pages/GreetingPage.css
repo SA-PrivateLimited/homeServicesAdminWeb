@@ -1,28 +1,28 @@
-.launch-admin-page {
+.greeting-admin-page {
   width: 100%;
 }
 
-.launch-admin-page > .page-header p {
+.greeting-admin-page > .page-header p {
   max-width: 46rem;
 }
 
-.launch-admin-panel {
+.greeting-admin-panel {
   width: 100%;
   max-width: 68rem;
   padding: var(--space-4);
   gap: var(--space-4);
 }
 
-.launch-admin-panel-head h2 {
+.greeting-admin-panel-head h2 {
   margin: 0 0 var(--space-1);
   font-size: var(--font-size-md);
 }
 
-.launch-admin-loading {
+.greeting-admin-loading {
   margin: 0;
 }
 
-.launch-admin-grid {
+.greeting-admin-grid {
   display: grid;
   grid-template-columns: 1fr;
   gap: var(--space-4);
@@ -30,20 +30,20 @@
   min-width: 0;
 }
 
-.launch-admin-grid > .form-row,
-.launch-admin-grid > .policy-radios {
+.greeting-admin-grid > .form-row,
+.greeting-admin-grid > .policy-radios {
   margin: 0;
   min-width: 0;
 }
 
-.launch-admin-grid .form-row input,
-.launch-admin-grid .form-row textarea {
+.greeting-admin-grid .form-row input,
+.greeting-admin-grid .form-row textarea {
   width: 100%;
   max-width: none;
   box-sizing: border-box;
 }
 
-.launch-admin-actions {
+.greeting-admin-actions {
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
@@ -53,14 +53,14 @@
   border-top: 1px solid var(--color-border, #e2e8f0);
 }
 
-.launch-icon-grid {
+.greeting-icon-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(4.75rem, 1fr));
   gap: 8px;
   margin: 8px 0 0;
 }
 
-.launch-icon-option {
+.greeting-icon-option {
   position: relative;
   display: flex;
   flex-direction: column;
@@ -75,25 +75,25 @@
   color: inherit;
 }
 
-.launch-icon-option input {
+.greeting-icon-option input {
   position: absolute;
   opacity: 0;
   pointer-events: none;
 }
 
-.launch-icon-option.is-selected {
+.greeting-icon-option.is-selected {
   border-color: var(--color-primary, #3182ce);
   box-shadow: 0 0 0 2px rgba(49, 130, 206, 0.25);
 }
 
-.launch-greeting-grid {
+.greeting-chip-grid {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   margin: 8px 0 12px;
 }
 
-.launch-greeting-grid .launch-icon-option {
+.greeting-chip-grid .greeting-icon-option {
   min-width: 8.5rem;
   min-height: 40px;
   justify-content: center;
@@ -103,12 +103,12 @@
 }
 
 @media (min-width: 960px) {
-  .launch-admin-grid {
+  .greeting-admin-grid {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     column-gap: var(--space-5);
   }
 
-  .launch-admin-span {
+  .greeting-admin-span {
     grid-column: 1 / -1;
   }
 }
