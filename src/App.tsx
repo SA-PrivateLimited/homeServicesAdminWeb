@@ -23,6 +23,7 @@ import { PartnerVerificationPage } from './pages/PartnerVerificationPage';
 import { ProviderOpenRequestsPage } from './pages/ProviderOpenRequestsPage';
 import { PermissionsPage, PermissionsIndexRedirect } from './pages/PermissionsPage';
 import { ClientsPage } from './pages/ClientsPage';
+import { LaunchPage } from './pages/LaunchPage';
 import { GeographyStatesPage } from './pages/GeographyStatesPage';
 import { GeographyDistrictsPage } from './pages/GeographyDistrictsPage';
 import { GeographyProvidersPage } from './pages/GeographyProvidersPage';
@@ -149,6 +150,7 @@ export default function App() {
                 <RequirePermission permission={PERMISSIONS.CLIENTS_VIEW} />
               }>
               <Route path="clients" element={<ClientsPage />} />
+              <Route path="launch" element={<LaunchPage />} />
             </Route>
           </Route>
         </Route>
