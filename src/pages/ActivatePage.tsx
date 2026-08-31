@@ -1,12 +1,12 @@
-import {useEffect, useState, type FormEvent} from 'react';
+import {useEffect, useState, type FormEvent, type ReactNode} from 'react';
 import {Link, useNavigate, useSearchParams} from 'react-router-dom';
-import {Button, Loader} from 'sapvt-ltd-web-packages';
+import {Loader} from 'sapvt-ltd-web-packages';
 import {
   activationSetPassword,
   activationVerifyMfa,
   validateActivationToken,
 } from '../services/api/activationApi';
-import {getBrandLogoSrc} from '../config/runtime';
+import {AdminBrandLogo} from '../components/AdminBrandLogo';
 import './LoginPage.css';
 
 const MIN_PASSWORD_LENGTH = 8;
@@ -24,6 +24,42 @@ type Step =
     }
   | {name: 'done'};
 
+function ActivateBrand({title, subtitle}: {title: string; subtitle: string}) {
+  return (
+    <div className="login-brand">
+      <AdminBrandLogo className="login-brand-logo" />
+      <h1>{title}</h1>
+      <p className="sub">{subtitle}</p>
+    </div>
+  );
+}
+
+function ActivateShell({
+  children,
+  testId,
+  onSubmit,
+}: {
+  children: ReactNode;
+  testId: string;
+  onSubmit?: (event: FormEvent) => void;
+}) {
+  const card = onSubmit ? (
+    <form className="login-card" onSubmit={onSubmit} data-testid={testId}>
+      {children}
+    </form>
+  ) : (
+    <div className="login-card" data-testid={testId}>
+      {children}
+    </div>
+  );
+
+  return (
+    <div className="login-layout login-layout--solo">
+      <div className="login-form-pane">{card}</div>
+    </div>
+  );
+}
+
 export function ActivatePage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -32,6 +68,8 @@ export function ActivatePage() {
   const [step, setStep] = useState<Step>({name: 'loading'});
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [mfaCode, setMfaCode] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -131,164 +169,142 @@ export function ActivatePage() {
 
   if (step.name === 'loading') {
     return (
-      <div className="login-page scale-baseline-80">
-        <div className="login-card" data-testid="activate-loading">
-          <Loader label="Loading…" />
-        </div>
-      </div>
+      <ActivateShell testId="activate-loading">
+        <Loader label="Loading…" />
+      </ActivateShell>
     );
   }
 
   if (step.name === 'invalid') {
     return (
-      <div className="login-page scale-baseline-80">
-        <div className="login-card" data-testid="activate-invalid">
-          <div className="login-brand">
-            <img
-              className="login-brand-logo"
-              src={getBrandLogoSrc()}
-              alt=""
-              width={64}
-              height={64}
-            />
-            <h1>Link unavailable</h1>
-            <p className="sub">{step.message}</p>
-          </div>
-          <Link className="hs-btn hs-btn--primary hs-btn--md" to="/login">
-            Go to sign in
-          </Link>
-        </div>
-      </div>
+      <ActivateShell testId="activate-invalid">
+        <ActivateBrand title="Link unavailable" subtitle={step.message} />
+        <Link className="login-submit" to="/login">
+          Go to sign in
+        </Link>
+      </ActivateShell>
     );
   }
 
   if (step.name === 'done') {
     return (
-      <div className="login-page scale-baseline-80">
-        <div className="login-card" data-testid="activate-done">
-          <div className="login-brand">
-            <img
-              className="login-brand-logo"
-              src={getBrandLogoSrc()}
-              alt=""
-              width={64}
-              height={64}
-            />
-            <h1>Account activated</h1>
-            <p className="sub">
-              You can sign in with your email, password, and authenticator code.
-            </p>
-          </div>
-          <Button variant="primary" onClick={() => navigate('/login', {replace: true})}>
-            Continue to sign in
-          </Button>
-        </div>
-      </div>
+      <ActivateShell testId="activate-done">
+        <ActivateBrand
+          title="Account activated"
+          subtitle="You can sign in with your email, password, and authenticator code."
+        />
+        <button
+          className="login-submit"
+          type="button"
+          onClick={() => navigate('/login', {replace: true})}>
+          Continue to sign in
+        </button>
+      </ActivateShell>
     );
   }
 
   if (step.name === 'mfa') {
     return (
-      <div className="login-page scale-baseline-80">
-        <form
-          className="login-card"
-          onSubmit={(e) => void onMfa(e)}
-          data-testid="activate-mfa">
-          <div className="login-brand">
-            <img
-              className="login-brand-logo"
-              src={getBrandLogoSrc()}
-              alt=""
-              width={64}
-              height={64}
-            />
-            <h1>Set up authenticator</h1>
-            <p className="sub">
-              Scan this QR with Google Authenticator (or similar), then enter
-              the 6-digit code for {step.email}.
-            </p>
-          </div>
-          <div className="mfa-qr-wrap">
-            <img
-              src={step.qrCodeDataUrl}
-              alt="Authenticator QR code"
-              width={220}
-              height={220}
-            />
-          </div>
-          <p className="muted compact secret-hint">
-            Manual key: <code>{step.secret}</code>
-          </p>
-          <label>
-            Authenticator code
-            <input
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              maxLength={6}
-              value={mfaCode}
-              onChange={(e) =>
-                setMfaCode(e.target.value.replace(/\D/g, '').slice(0, 6))
-              }
-              required
-            />
-          </label>
-          {error ? <p className="error-text">{error}</p> : null}
-          <Button type="submit" variant="primary" disabled={loading}>
-            {loading ? 'Verifying…' : 'Activate account'}
-          </Button>
-        </form>
-      </div>
+      <ActivateShell testId="activate-mfa" onSubmit={onMfa}>
+        <ActivateBrand
+          title="Set up authenticator"
+          subtitle={`Scan this QR with Google Authenticator (or similar), then enter the 6-digit code for ${step.email}.`}
+        />
+        <div className="mfa-qr-wrap">
+          <img
+            className="mfa-qr"
+            src={step.qrCodeDataUrl}
+            alt="Authenticator QR code"
+          />
+        </div>
+        <p className="mfa-secret-label">Manual key</p>
+        <code className="mfa-secret">{step.secret}</code>
+        {error ? <p className="login-error">{error}</p> : null}
+        <div className="field">
+          <label htmlFor="activate-mfa-code">Authenticator code</label>
+          <input
+            id="activate-mfa-code"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            maxLength={6}
+            value={mfaCode}
+            onChange={(e) =>
+              setMfaCode(e.target.value.replace(/\D/g, '').slice(0, 6))
+            }
+            required
+          />
+        </div>
+        <button
+          className="login-submit"
+          type="submit"
+          disabled={loading || mfaCode.length !== 6}>
+          {loading ? 'Verifying…' : 'Activate account'}
+        </button>
+      </ActivateShell>
     );
   }
 
   return (
-    <div className="login-page scale-baseline-80">
-      <form
-        className="login-card"
-        onSubmit={(e) => void onPassword(e)}
-        data-testid="activate-password">
-        <div className="login-brand">
-          <img
-            className="login-brand-logo"
-            src={getBrandLogoSrc()}
-            alt=""
-            width={64}
-            height={64}
-          />
-          <h1>Activate admin account</h1>
-          <p className="sub">
-            {step.displayName
-              ? `Welcome, ${step.displayName}. Create a password for ${step.email}.`
-              : `Create a password for ${step.email}.`}
-          </p>
-        </div>
-        <label>
-          New password
+    <ActivateShell testId="activate-password" onSubmit={onPassword}>
+      <ActivateBrand
+        title="Activate admin account"
+        subtitle={
+          step.displayName
+            ? `Welcome, ${step.displayName}. Create a password for ${step.email}.`
+            : `Create a password for ${step.email}.`
+        }
+      />
+      {error ? <p className="login-error">{error}</p> : null}
+      <div className="field">
+        <label htmlFor="activate-password">New password</label>
+        <div className="field-password">
           <input
-            type="password"
+            id="activate-password"
+            type={showPassword ? 'text' : 'password'}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             autoComplete="new-password"
             required
             minLength={MIN_PASSWORD_LENGTH}
           />
-        </label>
-        <label>
-          Confirm password
+          <button
+            type="button"
+            className="field-password-toggle"
+            aria-label={showPassword ? 'Hide password' : 'Show password'}
+            aria-pressed={showPassword}
+            onClick={() => setShowPassword((value) => !value)}>
+            {showPassword ? 'Hide' : 'Show'}
+          </button>
+        </div>
+      </div>
+      <p className="field-hint">At least {MIN_PASSWORD_LENGTH} characters</p>
+      <div className="field">
+        <label htmlFor="activate-confirm-password">Confirm password</label>
+        <div className="field-password">
           <input
-            type="password"
+            id="activate-confirm-password"
+            type={showConfirmPassword ? 'text' : 'password'}
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
             autoComplete="new-password"
             required
             minLength={MIN_PASSWORD_LENGTH}
           />
-        </label>
-        {error ? <p className="error-text">{error}</p> : null}
-        <Button type="submit" variant="primary" disabled={loading}>
-          {loading ? 'Saving…' : 'Continue'}
-        </Button>
-      </form>
-    </div>
+          <button
+            type="button"
+            className="field-password-toggle"
+            aria-label={
+              showConfirmPassword ? 'Hide password' : 'Show password'
+            }
+            aria-pressed={showConfirmPassword}
+            onClick={() => setShowConfirmPassword((value) => !value)}>
+            {showConfirmPassword ? 'Hide' : 'Show'}
+          </button>
+        </div>
+      </div>
+      <button className="login-submit" type="submit" disabled={loading}>
+        {loading ? 'Saving…' : 'Continue'}
+      </button>
+    </ActivateShell>
   );
 }

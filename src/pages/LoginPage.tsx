@@ -7,6 +7,7 @@ import {
   getRuntimeConfig,
   RUNTIME_BRANDING_EVENT,
 } from '../config/runtime';
+import {AdminBrandLogo} from '../components/AdminBrandLogo';
 import './LoginPage.css';
 
 type Step =
@@ -62,21 +63,7 @@ function LoginShowcase({
   return (
     <aside className="login-showcase" aria-hidden>
       <div className="login-showcase-brand">
-        <img
-          src={logoSrc}
-          alt=""
-          width={48}
-          height={48}
-          onError={(e) => {
-            const img = e.currentTarget;
-            if (img.src.endsWith('/logo.png')) {
-              img.style.display = 'none';
-              return;
-            }
-            img.onerror = null;
-            img.src = '/logo.png';
-          }}
-        />
+        <AdminBrandLogo src={logoSrc} width={48} height={48} />
         <div>
           <strong>{brandName}</strong>
           <span>Operations & marketplace control</span>
@@ -128,22 +115,7 @@ function LoginBrand({
 }) {
   return (
     <div className="login-brand">
-      <img
-        className="login-brand-logo"
-        src={logoSrc}
-        alt=""
-        width={64}
-        height={64}
-        onError={(e) => {
-          const img = e.currentTarget;
-          if (img.src.endsWith('/logo.png')) {
-            img.style.display = 'none';
-            return;
-          }
-          img.onerror = null;
-          img.src = '/logo.png';
-        }}
-      />
+      <AdminBrandLogo className="login-brand-logo" src={logoSrc} />
       <h1>{title}</h1>
       <p className="sub">{subtitle}</p>
     </div>
@@ -429,9 +401,13 @@ export function LoginPage() {
           </button>
         ) : (
           <>
+            <p className="mfa-reset-hint">{t('mfaResetLoginHint')}</p>
             <button
               type="button"
-              className="login-back"
+              className={
+                error ? 'login-secondary is-emphasis' : 'login-secondary'
+              }
+              data-testid="reset-mfa-btn"
               onClick={() => {
                 setResetMode(true);
                 setError(null);

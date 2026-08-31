@@ -1,16 +1,20 @@
 .permissions-tabs {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: var(--space-2);
   margin-bottom: var(--space-4);
   padding-bottom: var(--space-2);
   border-bottom: 1px solid var(--color-border);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
 }
 
 .permissions-tab {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
   min-height: var(--control-height);
   padding: var(--space-2) var(--space-4);
   border-radius: var(--radius);
@@ -20,6 +24,7 @@
   font-size: var(--font-size-sm);
   font-weight: 600;
   text-decoration: none;
+  white-space: nowrap;
   cursor: pointer;
   transition:
     background 0.15s ease,
@@ -38,22 +43,127 @@
   border-color: color-mix(in srgb, var(--primary-color) 35%, transparent);
 }
 
-.permissions-tab-lead {
-  margin: 0 0 var(--space-4);
-  color: var(--color-text-secondary);
-  font-size: var(--font-size-sm);
-  line-height: var(--line-height-body);
-  max-width: 42rem;
+.policy-card {
+  max-width: 40rem;
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
 }
 
-@media (max-width: 640px) {
-  .permissions-tabs {
-    flex-direction: column;
-    align-items: stretch;
-  }
+.policy-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
 
-  .permissions-tab {
-    width: 100%;
-    justify-content: flex-start;
+.policy-card-head h2 {
+  margin: 0;
+  font-size: var(--font-size-md);
+}
+
+.policy-chip {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  max-width: 12rem;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--primary-color) 35%, transparent);
+  background: color-mix(in srgb, var(--primary-color) 10%, transparent);
+  color: var(--primary-color);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.policy-card-error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.policy-card-error .error-text {
+  margin: 0;
+}
+
+.policy-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.policy-skeleton span {
+  display: block;
+  height: 4.25rem;
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--color-border) 70%, transparent);
+  animation: policy-skeleton-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes policy-skeleton-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.policy-radios {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.policy-option {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-start;
+  margin: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  font-weight: 400;
+  color: var(--color-text);
+}
+
+.policy-option span {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.policy-option input {
+  margin-top: 0.3rem;
+}
+
+.policy-option:hover {
+  border-color: color-mix(in srgb, var(--primary-color) 35%, transparent);
+}
+
+.policy-option.is-selected {
+  border-color: color-mix(in srgb, var(--primary-color) 55%, transparent);
+  background: color-mix(in srgb, var(--primary-color) 8%, transparent);
+}
+
+.policy-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .policy-skeleton span {
+    animation: none;
   }
 }

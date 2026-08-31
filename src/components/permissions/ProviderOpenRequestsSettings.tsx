@@ -1,16 +1,15 @@
 import {useCallback, useEffect, useState} from 'react';
 import {useTranslation} from 'react-i18next';
-import {Button, Dialog} from 'sapvt-ltd-web-packages';
-import {
-  SuccessBanner,
-  type SuccessBannerContent,
-} from '../SuccessBanner';
+import {type SuccessBannerContent} from '../SuccessBanner';
 import {usePermissions} from '../../hooks/usePermissions';
 import {PERMISSIONS} from '../../constants/permissions';
 import {
   getProviderOpenRequestSettings,
   updateProviderOpenRequestSettings,
 } from '../../services/api/providerOpenRequestsApi';
+import {PolicySettingsCard} from './PolicySettingsCard';
+
+type OpenRequestMode = 'OFF' | 'ON';
 
 export function ProviderOpenRequestsSettings() {
   const {t} = useTranslation();
@@ -51,10 +50,8 @@ export function ProviderOpenRequestsSettings() {
     return () => window.clearTimeout(timer);
   }, [successBanner]);
 
-  const onSaveClick = () => {
-    if (!canUpdate || enabled === savedEnabled) return;
-    setConfirmOpen(true);
-  };
+  const mode: OpenRequestMode = enabled ? 'ON' : 'OFF';
+  const savedMode: OpenRequestMode = savedEnabled ? 'ON' : 'OFF';
 
   const onConfirmSave = async () => {
     setSaving(true);
@@ -81,114 +78,47 @@ export function ProviderOpenRequestsSettings() {
   };
 
   return (
-    <>
-      {successBanner ? (
-        <SuccessBanner
-          banner={successBanner}
-          onDismiss={() => setSuccessBanner(null)}
-          testId="provider-open-requests-success-banner"
-        />
-      ) : null}
-
-      {error ? <p className="error-text">{error}</p> : null}
-
-      <section className="panel contact-privacy-panel">
-        <div className="contact-privacy-panel-head">
-          <h2>{t('providerOpenRequestsPolicyLabel')}</h2>
-          <p className="muted compact">
-            {t('providerOpenRequestsCurrent', {
-              mode: t(
-                savedEnabled
-                  ? 'providerOpenRequestsOption_ON'
-                  : 'providerOpenRequestsOption_OFF',
-              ),
-            })}
-          </p>
-        </div>
-
-        {loading ? (
-          <p className="muted compact contact-privacy-loading">
-            {t('loading')}
-          </p>
-        ) : (
-          <fieldset className="policy-radios" disabled={!canUpdate}>
-            <legend className="sr-only">
-              {t('providerOpenRequestsPolicyLabel')}
-            </legend>
-            <label className="policy-radio">
-              <input
-                type="radio"
-                name="allowOfflineProviderOpenRequests"
-                checked={!enabled}
-                onChange={() => setEnabled(false)}
-              />
-              <span>
-                <strong>{t('providerOpenRequestsOption_OFF')}</strong>
-                <span className="muted compact">
-                  {t('providerOpenRequestsHelp_OFF')}
-                </span>
-              </span>
-            </label>
-            <label className="policy-radio">
-              <input
-                type="radio"
-                name="allowOfflineProviderOpenRequests"
-                checked={enabled}
-                onChange={() => setEnabled(true)}
-              />
-              <span>
-                <strong>{t('providerOpenRequestsOption_ON')}</strong>
-                <span className="muted compact">
-                  {t('providerOpenRequestsHelp_ON')}
-                </span>
-              </span>
-            </label>
-          </fieldset>
-        )}
-
-        <div className="contact-privacy-actions">
-          <Button
-            variant="primary"
-            disabled={
-              !canUpdate || loading || saving || enabled === savedEnabled
-            }
-            onClick={onSaveClick}>
-            {saving ? t('saving') : t('save')}
-          </Button>
-          {!canUpdate ? (
-            <p className="muted compact">
-              {t('providerOpenRequestsNoPermission')}
-            </p>
-          ) : null}
-        </div>
-      </section>
-
-      {confirmOpen ? (
-        <Dialog
-          open
-          title={t('providerOpenRequestsConfirmTitle')}
-          onClose={() => setConfirmOpen(false)}
-          testId="provider-open-requests-confirm">
-          <p>
-            {t(
-              enabled
-                ? 'providerOpenRequestsConfirmBodyOn'
-                : 'providerOpenRequestsConfirmBodyOff',
-            )}
-          </p>
-          <div className="actions">
-            <Button
-              variant="primary"
-              disabled={saving}
-              onClick={() => void onConfirmSave()}>
-              {saving ? t('saving') : t('continue')}
-            </Button>
-            <Button variant="ghost" onClick={() => setConfirmOpen(false)}>
-              {t('cancel')}
-            </Button>
-          </div>
-        </Dialog>
-      ) : null}
-    </>
+    <PolicySettingsCard
+      title={t('providerOpenRequestsPolicyLabel')}
+      currentLabel={t(`providerOpenRequestsOption_${savedMode}`)}
+      legend={t('providerOpenRequestsPolicyLabel')}
+      name="allowOfflineProviderOpenRequests"
+      options={(['OFF', 'ON'] as const).map((value) => ({
+        value,
+        title: t(`providerOpenRequestsOption_${value}`),
+        help: t(`providerOpenRequestsHelp_${value}`),
+      }))}
+      value={mode}
+      onChange={(next) => setEnabled(next === 'ON')}
+      loading={loading}
+      error={error}
+      onRetry={() => void load()}
+      retryLabel={t('retry')}
+      canUpdate={canUpdate}
+      dirty={enabled !== savedEnabled}
+      saving={saving}
+      onSave={() => {
+        if (!canUpdate || enabled === savedEnabled) return;
+        setConfirmOpen(true);
+      }}
+      saveLabel={t('save')}
+      savingLabel={t('saving')}
+      noPermissionText={t('providerOpenRequestsNoPermission')}
+      confirmOpen={confirmOpen}
+      confirmTitle={t('providerOpenRequestsConfirmTitle')}
+      confirmBody={t(
+        enabled
+          ? 'providerOpenRequestsConfirmBodyOn'
+          : 'providerOpenRequestsConfirmBodyOff',
+      )}
+      onConfirm={() => void onConfirmSave()}
+      onCancelConfirm={() => setConfirmOpen(false)}
+      continueLabel={t('continue')}
+      cancelLabel={t('cancel')}
+      successBanner={successBanner}
+      onDismissBanner={() => setSuccessBanner(null)}
+      bannerTestId="provider-open-requests-success-banner"
+      confirmTestId="provider-open-requests-confirm"
+    />
   );
 }

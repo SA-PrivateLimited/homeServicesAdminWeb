@@ -594,28 +594,30 @@ export function AdminsPage() {
           onClose={closeCreateModal}
           testId="admins-create-modal">
           <p className="muted compact">{t('addAdminLead')}</p>
-          <label>
-            {t('fullName')}
-            <input
-              value={createName}
-              onChange={(e) => setCreateName(e.target.value)}
-              autoComplete="name"
-            />
-          </label>
-          <label>
-            {t('email')} *
-            <input
-              type="email"
-              value={createEmail}
-              onChange={(e) => setCreateEmail(e.target.value)}
-              autoComplete="email"
-              required
-            />
-          </label>
-          <label>
-            {t('role')}
-            <input value="admin" disabled readOnly />
-          </label>
+          <div className="modal-form">
+            <label>
+              {t('fullName')}
+              <input
+                value={createName}
+                onChange={(e) => setCreateName(e.target.value)}
+                autoComplete="name"
+              />
+            </label>
+            <label>
+              {t('email')} *
+              <input
+                type="email"
+                value={createEmail}
+                onChange={(e) => setCreateEmail(e.target.value)}
+                autoComplete="email"
+                required
+              />
+            </label>
+            <label>
+              {t('role')}
+              <input value="admin" disabled readOnly />
+            </label>
+          </div>
           <fieldset className="permissions-fieldset">
             <legend>{t('permissions')}</legend>
             <p className="muted compact">{t('permissionsInviteHint')}</p>
@@ -653,10 +655,12 @@ export function AdminsPage() {
           testId="admins-invite-modal">
           <p className="muted compact">{t('adminCreatedLead')}</p>
           <p className="muted compact">
-            {inviteResult.admin.email} · expires{' '}
-            {formatCreatedAt(inviteResult.activationExpiresAt)}
+            {t('activationInviteMeta', {
+              email: inviteResult.admin.email,
+              date: formatCreatedAt(inviteResult.activationExpiresAt),
+            })}
           </p>
-          <label>
+          <label className="invite-link-field">
             {t('activationLink')}
             <input
               type="text"
@@ -665,29 +669,31 @@ export function AdminsPage() {
               onFocus={(e) => e.target.select()}
             />
           </label>
-          <div className="mfa-qr-wrap invite-qr">
+          <div className="invite-qr-panel">
             <img
               src={inviteResult.qrCodeDataUrl}
               alt="Activation link QR"
-              width={200}
-              height={200}
+              width={180}
+              height={180}
             />
           </div>
           {inviteActionError ? (
             <p className="error-text">{inviteActionError}</p>
           ) : null}
-          <div className="actions wrap-actions">
+          <div className="invite-actions">
             <Button variant="primary" disabled={inviteActionBusy} onClick={() => void onCopyInviteLink()}>
               {t('copyActivationLink')}
             </Button>
             <Button variant="ghost" disabled={inviteActionBusy} onClick={() => void onRegenerateFromInviteModal()}>
               {t('regenerateLink')}
             </Button>
-            <Button variant="danger" disabled={inviteActionBusy} onClick={() => void onCancelInvitation()}>
-              {t('cancelInvitation')}
-            </Button>
             <Button variant="ghost" onClick={closeInviteModal}>
               {t('done')}
+            </Button>
+          </div>
+          <div className="invite-actions-secondary">
+            <Button variant="danger" disabled={inviteActionBusy} onClick={() => void onCancelInvitation()}>
+              {t('cancelInvitation')}
             </Button>
           </div>
         </Dialog>

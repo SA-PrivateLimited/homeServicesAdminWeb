@@ -1,16 +1,15 @@
 import {useCallback, useEffect, useState} from 'react';
 import {useTranslation} from 'react-i18next';
-import {Button, Dialog} from 'sapvt-ltd-web-packages';
-import {
-  SuccessBanner,
-  type SuccessBannerContent,
-} from '../SuccessBanner';
+import {type SuccessBannerContent} from '../SuccessBanner';
 import {usePermissions} from '../../hooks/usePermissions';
 import {PERMISSIONS} from '../../constants/permissions';
 import {
   getJobCommentsSettings,
   updateJobCommentsSettings,
 } from '../../services/api/jobCommentsApi';
+import {PolicySettingsCard} from './PolicySettingsCard';
+
+type JobChatMode = 'ON' | 'OFF';
 
 export function JobCommentsSettings() {
   const {t} = useTranslation();
@@ -51,10 +50,8 @@ export function JobCommentsSettings() {
     return () => window.clearTimeout(timer);
   }, [successBanner]);
 
-  const onSaveClick = () => {
-    if (!canUpdate || enabled === savedEnabled) return;
-    setConfirmOpen(true);
-  };
+  const mode: JobChatMode = enabled ? 'ON' : 'OFF';
+  const savedMode: JobChatMode = savedEnabled ? 'ON' : 'OFF';
 
   const onConfirmSave = async () => {
     setSaving(true);
@@ -79,110 +76,45 @@ export function JobCommentsSettings() {
   };
 
   return (
-    <>
-      {successBanner ? (
-        <SuccessBanner
-          banner={successBanner}
-          onDismiss={() => setSuccessBanner(null)}
-          testId="job-comments-success-banner"
-        />
-      ) : null}
-
-      {error ? <p className="error-text">{error}</p> : null}
-
-      <section className="panel contact-privacy-panel">
-        <div className="contact-privacy-panel-head">
-          <h2>{t('jobCommentsPolicyLabel')}</h2>
-          <p className="muted compact">
-            {t('jobCommentsCurrent', {
-              mode: t(
-                savedEnabled
-                  ? 'jobCommentsOption_ON'
-                  : 'jobCommentsOption_OFF',
-              ),
-            })}
-          </p>
-        </div>
-
-        {loading ? (
-          <p className="muted compact contact-privacy-loading">
-            {t('loading')}
-          </p>
-        ) : (
-          <fieldset className="policy-radios" disabled={!canUpdate}>
-            <legend className="sr-only">{t('jobCommentsPolicyLabel')}</legend>
-            <label className="policy-radio">
-              <input
-                type="radio"
-                name="allowJobCardComments"
-                checked={enabled}
-                onChange={() => setEnabled(true)}
-              />
-              <span>
-                <strong>{t('jobCommentsOption_ON')}</strong>
-                <span className="muted compact">
-                  {t('jobCommentsHelp_ON')}
-                </span>
-              </span>
-            </label>
-            <label className="policy-radio">
-              <input
-                type="radio"
-                name="allowJobCardComments"
-                checked={!enabled}
-                onChange={() => setEnabled(false)}
-              />
-              <span>
-                <strong>{t('jobCommentsOption_OFF')}</strong>
-                <span className="muted compact">
-                  {t('jobCommentsHelp_OFF')}
-                </span>
-              </span>
-            </label>
-          </fieldset>
-        )}
-
-        <div className="contact-privacy-actions">
-          <Button
-            variant="primary"
-            disabled={
-              !canUpdate || loading || saving || enabled === savedEnabled
-            }
-            onClick={onSaveClick}>
-            {saving ? t('saving') : t('save')}
-          </Button>
-          {!canUpdate ? (
-            <p className="muted compact">{t('jobCommentsNoPermission')}</p>
-          ) : null}
-        </div>
-      </section>
-
-      {confirmOpen ? (
-        <Dialog
-          open
-          title={t('jobCommentsConfirmTitle')}
-          onClose={() => setConfirmOpen(false)}
-          testId="job-comments-confirm">
-          <p>
-            {t(
-              enabled
-                ? 'jobCommentsConfirmBodyOn'
-                : 'jobCommentsConfirmBodyOff',
-            )}
-          </p>
-          <div className="actions">
-            <Button
-              variant="primary"
-              disabled={saving}
-              onClick={() => void onConfirmSave()}>
-              {saving ? t('saving') : t('continue')}
-            </Button>
-            <Button variant="ghost" onClick={() => setConfirmOpen(false)}>
-              {t('cancel')}
-            </Button>
-          </div>
-        </Dialog>
-      ) : null}
-    </>
+    <PolicySettingsCard
+      title={t('jobCommentsPolicyLabel')}
+      currentLabel={t(`jobCommentsOption_${savedMode}`)}
+      legend={t('jobCommentsPolicyLabel')}
+      name="allowJobCardComments"
+      options={(['ON', 'OFF'] as const).map((value) => ({
+        value,
+        title: t(`jobCommentsOption_${value}`),
+        help: t(`jobCommentsHelp_${value}`),
+      }))}
+      value={mode}
+      onChange={(next) => setEnabled(next === 'ON')}
+      loading={loading}
+      error={error}
+      onRetry={() => void load()}
+      retryLabel={t('retry')}
+      canUpdate={canUpdate}
+      dirty={enabled !== savedEnabled}
+      saving={saving}
+      onSave={() => {
+        if (!canUpdate || enabled === savedEnabled) return;
+        setConfirmOpen(true);
+      }}
+      saveLabel={t('save')}
+      savingLabel={t('saving')}
+      noPermissionText={t('jobCommentsNoPermission')}
+      confirmOpen={confirmOpen}
+      confirmTitle={t('jobCommentsConfirmTitle')}
+      confirmBody={t(
+        enabled ? 'jobCommentsConfirmBodyOn' : 'jobCommentsConfirmBodyOff',
+      )}
+      onConfirm={() => void onConfirmSave()}
+      onCancelConfirm={() => setConfirmOpen(false)}
+      continueLabel={t('continue')}
+      cancelLabel={t('cancel')}
+      successBanner={successBanner}
+      onDismissBanner={() => setSuccessBanner(null)}
+      bannerTestId="job-comments-success-banner"
+      confirmTestId="job-comments-confirm"
+    />
   );
 }
