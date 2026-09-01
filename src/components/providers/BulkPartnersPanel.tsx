@@ -2,6 +2,7 @@ import {useCallback, useEffect, useMemo, useState} from 'react';
 import {useTranslation} from 'react-i18next';
 import {Button, Icon, Select} from 'sapvt-ltd-web-packages';
 import type {
+  GeographyMetaBlock,
   GeographyMetaDistrict,
   GeographyMetaState,
 } from '../../services/api/geographyApi';
@@ -13,6 +14,12 @@ import {
   loadBulkDraftFromStorage,
   parseBulkPaste,
   partnerPinFromPhone,
+  matchServiceValue,
+  matchStateValue,
+  matchDistrictValue,
+  matchBlockValue,
+  districtExcelLabel,
+  blockExcelLabel,
   saveBulkDraftToStorage,
   type BulkGeoDefaults,
   type ProviderBulkDraftRow,
@@ -24,6 +31,7 @@ import './BulkPartnersPanel.css';
 export interface BulkPartnersPanelProps {
   geoStates: GeographyMetaState[];
   geoDistricts: GeographyMetaDistrict[];
+  geoBlocks: GeographyMetaBlock[];
   serviceOptions: ServiceOption[];
   onProviderCreated: () => void | Promise<void>;
   /** Full-page route: always expanded, no collapse toggle */
@@ -43,6 +51,7 @@ function statusLabel(
 export function BulkPartnersPanel({
   geoStates,
   geoDistricts,
+  geoBlocks,
   serviceOptions,
   onProviderCreated,
   standalone = false,
@@ -56,6 +65,7 @@ export function BulkPartnersPanel({
   const [pasteText, setPasteText] = useState(stored?.pasteText ?? '');
   const [stateId, setStateId] = useState(stored?.stateId ?? '');
   const [districtId, setDistrictId] = useState(stored?.districtId ?? '');
+  const [blockId, setBlockId] = useState(stored?.blockId ?? '');
   const [city, setCity] = useState(stored?.city ?? '');
   const [pincode, setPincode] = useState(stored?.pincode ?? '');
   const [rows, setRows] = useState<ProviderBulkDraftRow[]>(stored?.rows ?? []);
@@ -75,18 +85,38 @@ export function BulkPartnersPanel({
     [geoDistricts, stateId],
   );
 
+  const blockOptions = useMemo(
+    () =>
+      geoBlocks
+        .filter((b) => !districtId || b.districtId === districtId)
+        .map((b) => ({value: b._id, label: b.name})),
+    [geoBlocks, districtId],
+  );
+
   const geoDefaults = useMemo((): BulkGeoDefaults => {
     const selectedState = geoStates.find((s) => s._id === stateId);
     const selectedDistrict = geoDistricts.find((d) => d._id === districtId);
+    const selectedBlock = geoBlocks.find((b) => b._id === blockId);
     return {
       stateId,
       districtId,
+      blockId,
       city,
       pincode,
       stateName: selectedState?.name || '',
       districtName: selectedDistrict?.name || '',
+      blockName: selectedBlock?.name || '',
     };
-  }, [city, districtId, geoDistricts, geoStates, pincode, stateId]);
+  }, [
+    blockId,
+    city,
+    districtId,
+    geoBlocks,
+    geoDistricts,
+    geoStates,
+    pincode,
+    stateId,
+  ]);
 
   useEffect(() => {
     saveBulkDraftToStorage({
@@ -94,11 +124,22 @@ export function BulkPartnersPanel({
       pasteText,
       stateId,
       districtId,
+      blockId,
       city,
       pincode,
       expanded: standalone ? true : expanded,
     });
-  }, [rows, pasteText, stateId, districtId, city, pincode, expanded, standalone]);
+  }, [
+    rows,
+    pasteText,
+    stateId,
+    districtId,
+    blockId,
+    city,
+    pincode,
+    expanded,
+    standalone,
+  ]);
 
   const isExpanded = standalone || expanded;
 
@@ -163,7 +204,14 @@ export function BulkPartnersPanel({
     );
 
     try {
-      const result = await insertBulkPartnerRow(row, geoDefaults, serviceOptions);
+      const result = await insertBulkPartnerRow(
+        row,
+        geoDefaults,
+        serviceOptions,
+        geoStates,
+        geoDistricts,
+        geoBlocks,
+      );
       setRows((prev) =>
         prev.map((r) =>
           r.id === rowId
@@ -255,6 +303,7 @@ export function BulkPartnersPanel({
                   onChange={(value) => {
                     setStateId(value);
                     setDistrictId('');
+                    setBlockId('');
                     setCity('');
                     setPincode('');
                   }}
@@ -272,6 +321,7 @@ export function BulkPartnersPanel({
                   disabled={!stateId}
                   onChange={(value) => {
                     setDistrictId(value);
+                    setBlockId('');
                     const d = geoDistricts.find((x) => x._id === value);
                     if (d) {
                       if (!city.trim()) setCity(d.name);
@@ -281,11 +331,24 @@ export function BulkPartnersPanel({
                 />
               </div>
               <div className="bulk-partners-field">
+                <span className="bulk-partners-field__label">{t('geoBlock')}</span>
+                <Select
+                  options={blockOptions}
+                  value={blockId}
+                  placeholder={t('geoBlock')}
+                  showSearch
+                  searchPlaceholder={t('searchBlock')}
+                  emptyMessage={t('noBlocksFound')}
+                  disabled={!districtId}
+                  onChange={(value) => setBlockId(value)}
+                />
+              </div>
+              <div className="bulk-partners-field">
                 <span className="bulk-partners-field__label">{t('geoCity')}</span>
                 <input
                   value={city}
                   onChange={(e) => setCity(e.target.value)}
-                  placeholder={t('geoDistrict')}
+                  placeholder={t('geoCity')}
                 />
               </div>
               <div className="bulk-partners-field">
@@ -321,7 +384,7 @@ export function BulkPartnersPanel({
               <Button variant="primary" onClick={onLoadRows}>
                 {t('bulkPartnersLoadRows')}
               </Button>
-              <Button variant="ghost" onClick={() => downloadBulkTemplate()}>
+              <Button variant="ghost" onClick={() => downloadBulkTemplate(serviceOptions, geoStates, geoDistricts, geoBlocks)}>
                 {t('bulkPartnersDownloadTemplate')}
               </Button>
               <Button variant="ghost" onClick={onClearDraft}>
@@ -353,8 +416,14 @@ export function BulkPartnersPanel({
                       <th>{t('phone')}</th>
                       <th>{t('name')}</th>
                       <th>{t('serviceType')}</th>
+                      <th>{t('geoState')}</th>
+                      <th>{t('geoDistrict')}</th>
+                      <th>{t('geoBlock')}</th>
+                      <th>{t('geoCity')}</th>
+                      <th>{t('pincode')}</th>
                       <th>{t('locationAddress')}</th>
                       <th>{t('experienceOptional')}</th>
+                      <th>{t('ratingOptional')}</th>
                       <th>{t('bulkPartnersGender')}</th>
                       <th>{t('bulkPartnersStatus')}</th>
                       <th>{t('loginPin')}</th>
@@ -375,6 +444,19 @@ export function BulkPartnersPanel({
                             ? 'bulk-partners-status--failed'
                             : '';
                       const readOnly = row.status === 'success' || row.status === 'inserting';
+                      const matchedService = matchServiceValue(
+                        row.service,
+                        serviceOptions,
+                      );
+                      const unmatchedService =
+                        !matchedService && (row.service || '').trim()
+                          ? (row.service || '').trim()
+                          : '';
+                      const genderNormalized = ['Male', 'Female', 'Other'].find(
+                        (g) =>
+                          g.toLowerCase() ===
+                          (row.gender || '').trim().toLowerCase(),
+                      );
 
                       return (
                         <tr key={row.id}>
@@ -399,18 +481,201 @@ export function BulkPartnersPanel({
                               }
                             />
                           </td>
-                          <td>
-                            <input
-                              value={row.service}
+                          <td className="bulk-partners-table__service">
+                            <select
+                              aria-label={t('serviceType')}
+                              value={matchedService || ''}
                               disabled={readOnly}
                               onChange={(e) =>
                                 updateRow(row.id, {service: e.target.value})
+                              }>
+                              {unmatchedService ? (
+                                <option value="" disabled>
+                                  {t('bulkPartnersFixService', {
+                                    value: unmatchedService,
+                                  })}
+                                </option>
+                              ) : (
+                                <option value="">
+                                  {t('selectServiceType')}
+                                </option>
+                              )}
+                              {serviceOptions.map((opt) => (
+                                <option key={opt.value} value={opt.value}>
+                                  {opt.label}
+                                </option>
+                              ))}
+                            </select>
+                          </td>
+                          <td>
+                            <select
+                              aria-label={t('geoState')}
+                              value={
+                                matchStateValue(row.state || '', geoStates)?._id ||
+                                ''
+                              }
+                              disabled={readOnly}
+                              onChange={(e) => {
+                                const value = e.target.value;
+                                const nextState = geoStates.find((s) => s._id === value);
+                                const nextDistricts = geoDistricts.filter(
+                                  (d) => d.stateId === value,
+                                );
+                                const keepDistrict = matchDistrictValue(
+                                  row.district || '',
+                                  nextDistricts,
+                                );
+                                updateRow(row.id, {
+                                  state: nextState?.name || value,
+                                  district: keepDistrict
+                                    ? districtExcelLabel(keepDistrict)
+                                    : '',
+                                });
+                              }}>
+                              {(row.state || '').trim() &&
+                              !matchStateValue(row.state || '', geoStates) ? (
+                                <option value="" disabled>
+                                  {row.state}
+                                </option>
+                              ) : (
+                                <option value="">{t('geoState')}</option>
+                              )}
+                              {stateOptions.map((opt) => (
+                                <option key={opt.value} value={opt.value}>
+                                  {opt.label}
+                                </option>
+                              ))}
+                            </select>
+                          </td>
+                          <td>
+                            <select
+                              aria-label={t('geoDistrict')}
+                              value={
+                                matchDistrictValue(
+                                  row.district || '',
+                                  geoDistricts,
+                                )?._id || ''
+                              }
+                              disabled={readOnly}
+                              onChange={(e) => {
+                                const value = e.target.value;
+                                const d = geoDistricts.find((x) => x._id === value);
+                                updateRow(row.id, {
+                                  district: d ? districtExcelLabel(d) : value,
+                                  state: d
+                                    ? geoStates.find((s) => s._id === d.stateId)
+                                        ?.name || row.state
+                                    : row.state,
+                                  block: '',
+                                  city: row.city || d?.name || '',
+                                  pincode: row.pincode || d?.pincode || '',
+                                });
+                              }}>
+                              {(row.district || '').trim() &&
+                              !matchDistrictValue(row.district || '', geoDistricts) ? (
+                                <option value="" disabled>
+                                  {row.district}
+                                </option>
+                              ) : (
+                                <option value="">{t('geoDistrict')}</option>
+                              )}
+                              {geoDistricts
+                                .filter((d) => {
+                                  const sid =
+                                    matchStateValue(row.state || '', geoStates)
+                                      ?._id ||
+                                    (!((row.state || '').trim()) ? stateId : '');
+                                  return !sid || d.stateId === sid;
+                                })
+                                .map((d) => (
+                                  <option key={d._id} value={d._id}>
+                                    {d.name}
+                                  </option>
+                                ))}
+                            </select>
+                          </td>
+                          <td>
+                            <select
+                              aria-label={t('geoBlock')}
+                              value={
+                                matchBlockValue(row.block || '', geoBlocks)?._id ||
+                                ''
+                              }
+                              disabled={readOnly}
+                              onChange={(e) => {
+                                const value = e.target.value;
+                                const b = geoBlocks.find((x) => x._id === value);
+                                updateRow(row.id, {
+                                  block: b ? blockExcelLabel(b) : value,
+                                  district: b
+                                    ? districtExcelLabel({
+                                        _id: b.districtId,
+                                        name: b.districtName,
+                                        stateId: b.stateId,
+                                        stateName: b.stateName,
+                                      })
+                                    : row.district,
+                                  state: b
+                                    ? geoStates.find((s) => s._id === b.stateId)
+                                        ?.name || row.state
+                                    : row.state,
+                                });
+                              }}>
+                              {(row.block || '').trim() &&
+                              !matchBlockValue(row.block || '', geoBlocks) ? (
+                                <option value="" disabled>
+                                  {row.block}
+                                </option>
+                              ) : (
+                                <option value="">{t('geoBlock')}</option>
+                              )}
+                              {geoBlocks
+                                .filter((b) => {
+                                  const did =
+                                    matchDistrictValue(
+                                      row.district || '',
+                                      geoDistricts,
+                                    )?._id ||
+                                    (!((row.district || '').trim())
+                                      ? districtId
+                                      : '');
+                                  return !did || b.districtId === did;
+                                })
+                                .map((b) => (
+                                  <option key={b._id} value={b._id}>
+                                    {b.name}
+                                  </option>
+                                ))}
+                            </select>
+                          </td>
+                          <td>
+                            <input
+                              value={row.city ?? ''}
+                              disabled={readOnly}
+                              placeholder={t('geoCity')}
+                              onChange={(e) =>
+                                updateRow(row.id, {city: e.target.value})
                               }
                             />
                           </td>
                           <td>
                             <input
-                              value={row.address}
+                              type="text"
+                              inputMode="numeric"
+                              maxLength={6}
+                              value={row.pincode ?? ''}
+                              disabled={readOnly}
+                              placeholder="560001"
+                              onChange={(e) =>
+                                updateRow(row.id, {
+                                  pincode: e.target.value.replace(/\D/g, '').slice(0, 6),
+                                })
+                              }
+                            />
+                          </td>
+                          <td>
+                            <input
+                              value={row.address ?? ''}
                               disabled={readOnly}
                               onChange={(e) =>
                                 updateRow(row.id, {address: e.target.value})
@@ -430,12 +695,33 @@ export function BulkPartnersPanel({
                           </td>
                           <td>
                             <input
-                              value={row.gender}
+                              type="number"
+                              min={0}
+                              max={5}
+                              step={0.1}
+                              value={row.rating ?? ''}
+                              disabled={readOnly}
+                              onChange={(e) =>
+                                updateRow(row.id, {rating: e.target.value})
+                              }
+                            />
+                          </td>
+                          <td>
+                            <select
+                              aria-label={t('bulkPartnersGender')}
+                              value={genderNormalized || row.gender || ''}
                               disabled={readOnly}
                               onChange={(e) =>
                                 updateRow(row.id, {gender: e.target.value})
-                              }
-                            />
+                              }>
+                              <option value="">{t('optional')}</option>
+                              {row.gender && !genderNormalized ? (
+                                <option value={row.gender}>{row.gender}</option>
+                              ) : null}
+                              <option value="Male">Male</option>
+                              <option value="Female">Female</option>
+                              <option value="Other">Other</option>
+                            </select>
                           </td>
                           <td className={statusClass}>
                             {statusLabel(row, t)}
@@ -496,7 +782,7 @@ export function BulkPartnersPanel({
                 />
                 <h4>{t('bulkPartnersEmptyTitle')}</h4>
                 <p>{t('bulkPartnersEmptyHint')}</p>
-                <Button variant="ghost" onClick={() => downloadBulkTemplate()}>
+                <Button variant="ghost" onClick={() => downloadBulkTemplate(serviceOptions, geoStates, geoDistricts, geoBlocks)}>
                   {t('bulkPartnersDownloadTemplate')}
                 </Button>
               </div>

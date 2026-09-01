@@ -1,0 +1,70 @@
+.creatives-admin-page {
+  width: 100%;
+}
+
+.creatives-admin-page > .page-header p {
+  max-width: 46rem;
+}
+
+.creatives-admin-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-5);
+  padding: var(--space-4);
+  border: 1px dashed transparent;
+}
+
+.creatives-admin-toolbar.is-dragover {
+  border-color: var(--color-primary, #0052cc);
+  background: color-mix(in srgb, var(--color-primary, #0052cc) 8%, transparent);
+}
+
+.creatives-admin-drop-hint {
+  flex: 1 1 100%;
+  margin: var(--space-1) 0 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.creatives-admin-empty {
+  color: var(--color-text-secondary);
+}
+
+.creatives-admin-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--space-4);
+}
+
+.creatives-admin-card {
+  margin: 0;
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.creatives-admin-thumb {
+  width: 100%;
+  height: 160px;
+  object-fit: contain;
+  background: var(--color-surface, #f4f5f7);
+  border-radius: 8px;
+}
+
+.creatives-admin-name {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  word-break: break-word;
+}
+
+.creatives-admin-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
