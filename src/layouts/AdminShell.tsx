@@ -74,6 +74,16 @@ const NAV: Array<{
     permission: PERMISSIONS.CLIENTS_VIEW,
     superAdminOnly: true,
   },
+  {
+    to: '/backups',
+    key: 'navBackups',
+    superAdminOnly: true,
+  },
+  {
+    to: '/creatives',
+    key: 'navCreatives',
+    superAdminOnly: true,
+  },
 ];
 
 const SIDEBAR_COLLAPSED_KEY = 'hs-admin-sidebar-collapsed';

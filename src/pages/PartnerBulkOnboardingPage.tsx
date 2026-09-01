@@ -6,6 +6,7 @@ import {BulkPartnersPanel} from '../components/providers/BulkPartnersPanel';
 import {getServiceCategories} from '../services/api/serviceCategoriesApi';
 import {
   getGeographyMeta,
+  type GeographyMetaBlock,
   type GeographyMetaDistrict,
   type GeographyMetaState,
 } from '../services/api/geographyApi';
@@ -18,6 +19,7 @@ export function PartnerBulkOnboardingPage() {
   const [geoDistricts, setGeoDistricts] = useState<GeographyMetaDistrict[]>(
     [],
   );
+  const [geoBlocks, setGeoBlocks] = useState<GeographyMetaBlock[]>([]);
   const [serviceOptions, setServiceOptions] = useState<
     {value: string; label: string}[]
   >([]);
@@ -27,13 +29,14 @@ export function PartnerBulkOnboardingPage() {
     let cancelled = false;
     setLoading(true);
     void Promise.all([
-      getGeographyMeta(),
+      getGeographyMeta({force: true}),
       getServiceCategories(false),
     ])
       .then(([meta, cats]) => {
         if (cancelled) return;
         setGeoStates(meta.states || []);
         setGeoDistricts(meta.districts || []);
+        setGeoBlocks(meta.blocks || []);
         setServiceOptions(
           cats
             .filter((c) => c.isActive !== false)
@@ -44,6 +47,7 @@ export function PartnerBulkOnboardingPage() {
         if (cancelled) return;
         setGeoStates([]);
         setGeoDistricts([]);
+        setGeoBlocks([]);
         setServiceOptions([]);
       })
       .finally(() => {
@@ -78,6 +82,7 @@ export function PartnerBulkOnboardingPage() {
           standalone
           geoStates={geoStates}
           geoDistricts={geoDistricts}
+          geoBlocks={geoBlocks}
           serviceOptions={serviceOptions}
           onProviderCreated={async () => {}}
         />

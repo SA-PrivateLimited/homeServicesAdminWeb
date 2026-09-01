@@ -3,6 +3,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { useAuthStore } from './store/authStore';
 import { RequireAuth } from './components/RequireAuth';
 import { RequirePermission } from './components/RequirePermission';
+import { RequireSuperAdmin } from './components/RequireSuperAdmin';
 import { AdminShell } from './layouts/AdminShell';
 import { LoginPage } from './pages/LoginPage';
 import { ActivatePage } from './pages/ActivatePage';
@@ -24,6 +25,8 @@ import { ProviderOpenRequestsPage } from './pages/ProviderOpenRequestsPage';
 import { PermissionsPage, PermissionsIndexRedirect } from './pages/PermissionsPage';
 import { ClientsPage } from './pages/ClientsPage';
 import { GreetingPage } from './pages/GreetingPage';
+import { DatabaseBackupPage } from './pages/DatabaseBackupPage';
+import { BrandCreativesPage } from './pages/BrandCreativesPage';
 import { GeographyStatesPage } from './pages/GeographyStatesPage';
 import { GeographyDistrictsPage } from './pages/GeographyDistrictsPage';
 import { GeographyProvidersPage } from './pages/GeographyProvidersPage';
@@ -152,6 +155,10 @@ export default function App() {
               <Route path="clients" element={<ClientsPage />} />
               <Route path="greeting" element={<GreetingPage />} />
               <Route path="launch" element={<Navigate to="/greeting" replace />} />
+            </Route>
+            <Route element={<RequireSuperAdmin />}>
+              <Route path="backups" element={<DatabaseBackupPage />} />
+              <Route path="creatives" element={<BrandCreativesPage />} />
             </Route>
           </Route>
         </Route>
