@@ -74,12 +74,22 @@ export interface GeographyMetaDistrict {
   pincode?: string;
 }
 
+export interface GeographyMetaBlock {
+  _id: string;
+  name: string;
+  districtId: string;
+  districtName: string;
+  stateId: string;
+  stateName: string;
+}
+
 export interface GeographyMeta {
   states: GeographyMetaState[];
   districts: GeographyMetaDistrict[];
+  blocks: GeographyMetaBlock[];
 }
 
-const META_STORAGE_KEY = 'hs_admin_geography_meta_v1';
+const META_STORAGE_KEY = 'hs_admin_geography_meta_v2';
 const META_TTL_MS = 24 * 60 * 60 * 1000;
 const LIST_TTL_MS = 60 * 1000;
 
@@ -108,6 +118,7 @@ function normalizeMeta(data: GeographyMeta | null | undefined): GeographyMeta {
   return {
     states: data?.states || [],
     districts: data?.districts || [],
+    blocks: data?.blocks || [],
   };
 }
 
@@ -121,6 +132,7 @@ function readMetaSession(): CachedMeta | null {
     if (!raw) return null;
     const parsed = JSON.parse(raw) as CachedMeta;
     if (!parsed?.states || !parsed?.districts) return null;
+    if (!Array.isArray(parsed.blocks)) return null;
     return parsed;
   } catch {
     return null;
@@ -131,7 +143,7 @@ function writeMetaSession(meta: GeographyMeta): CachedMeta {
   const payload: CachedMeta = {
     ...normalizeMeta(meta),
     cachedAt: Date.now(),
-    version: 1,
+    version: 2,
   };
   metaMemory = payload;
   try {

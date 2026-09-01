@@ -8,6 +8,8 @@ export interface UserLocation {
   district?: string;
   stateId?: string;
   districtId?: string;
+  block?: string;
+  blockId?: string;
   pincode?: string;
   country?: string;
 }
@@ -62,6 +64,8 @@ export interface CreateUserInput {
   district?: string;
   stateId?: string;
   districtId?: string;
+  block?: string;
+  blockId?: string;
   pincode?: string;
   experience?: number;
   rating?: number;

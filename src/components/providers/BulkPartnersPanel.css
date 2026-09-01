@@ -156,7 +156,7 @@
 
 .bulk-partners-table {
   width: 100%;
-  min-width: 56rem;
+  min-width: 72rem;
   border-collapse: collapse;
   font-size: var(--font-size-sm);
 }
@@ -166,6 +166,7 @@
   padding: 0.55rem 0.65rem;
   border-bottom: 1px solid var(--color-border);
   vertical-align: middle;
+  overflow: visible;
 }
 
 .bulk-partners-table th {
@@ -179,10 +180,34 @@
   border-bottom: none;
 }
 
-.bulk-partners-table input {
+.bulk-partners-table input,
+.bulk-partners-table select {
   width: 100%;
-  min-width: 5rem;
+  min-width: 5.5rem;
+  min-height: 2.35rem;
+  margin: 0;
+  padding: 0.3rem 0.5rem;
   font: inherit;
+  color: inherit;
+  background: var(--color-bg, #fff);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  box-sizing: border-box;
+}
+
+.bulk-partners-table__service {
+  min-width: 11rem;
+}
+
+.bulk-partners-table select {
+  cursor: pointer;
+}
+
+.bulk-partners-table input:disabled,
+.bulk-partners-table select:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+  background: var(--surface-muted, rgba(0, 0, 0, 0.04));
 }
 
 .bulk-partners-status--success {

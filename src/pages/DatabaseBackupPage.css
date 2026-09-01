@@ -1,0 +1,69 @@
+.backup-admin-page {
+  width: 100%;
+}
+
+.backup-admin-page > .page-header p {
+  max-width: 46rem;
+}
+
+.backup-admin-panel {
+  max-width: 42rem;
+  margin-bottom: var(--space-5);
+  padding: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.backup-admin-panel-head h2 {
+  margin: 0 0 var(--space-1);
+  font-size: var(--font-size-md);
+}
+
+.backup-admin-panel-head p,
+.backup-admin-hint,
+.backup-admin-stats {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-body);
+  color: var(--color-text-secondary);
+}
+
+.backup-admin-stats {
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.backup-admin-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.backup-admin-panel-wide {
+  max-width: 56rem;
+}
+
+.backup-admin-table-wrap {
+  overflow-x: auto;
+}
+
+.backup-admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-sm);
+}
+
+.backup-admin-table th,
+.backup-admin-table td {
+  text-align: left;
+  padding: var(--space-2) var(--space-2) var(--space-2) 0;
+  border-bottom: 1px solid var(--color-border, #dfe1e6);
+  vertical-align: middle;
+}
+
+.backup-admin-who {
+  display: block;
+  font-weight: 600;
+  color: var(--color-text);
+}
