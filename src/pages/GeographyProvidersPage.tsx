@@ -221,6 +221,7 @@ export function GeographyProvidersPage() {
           pincode: createPincode.trim() || undefined,
           experience: Number.isFinite(experience) ? experience : undefined,
           rating: Number.isFinite(rating) ? rating : undefined,
+          onboardingSource: 'admin',
         },
         {stateId: district?.stateId},
       );
