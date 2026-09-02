@@ -71,6 +71,8 @@ export interface CreateUserInput {
   rating?: number;
   /** Provider only — default approved; use pending when converting from shared contact */
   approvalStatus?: 'pending' | 'approved';
+  /** Provider only — admin | admin_bulk */
+  onboardingSource?: 'admin' | 'admin_bulk';
 }
 
 export interface UserListOptions {

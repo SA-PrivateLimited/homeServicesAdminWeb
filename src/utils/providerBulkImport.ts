@@ -575,6 +575,7 @@ export async function insertBulkPartnerRow(
       pincode: resolved.pincode || undefined,
       experience: Number.isFinite(experience) ? experience : undefined,
       rating: Number.isFinite(rating) ? rating : undefined,
+      onboardingSource: 'admin_bulk',
     });
 
     invalidateGeographyListCache({

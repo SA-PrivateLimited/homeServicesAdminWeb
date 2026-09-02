@@ -76,6 +76,8 @@ export interface Provider {
   }>;
   createdAt?: string;
   updatedAt?: string;
+  /** How the Partner was created: self | admin | admin_bulk */
+  onboardingSource?: 'self' | 'admin' | 'admin_bulk' | string;
 }
 
 export interface ProviderFilters {
@@ -90,6 +92,7 @@ export interface ProviderFilters {
   limit?: number;
   offset?: number;
   includeInactive?: boolean;
+  onboardingSource?: string;
 }
 
 export async function getProvidersPage(

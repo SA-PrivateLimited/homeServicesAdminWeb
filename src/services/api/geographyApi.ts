@@ -372,6 +372,7 @@ export async function createProviderInDistrict(
     experience?: number;
     rating?: number;
     phoneVerified?: boolean;
+    onboardingSource?: 'admin' | 'admin_bulk';
   },
   options?: {stateId?: string},
 ): Promise<Provider> {

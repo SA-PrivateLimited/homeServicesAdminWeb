@@ -71,6 +71,23 @@ function phoneCopyDigits(
 
 const STATUS_VALUES = ['pending', 'approved', 'rejected'] as const;
 
+function addedHowFilterValue(source?: string): string {
+  if (source === 'self' || source === 'admin' || source === 'admin_bulk') {
+    return source;
+  }
+  return 'unknown';
+}
+
+function addedHowLabel(
+  source: string | undefined,
+  t: (key: string) => string,
+): string {
+  if (source === 'self') return t('addedHowSelf');
+  if (source === 'admin') return t('addedHowAdmin');
+  if (source === 'admin_bulk') return t('addedHowBulk');
+  return t('addedHowUnknown');
+}
+
 function approvalStatusLabel(
   status: string,
   t: (key: string) => string,
@@ -93,6 +110,15 @@ export function ProvidersPage() {
         value,
         label: t(`filter_${value}`),
       })),
+    [t],
+  );
+  const addedHowOptions = useMemo(
+    () => [
+      {value: 'admin_bulk', label: t('addedHowBulk')},
+      {value: 'admin', label: t('addedHowAdmin')},
+      {value: 'self', label: t('addedHowSelf')},
+      {value: 'unknown', label: t('addedHowUnknown')},
+    ],
     [t],
   );
   const [rows, setRows] = useState<Provider[]>([]);
@@ -423,6 +449,7 @@ export function ProvidersPage() {
         pincode: createPincode.trim() || undefined,
         experience: Number.isFinite(experience) ? experience : undefined,
         rating: Number.isFinite(rating) ? rating : undefined,
+        onboardingSource: 'admin',
       });
       invalidateGeographyListCache({
         districtId: createDistrictId,
@@ -757,6 +784,23 @@ export function ProvidersPage() {
         },
       },
       {
+        key: 'onboardingSource',
+        header: t('addedHow'),
+        width: '9.5rem',
+        filterable: true,
+        filterType: 'multi',
+        filterPlaceholder: t('filterAddedHow'),
+        filterOptions: addedHowOptions,
+        filterValue: (row) => addedHowFilterValue(row.onboardingSource),
+        render: (row) => (
+          <span
+            className="muted compact"
+            title={addedHowLabel(row.onboardingSource, t)}>
+            {addedHowLabel(row.onboardingSource, t)}
+          </span>
+        ),
+      },
+      {
         key: 'status',
         header: t('accountStatus'),
         width: '8.5rem',
@@ -920,6 +964,7 @@ export function ProvidersPage() {
       statusBusyId,
       statusEditId,
       statusOptions,
+      addedHowOptions,
       t,
     ],
   );
