@@ -16,14 +16,16 @@ export type GreetingAnimation = 'diyas' | 'sparkle' | 'crackers' | 'none';
 
 export const GREETING_WISH_ICONS = [
   'celebration',
-  'favorite',
+  'local_fire_department',
+  'candlestick',
   'auto_awesome',
-  'volunteer_activism',
+  'favorite',
   'local_florist',
   'spa',
+  'volunteer_activism',
 ] as const;
 
-export type GreetingWishIcon = (typeof GREETING_WISH_ICONS)[number];
+export type GreetingWishIcon = string;
 
 export const GREETING_PRESETS = [
   'Happy Holi',
@@ -54,13 +56,18 @@ export interface GreetingConfig {
   name: string;
   message: string;
   icon: GreetingWishIcon;
+  logoAccentUrl: string;
+  doodleEnabled: boolean;
+  doodleEndsAt: string | null;
+  doodleActive: boolean;
 }
 
 function normalizeIcon(raw: string | undefined): GreetingWishIcon {
-  const value = String(raw || '').trim();
-  return (GREETING_WISH_ICONS as readonly string[]).includes(value)
-    ? (value as GreetingWishIcon)
-    : 'celebration';
+  const value = String(raw || '')
+    .trim()
+    .toLowerCase();
+  if (/^[a-z][a-z0-9_]{0,63}$/.test(value)) return value;
+  return 'celebration';
 }
 
 function normalizeAnimationMode(raw: string | undefined): GreetingAnimationMode {
@@ -119,6 +126,14 @@ function normalize(raw: Partial<GreetingConfig> | null | undefined): GreetingCon
     name: String(raw?.name || '').trim(),
     message: String(raw?.message || '').trim(),
     icon: normalizeIcon(raw?.icon),
+    logoAccentUrl: String(raw?.logoAccentUrl || '').trim(),
+    doodleEnabled: raw?.doodleEnabled === true,
+    doodleEndsAt: Number.isFinite(
+      Date.parse(String(raw?.doodleEndsAt || '').trim()),
+    )
+      ? new Date(String(raw?.doodleEndsAt)).toISOString()
+      : null,
+    doodleActive: raw?.doodleActive === true,
   };
 }
 
@@ -144,6 +159,28 @@ export function endOfTodayDatetimeLocal(): string {
   return toDatetimeLocalValue(date.toISOString());
 }
 
+export interface DoodleConfig {
+  doodleEnabled: boolean;
+  doodleEndsAt: string | null;
+  doodleActive: boolean;
+  icon: GreetingWishIcon;
+  logoAccentUrl: string;
+}
+
+function normalizeDoodle(raw: Partial<DoodleConfig> | null | undefined): DoodleConfig {
+  return {
+    doodleEnabled: raw?.doodleEnabled === true,
+    doodleEndsAt: Number.isFinite(
+      Date.parse(String(raw?.doodleEndsAt || '').trim()),
+    )
+      ? new Date(String(raw?.doodleEndsAt)).toISOString()
+      : null,
+    doodleActive: raw?.doodleActive === true,
+    icon: normalizeIcon(raw?.icon),
+    logoAccentUrl: String(raw?.logoAccentUrl || '').trim(),
+  };
+}
+
 export async function getGreetingConfig(): Promise<GreetingConfig> {
   const data = await apiGet<GreetingConfig>('/api/greeting');
   return normalize(data);
@@ -159,19 +196,22 @@ export async function updateGreetingConfig(input: {
   animationMode: GreetingAnimationMode;
   name: string;
   message: string;
-  icon: GreetingWishIcon;
 }): Promise<GreetingConfig> {
-  const data = await apiPut<GreetingConfig>('/api/greeting', {
-    state: input.state,
-    closeMode: input.closeMode,
-    eventName: input.eventName,
-    greeting: input.greeting,
-    cta: input.cta,
-    timerEndsAt: input.timerEndsAt,
-    animationMode: input.animationMode,
-    name: input.name,
-    message: input.message,
-    icon: input.icon,
-  });
+  const data = await apiPut<GreetingConfig>('/api/greeting', input);
   return normalize(data);
+}
+
+export async function getDoodleConfig(): Promise<DoodleConfig> {
+  const data = await apiGet<DoodleConfig>('/api/greeting/doodle');
+  return normalizeDoodle(data);
+}
+
+export async function updateDoodleConfig(input: {
+  doodleEnabled: boolean;
+  doodleEndsAt: string | null;
+  icon: GreetingWishIcon;
+  logoAccentUrl: string;
+}): Promise<DoodleConfig> {
+  const data = await apiPut<DoodleConfig>('/api/greeting/doodle', input);
+  return normalizeDoodle(data);
 }
