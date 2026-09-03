@@ -185,6 +185,7 @@ export function ProvidersPage() {
   const [restoreBusyId, setRestoreBusyId] = useState<string | null>(null);
   const [phoneVerifyBusyId, setPhoneVerifyBusyId] = useState<string | null>(null);
   const [showRequestBusyId, setShowRequestBusyId] = useState<string | null>(null);
+  const [showContactBusyId, setShowContactBusyId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -667,6 +668,26 @@ export function ProvidersPage() {
     }
   };
 
+  const onToggleShowContactToUser = async (row: Provider) => {
+    setShowContactBusyId(row._id);
+    setError(null);
+    try {
+      const next = row.showContactToUser === false;
+      const updated = await updateProvider(row._id, {showContactToUser: next});
+      setRows((prev) =>
+        prev.map((r) =>
+          r._id === row._id
+            ? {...r, showContactToUser: updated.showContactToUser ?? next}
+            : r,
+        ),
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t('errorGeneric'));
+    } finally {
+      setShowContactBusyId(null);
+    }
+  };
+
   const columns = useMemo<VirtualTableColumn<Provider>[]>(
     () => [
       {
@@ -906,6 +927,32 @@ export function ProvidersPage() {
         },
       },
       {
+        key: 'showContactToUser',
+        header: t('showContactToUser'),
+        width: '11rem',
+        render: (row) => {
+          const on = row.showContactToUser !== false;
+          return (
+            <span className="phone-verify-cell is-switch">
+              <button
+                type="button"
+                role="switch"
+                aria-checked={on}
+                aria-label={t('showContactToUser')}
+                title={t('showContactToUserHint')}
+                className={`hs-toggle${on ? ' is-on' : ''}`}
+                disabled={showContactBusyId === row._id}
+                onClick={() => void onToggleShowContactToUser(row)}>
+                <span className="hs-toggle-thumb" />
+              </button>
+              <span className="muted compact">
+                {on ? t('showContactToUserOn') : t('showContactToUserOff')}
+              </span>
+            </span>
+          );
+        },
+      },
+      {
         key: 'pin',
         header: t('partnerLoginPin'),
         width: '12rem',
@@ -1006,6 +1053,7 @@ export function ProvidersPage() {
     [
       phoneVerifyBusyId,
       showRequestBusyId,
+      showContactBusyId,
       revealBusyId,
       revealedPins,
       restoreBusyId,
