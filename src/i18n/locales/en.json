@@ -13,6 +13,8 @@
   "mfaResetConfirm": "Reset and show new QR",
   "mfaCode": "Authenticator code",
   "mfaManualSecret": "Or enter this key manually",
+  "mfaCopyKey": "Copy",
+  "mfaCopied": "Copied",
   "mfaEnableAndSignIn": "Verify and sign in",
   "email": "Email",
   "password": "Password",

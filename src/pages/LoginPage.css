@@ -185,18 +185,52 @@
 
 .mfa-secret-label {
   margin: 0 0 var(--space-1);
-  font-size: var(--font-size-xs);
-  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.mfa-secret-row {
+  display: flex;
+  align-items: stretch;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-4);
 }
 
 .mfa-secret {
   display: block;
-  margin: 0 0 var(--space-4);
-  padding: var(--space-2) var(--space-3);
-  font-size: var(--font-size-xs);
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  padding: 10px 12px;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1.45;
   word-break: break-all;
-  background: var(--color-sidebar);
+  color: #1a202c;
+  background: #f7fafc;
+  border: 1px solid #cbd5e0;
   border-radius: var(--radius);
+}
+
+.mfa-secret-copy {
+  flex-shrink: 0;
+  min-width: 4.5rem;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--primary-color);
+  border-radius: var(--radius);
+  background: var(--neutral-white);
+  color: var(--primary-color);
+  font: inherit;
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.mfa-secret-copy:hover {
+  background: color-mix(in srgb, var(--primary-color) 10%, var(--neutral-white));
 }
 
 .login-back {
