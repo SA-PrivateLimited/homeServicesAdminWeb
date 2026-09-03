@@ -7,6 +7,7 @@ import {
   validateActivationToken,
 } from '../services/api/activationApi';
 import {AdminBrandLogo} from '../components/AdminBrandLogo';
+import {MfaManualSecret} from '../components/MfaManualSecret';
 import './LoginPage.css';
 
 const MIN_PASSWORD_LENGTH = 8;
@@ -217,8 +218,12 @@ export function ActivatePage() {
             alt="Authenticator QR code"
           />
         </div>
-        <p className="mfa-secret-label">Manual key</p>
-        <code className="mfa-secret">{step.secret}</code>
+        <MfaManualSecret
+          secret={step.secret}
+          label="Or enter this key manually"
+          copyLabel="Copy"
+          copiedLabel="Copied"
+        />
         {error ? <p className="login-error">{error}</p> : null}
         <div className="field">
           <label htmlFor="activate-mfa-code">Authenticator code</label>

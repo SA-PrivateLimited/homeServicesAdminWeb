@@ -8,6 +8,7 @@ import {
   RUNTIME_BRANDING_EVENT,
 } from '../config/runtime';
 import {AdminBrandLogo} from '../components/AdminBrandLogo';
+import {MfaManualSecret} from '../components/MfaManualSecret';
 import './LoginPage.css';
 
 type Step =
@@ -289,8 +290,12 @@ export function LoginPage() {
             alt="Authenticator QR code"
           />
         </div>
-        <p className="mfa-secret-label">{t('mfaManualSecret')}</p>
-        <code className="mfa-secret">{step.secret}</code>
+        <MfaManualSecret
+          secret={step.secret}
+          label={t('mfaManualSecret')}
+          copyLabel={t('mfaCopyKey')}
+          copiedLabel={t('mfaCopied')}
+        />
         <div className="field">
           <label htmlFor="mfa-code">{t('mfaCode')}</label>
           <input
