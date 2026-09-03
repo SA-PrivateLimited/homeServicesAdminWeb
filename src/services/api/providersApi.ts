@@ -78,6 +78,8 @@ export interface Provider {
   updatedAt?: string;
   /** How the Partner was created: self | admin | admin_bulk */
   onboardingSource?: 'self' | 'admin' | 'admin_bulk' | string;
+  /** Customers may send an in-app Request. Admin-created starts false. */
+  showRequestService?: boolean;
 }
 
 export interface ProviderFilters {
