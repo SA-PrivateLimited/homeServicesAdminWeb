@@ -80,6 +80,8 @@ export interface Provider {
   onboardingSource?: 'self' | 'admin' | 'admin_bulk' | string;
   /** Customers may send an in-app Request. Admin-created starts false. */
   showRequestService?: boolean;
+  /** Customers may see Call on Browse / Partner details. Default on. */
+  showContactToUser?: boolean;
 }
 
 export interface ProviderFilters {
