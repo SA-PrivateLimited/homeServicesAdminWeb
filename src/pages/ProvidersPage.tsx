@@ -184,6 +184,7 @@ export function ProvidersPage() {
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [restoreBusyId, setRestoreBusyId] = useState<string | null>(null);
   const [phoneVerifyBusyId, setPhoneVerifyBusyId] = useState<string | null>(null);
+  const [showRequestBusyId, setShowRequestBusyId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -646,6 +647,26 @@ export function ProvidersPage() {
     }
   };
 
+  const onToggleShowRequestService = async (row: Provider) => {
+    setShowRequestBusyId(row._id);
+    setError(null);
+    try {
+      const next = row.showRequestService === false;
+      const updated = await updateProvider(row._id, {showRequestService: next});
+      setRows((prev) =>
+        prev.map((r) =>
+          r._id === row._id
+            ? {...r, showRequestService: updated.showRequestService ?? next}
+            : r,
+        ),
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t('errorGeneric'));
+    } finally {
+      setShowRequestBusyId(null);
+    }
+  };
+
   const columns = useMemo<VirtualTableColumn<Provider>[]>(
     () => [
       {
@@ -859,6 +880,32 @@ export function ProvidersPage() {
           ),
       },
       {
+        key: 'showRequestService',
+        header: t('showRequestService'),
+        width: '11rem',
+        render: (row) => {
+          const on = row.showRequestService !== false;
+          return (
+            <span className="phone-verify-cell is-switch">
+              <button
+                type="button"
+                role="switch"
+                aria-checked={on}
+                aria-label={t('showRequestService')}
+                title={t('showRequestServiceHint')}
+                className={`hs-toggle${on ? ' is-on' : ''}`}
+                disabled={showRequestBusyId === row._id}
+                onClick={() => void onToggleShowRequestService(row)}>
+                <span className="hs-toggle-thumb" />
+              </button>
+              <span className="muted compact">
+                {on ? t('showRequestServiceOn') : t('showRequestServiceOff')}
+              </span>
+            </span>
+          );
+        },
+      },
+      {
         key: 'pin',
         header: t('partnerLoginPin'),
         width: '12rem',
@@ -958,6 +1005,7 @@ export function ProvidersPage() {
     ],
     [
       phoneVerifyBusyId,
+      showRequestBusyId,
       revealBusyId,
       revealedPins,
       restoreBusyId,

@@ -898,6 +898,45 @@ export function ProviderDetailPage() {
             </dd>
           </div>
           <div>
+            <dt>{t('showRequestService')}</dt>
+            <dd>
+              <span className="phone-verify-cell is-switch">
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={provider.showRequestService !== false}
+                  aria-label={t('showRequestService')}
+                  title={t('showRequestServiceHint')}
+                  className={`hs-toggle${
+                    provider.showRequestService !== false ? ' is-on' : ''
+                  }`}
+                  onClick={() => {
+                    const next = provider.showRequestService === false;
+                    void updateProvider(provider._id, {showRequestService: next})
+                      .then((updated) => {
+                        setProvider({
+                          ...updated,
+                          showRequestService:
+                            updated.showRequestService ?? next,
+                        });
+                      })
+                      .catch((err) => {
+                        setError(
+                          err instanceof Error ? err.message : t('errorGeneric'),
+                        );
+                      });
+                  }}>
+                  <span className="hs-toggle-thumb" />
+                </button>
+                <span>
+                  {provider.showRequestService !== false
+                    ? t('showRequestServiceOn')
+                    : t('showRequestServiceOff')}
+                </span>
+              </span>
+            </dd>
+          </div>
+          <div>
             <dt>{t('partnerLoginPin')}</dt>
             <dd>{provider.hasPin ? '••••••' : '—'}</dd>
           </div>
