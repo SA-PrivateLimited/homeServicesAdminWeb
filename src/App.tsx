@@ -30,6 +30,8 @@ import { BrandCreativesPage } from './pages/BrandCreativesPage';
 import { GeographyStatesPage } from './pages/GeographyStatesPage';
 import { GeographyDistrictsPage } from './pages/GeographyDistrictsPage';
 import { GeographyProvidersPage } from './pages/GeographyProvidersPage';
+import { EmployeesPage } from './pages/EmployeesPage';
+import { EmployeeDetailPage } from './pages/EmployeeDetailPage';
 import { PERMISSIONS } from './constants/permissions';
 
 export default function App() {
@@ -111,6 +113,16 @@ export default function App() {
                 <RequirePermission permission={PERMISSIONS.CUSTOMERS_VIEW} />
               }>
               <Route path="customers" element={<CustomersPage />} />
+            </Route>
+            <Route
+              element={
+                <RequirePermission permission={PERMISSIONS.EMPLOYEES_VIEW} />
+              }>
+              <Route path="hr/employees" element={<EmployeesPage />} />
+              <Route
+                path="hr/employees/:employeeId"
+                element={<EmployeeDetailPage />}
+              />
             </Route>
             <Route
               element={
