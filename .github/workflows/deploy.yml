@@ -91,6 +91,19 @@ jobs:
         id: prod_config
         run: |
           if aws s3 cp "s3://${S3_BUCKET}/config.json" /tmp/prod-config.json; then
+            python3 <<'PY'
+          import json
+          path = "/tmp/prod-config.json"
+          with open(path, encoding="utf-8") as fh:
+              cfg = json.load(fh)
+          if isinstance(cfg, dict):
+              url = str(cfg.get("apiBaseUrl") or "").strip()
+              if (not url) or ("localhost" in url) or ("127.0.0.1" in url) or ("api.akanso.in" in url):
+                  cfg["apiBaseUrl"] = "https://api.akansho.com"
+                  with open(path, "w", encoding="utf-8") as fh:
+                      json.dump(cfg, fh, indent=2)
+                      fh.write("\n")
+          PY
             echo "preserved=true" >> "$GITHUB_OUTPUT"
           else
             echo "preserved=false" >> "$GITHUB_OUTPUT"
