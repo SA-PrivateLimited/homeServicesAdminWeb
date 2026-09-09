@@ -23,7 +23,10 @@ export function resolveBrandLogoUrl(logoUrl?: string): string {
   if (!raw) return '';
   if (raw.startsWith('data:') || raw.startsWith('blob:')) return raw;
 
-  if (/^https?:\/\/assets\.(akanso\.in|akansho\.com)\//i.test(raw)) {
+  if (/^https?:\/\/assets\.akanso\.in\//i.test(raw)) {
+    return raw.replace(/^https?:\/\/assets\.akanso\.in\//i, `${ASSETS_ORIGIN}/`);
+  }
+  if (/^https?:\/\/assets\.akansho\.com\//i.test(raw)) {
     return raw.replace(/^http:\/\//i, 'https://');
   }
 
