@@ -1,226 +1,307 @@
-/* Akanso employee ID card — ISO ID aspect (~85.6 × 54 mm ≈ 1.586:1) */
+/* Akansho employee ID — landscape card, ISO CR80 (~85.6 × 54 mm) */
 
 .akanso-id-print-root {
   display: flex;
-  flex-wrap: wrap;
-  gap: 24px;
-  justify-content: center;
-  align-items: flex-start;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  width: 100%;
 }
 
 .akanso-id-card {
   --id-green: #1b7a4e;
   --id-navy: #0f1c2e;
-  width: min(100%, 340px);
+  --id-muted: #64748b;
+  width: min(100%, 420px);
   aspect-ratio: 85.6 / 54;
-  border-radius: 16px;
+  border-radius: 14px;
   overflow: hidden;
   background: #fff;
-  border: 1px solid color-mix(in srgb, var(--id-green) 18%, #e2e8f0);
+  border: 1px solid color-mix(in srgb, var(--id-green) 16%, #dbe3ea);
   box-shadow:
-    0 8px 24px rgba(15, 28, 46, 0.08),
-    inset 0 1px 0 rgba(255, 255, 255, 0.7);
+    0 10px 28px rgba(15, 28, 46, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.75);
   display: flex;
   flex-direction: column;
   break-inside: avoid;
+  isolation: isolate;
 }
 
+/* ── Silver / brushed header ─────────────────────────────── */
 .akanso-id-card__silver {
-  flex: 0 0 22%;
-  min-height: 52px;
+  flex: 0 0 auto;
+  height: 22%;
+  min-height: 44px;
+  max-height: 58px;
   display: flex;
   align-items: center;
-  padding: 10px 16px;
-  /* Fine brushed aluminum — header only */
+  justify-content: space-between;
+  padding: 0 16px;
+  position: relative;
+  z-index: 2;
   background:
     repeating-linear-gradient(
       0deg,
-      rgba(255, 255, 255, 0.28) 0px,
-      rgba(255, 255, 255, 0.28) 1px,
-      rgba(0, 0, 0, 0.03) 1px,
-      rgba(0, 0, 0, 0.03) 2px
+      rgba(255, 255, 255, 0.32) 0px,
+      rgba(255, 255, 255, 0.32) 1px,
+      rgba(0, 0, 0, 0.035) 1px,
+      rgba(0, 0, 0, 0.035) 2px
     ),
-    linear-gradient(
-      180deg,
-      #f4f5f7 0%,
-      #dde1e6 45%,
-      #c8ced3 100%
-    );
-  border-bottom: 1px solid rgba(15, 28, 46, 0.08);
+    linear-gradient(180deg, #f6f7f9 0%, #e2e5ea 48%, #c9ced4 100%);
+  border-bottom: 1px solid rgba(15, 28, 46, 0.1);
 }
 
 .akanso-id-card__brand {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 1px;
+  min-width: 0;
 }
 
 .akanso-id-card__logo {
   font-weight: 800;
-  letter-spacing: 0.12em;
-  font-size: 0.95rem;
+  letter-spacing: 0.14em;
+  font-size: 0.82rem;
+  line-height: 1.15;
   color: var(--id-navy);
 }
 
 .akanso-id-card__tag {
-  font-size: 0.65rem;
-  letter-spacing: 0.14em;
-  font-weight: 600;
-  color: color-mix(in srgb, var(--id-navy) 70%, #64748b);
+  font-size: 0.58rem;
+  letter-spacing: 0.12em;
+  font-weight: 650;
+  color: color-mix(in srgb, var(--id-navy) 62%, var(--id-muted));
   text-transform: uppercase;
+  line-height: 1.2;
 }
 
-.akanso-id-card__body {
-  flex: 1;
-  padding: 12px 16px 14px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  min-height: 0;
+.akanso-id-card__chip {
+  width: 28px;
+  height: 20px;
+  border-radius: 4px;
+  flex-shrink: 0;
   background: linear-gradient(
-    165deg,
+    135deg,
+    #d4af37 0%,
+    #f5e6a3 40%,
+    #c9a227 70%,
+    #a67c00 100%
+  );
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12);
+}
+
+/* ── Front body: photo | info | QR ───────────────────────── */
+.akanso-id-card__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  position: relative;
+  z-index: 1;
+  background: linear-gradient(
+    160deg,
     #ffffff 0%,
-    color-mix(in srgb, var(--id-green) 5%, #fff) 100%
+    color-mix(in srgb, var(--id-green) 4%, #fff) 100%
   );
 }
 
-.akanso-id-card__photo-wrap {
-  margin-top: -4px;
+.akanso-id-card__body--front {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px 12px 14px;
+}
+
+.akanso-id-card__photo-col {
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .akanso-id-card__photo {
-  width: 64px;
-  height: 64px;
-  border-radius: 50%;
+  width: 72px;
+  height: 72px;
+  border-radius: 10px;
   object-fit: cover;
-  border: 2px solid color-mix(in srgb, var(--id-green) 40%, white);
+  object-position: center top;
+  display: block;
+  border: 2px solid color-mix(in srgb, var(--id-green) 45%, #fff);
   box-shadow: 0 2px 8px rgba(15, 28, 46, 0.12);
+  background: #f1f5f9;
 }
 
 .akanso-id-card__photo--fallback {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: color-mix(in srgb, var(--id-green) 12%, white);
+  background: color-mix(in srgb, var(--id-green) 12%, #fff);
   color: var(--id-navy);
-  font-weight: 700;
-  font-size: 1.4rem;
+  font-weight: 800;
+  font-size: 1.6rem;
+}
+
+.akanso-id-card__info-col {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
 }
 
 .akanso-id-card__name {
-  margin: 8px 0 0;
-  font-size: 1rem;
+  margin: 0;
+  font-size: 0.92rem;
   font-weight: 800;
   color: var(--id-navy);
-  text-align: center;
   text-transform: uppercase;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.03em;
   line-height: 1.2;
+  overflow-wrap: anywhere;
 }
 
 .akanso-id-card__role {
-  margin: 2px 0 0;
-  font-size: 0.8rem;
-  font-weight: 600;
+  margin: 0 0 6px;
+  font-size: 0.72rem;
+  font-weight: 650;
   color: var(--id-green);
-  text-align: center;
+  line-height: 1.25;
 }
 
 .akanso-id-card__fields {
-  margin: 8px 0 0;
-  width: 100%;
+  margin: 0;
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 6px 10px;
+  gap: 5px 10px;
+}
+
+.akanso-id-card__field {
+  min-width: 0;
 }
 
 .akanso-id-card__fields dt {
-  font-size: 0.62rem;
+  font-size: 0.55rem;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: #64748b;
-  margin: 0;
+  letter-spacing: 0.07em;
+  color: var(--id-muted);
+  margin: 0 0 1px;
+  font-weight: 600;
 }
 
 .akanso-id-card__fields dd {
   margin: 0;
-  font-size: 0.75rem;
-  font-weight: 650;
+  font-size: 0.7rem;
+  font-weight: 700;
   color: var(--id-navy);
-  word-break: break-word;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
 }
 
-.akanso-id-card__qr-row {
-  margin-top: auto;
-  padding-top: 8px;
-  width: 100%;
+.akanso-id-card__qr-col {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+  justify-content: center;
+  gap: 4px;
+  align-self: stretch;
 }
 
 .akanso-id-card__qr {
-  width: 52px;
-  height: 52px;
+  width: 58px;
+  height: 58px;
   border-radius: 6px;
   background: #fff;
+  border: 1px solid #e2e8f0;
+  display: block;
+  flex-shrink: 0;
 }
 
 .akanso-id-card__qr--lg {
-  width: 72px;
-  height: 72px;
-  margin: 10px auto 0;
+  width: 78px;
+  height: 78px;
 }
 
 .akanso-id-card__footer-brand {
-  font-weight: 700;
+  font-weight: 750;
   color: var(--id-green);
   letter-spacing: 0.08em;
-  font-size: 0.85rem;
+  font-size: 0.62rem;
+  text-transform: uppercase;
 }
 
+/* ── Back body ───────────────────────────────────────────── */
 .akanso-id-card__body--back {
-  text-align: center;
-  justify-content: center;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+}
+
+.akanso-id-card__back-main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .akanso-id-card__back-copy {
-  margin: 0 0 8px;
-  font-size: 0.78rem;
+  margin: 0;
+  font-size: 0.7rem;
   line-height: 1.4;
   color: #334155;
-  max-width: 28ch;
 }
 
 .akanso-id-card__back-id {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  margin: 6px 0;
-  font-size: 0.72rem;
-  color: #64748b;
+  margin-top: 4px;
+  font-size: 0.58rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--id-muted);
+  font-weight: 600;
 }
 
 .akanso-id-card__back-id strong {
   color: var(--id-navy);
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   letter-spacing: 0.04em;
+  text-transform: none;
+  font-weight: 800;
+}
+
+.akanso-id-card__back-qr {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
 }
 
 .akanso-id-card__authorized {
-  margin: 8px 0 0;
-  font-size: 0.7rem;
-  font-weight: 700;
+  margin: 0;
+  font-size: 0.55rem;
+  font-weight: 750;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--id-green);
+  text-align: center;
+  white-space: nowrap;
+}
+
+/* Preview modal: side-by-side on wide screens */
+@media (min-width: 720px) {
+  .akanso-id-print-root {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: flex-start;
+  }
 }
 
 @media print {
   @page {
     size: auto;
-    margin: 12mm;
+    margin: 10mm;
   }
 
   body * {
@@ -237,12 +318,17 @@
     left: 0;
     top: 0;
     width: 100%;
-    gap: 16mm;
+    gap: 12mm;
     padding: 0;
     background: #fff;
+    flex-direction: column;
+    align-items: center;
   }
 
   .akanso-id-card {
+    width: 85.6mm;
+    height: 54mm;
+    aspect-ratio: auto;
     box-shadow: none;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;

@@ -117,7 +117,7 @@ function normalize(raw: Partial<GreetingConfig> | null | undefined): GreetingCon
         ? 'GLOBAL'
         : 'PER_PERSON',
     waveId: String(raw?.waveId || '').trim(),
-    eventName: String(raw?.eventName || '').trim() || 'Akanso',
+    eventName: String(raw?.eventName || '').trim() || 'Akansho',
     greeting,
     cta: String(raw?.cta || '').trim() || greeting,
     timerEndsAt: Number.isFinite(timerMs) ? new Date(timerMs).toISOString() : null,

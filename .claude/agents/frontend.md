@@ -23,7 +23,7 @@ Feature pages/components/hooks/services as listed in the plan. Register React Ro
 
 ## Embedded repo context
 
-AdminWeb is the Akanso admin and operations dashboard.
+AdminWeb is the Akansho admin and operations dashboard.
 
 ### Main surfaces
 - providers/partners

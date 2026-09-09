@@ -14,21 +14,27 @@ import {ApiError} from '../services/api/apiClient';
 import {
   addEmployeeCompensation,
   deleteEmployeeDocument,
+  employeeAccountLabel,
   employeeStatusLabel,
   employmentTypeLabel,
   formatExperienceYears,
   generateEmployeeIdCard,
   getEmployee,
   getEmployeesPage,
+  inviteEmployee,
   maskPhoneDisplay,
+  revokeEmployeeInvitation,
   updateEmployee,
+  updateEmployeeAccess,
   updateEmployeeStatus,
   uploadEmployeeDocument,
   uploadEmployeePhoto,
   type Employee,
   type EmployeeDocumentType,
   type EmployeeIdCardPayload,
+  type EmployeeProfileAccess,
   type EmploymentType,
+  type EmployeeInviteResult,
 } from '../services/api/employeesApi';
 import {localTenDigits, toE164} from '../utils/phone';
 import '../styles/pages.css';
@@ -123,6 +129,16 @@ export function EmployeeDetailPage() {
 
   const [docType, setDocType] = useState<EmployeeDocumentType>('other');
   const [docBusy, setDocBusy] = useState(false);
+  const [photoBusy, setPhotoBusy] = useState(false);
+
+  const [accessOpen, setAccessOpen] = useState(false);
+  const [accessBusy, setAccessBusy] = useState(false);
+  const [accessProfile, setAccessProfile] =
+    useState<EmployeeProfileAccess>('view');
+  const [accessRaise, setAccessRaise] = useState(false);
+  const [inviteBusy, setInviteBusy] = useState(false);
+  const [inviteResult, setInviteResult] =
+    useState<EmployeeInviteResult | null>(null);
 
   const load = useCallback(async () => {
     if (!employeeId) return;
@@ -325,9 +341,12 @@ export function EmployeeDetailPage() {
     }
   }
 
-  async function onPhotoSelected(file: File | null) {
+  async function onPhotoSelected(
+    file: File | null,
+    options?: {refreshIdCard?: boolean},
+  ) {
     if (!file || !employee || !canUpdate) return;
-    if (!file.type.startsWith('image/')) {
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
       setToast(t('employeesPhotoTypeError'));
       return;
     }
@@ -335,14 +354,22 @@ export function EmployeeDetailPage() {
       setToast(t('employeesPhotoSizeError'));
       return;
     }
+    setPhotoBusy(true);
     try {
       const result = await uploadEmployeePhoto(employee._id, file);
       setEmployee(result.employee);
       setToast(t('employeesPhotoToast'));
+      if (options?.refreshIdCard || idCardOpen) {
+        const payload = await generateEmployeeIdCard(employee._id);
+        setIdCard(payload);
+        setIdCardOpen(true);
+      }
     } catch (e) {
       setToast(
         e instanceof ApiError ? e.message : t('employeesSaveError'),
       );
+    } finally {
+      setPhotoBusy(false);
     }
   }
 
@@ -385,43 +412,74 @@ export function EmployeeDetailPage() {
 
   function downloadIdCard() {
     if (!idCard) return;
-    const w = window.open('', '_blank', 'noopener,noreferrer,width=800,height=900');
+    const w = window.open('', '_blank', 'noopener,noreferrer,width=900,height=700');
     if (!w) {
       setToast(t('employeesIdCardPopupBlocked'));
       return;
     }
-    const safeName = `Akanso_Employee_ID_${idCard.employeeCode}.html`;
+    const safeName = `Akansho_Employee_ID_${idCard.employeeCode}.html`;
+    const profession = idCard.profession || idCard.designation || '';
+    const photo = idCard.photoUrl
+      ? `<img class="photo" src="${idCard.photoUrl}" alt=""/>`
+      : `<div class="photo fallback">${(idCard.fullName || '?').slice(0, 1).toUpperCase()}</div>`;
     w.document.write(`<!doctype html><html><head><title>${safeName}</title>
       <style>
-        body{font-family:system-ui,sans-serif;background:#f8fafc;padding:24px}
-        img{max-width:100%}
-        .wrap{display:flex;flex-wrap:wrap;gap:24px;justify-content:center}
-        .card{width:340px;border:1px solid #cbd5e1;border-radius:16px;overflow:hidden;background:#fff}
-        .silver{padding:12px 16px;background:linear-gradient(180deg,#f4f5f7,#c8ced3)}
-        .body{padding:16px;text-align:center}
-        h1{font-size:14px;letter-spacing:.12em;margin:0}
-        h2{margin:8px 0 0;font-size:18px}
-        .qr{width:72px;height:72px;margin-top:12px}
+        *{box-sizing:border-box}
+        body{font-family:system-ui,-apple-system,sans-serif;background:#f1f5f9;margin:0;padding:24px}
+        .wrap{display:flex;flex-direction:column;gap:20px;align-items:center}
+        .card{width:420px;height:265px;border:1px solid #d0d7de;border-radius:14px;overflow:hidden;background:#fff;display:flex;flex-direction:column}
+        .silver{height:52px;padding:0 16px;display:flex;align-items:center;justify-content:space-between;
+          background:repeating-linear-gradient(0deg,rgba(255,255,255,.3) 0 1px,rgba(0,0,0,.03) 1px 2px),linear-gradient(180deg,#f6f7f9,#c9ced4);
+          border-bottom:1px solid rgba(15,28,46,.1)}
+        .logo{font-weight:800;letter-spacing:.14em;font-size:13px;color:#0f1c2e}
+        .tag{display:block;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:#64748b;font-weight:650}
+        .chip{width:28px;height:20px;border-radius:4px;background:linear-gradient(135deg,#d4af37,#f5e6a3,#a67c00)}
+        .front{flex:1;display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;padding:12px 14px}
+        .photo{width:72px;height:72px;border-radius:10px;object-fit:cover;border:2px solid #8bc4a4;display:flex;align-items:center;justify-content:center;background:#e8f5ee;font-weight:800;font-size:26px;color:#0f1c2e}
+        .name{margin:0;font-size:15px;font-weight:800;text-transform:uppercase;color:#0f1c2e;letter-spacing:.03em}
+        .role{margin:2px 0 8px;font-size:12px;font-weight:650;color:#1b7a4e}
+        .fields{display:grid;grid-template-columns:1fr 1fr;gap:6px 10px;margin:0}
+        .fields dt{font-size:9px;text-transform:uppercase;letter-spacing:.07em;color:#64748b;margin:0}
+        .fields dd{margin:0;font-size:11px;font-weight:700;color:#0f1c2e}
+        .qrcol{display:flex;flex-direction:column;align-items:center;gap:4px}
+        .qr{width:58px;height:58px;border:1px solid #e2e8f0;border-radius:6px}
+        .brand{font-size:10px;font-weight:750;color:#1b7a4e;letter-spacing:.08em;text-transform:uppercase}
+        .back{flex:1;display:grid;grid-template-columns:1fr auto;gap:14px;align-items:center;padding:14px 16px}
+        .copy{margin:0 0 6px;font-size:12px;line-height:1.4;color:#334155}
+        .eid span{font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:#64748b}
+        .eid strong{display:block;font-size:14px;color:#0f1c2e;margin-top:2px}
+        .auth{margin:6px 0 0;font-size:9px;font-weight:750;letter-spacing:.1em;text-transform:uppercase;color:#1b7a4e;text-align:center}
+        @media print{body{background:#fff;padding:0}.wrap{gap:12mm}.card{box-shadow:none;-webkit-print-color-adjust:exact;print-color-adjust:exact}}
       </style></head><body>
       <div class="wrap">
-        <div class="card"><div class="silver"><h1>AKANSO · EMPLOYEE IDENTITY</h1></div>
-        <div class="body">
-          ${idCard.photoUrl ? `<img src="${idCard.photoUrl}" width="72" height="72" style="border-radius:50%;object-fit:cover"/>` : ''}
-          <h2>${idCard.fullName}</h2>
-          <p>${idCard.profession || ''}</p>
-          <p><strong>${idCard.employeeCode}</strong></p>
-          <p>${formatExperienceYears(idCard.experienceYears)} · ${maskPhoneDisplay(idCard.phone)}</p>
-          <p>${idCard.location || ''}</p>
-          <img class="qr" src="${idCard.qrDataUrl}" alt="QR"/>
-        </div></div>
-        <div class="card"><div class="silver"><h1>AKANSO</h1></div>
-        <div class="body">
-          <p>This card identifies the holder as an authorized Akanso employee.</p>
-          <p>If found, please return to Akanso.</p>
-          <p><strong>${idCard.employeeCode}</strong></p>
-          <img class="qr" src="${idCard.qrDataUrl}" alt="QR"/>
-          <p>Authorized Employee</p>
-        </div></div>
+        <div class="card">
+          <div class="silver"><div><span class="logo">AKANSHO</span><span class="tag">Employee Identity</span></div><span class="chip"></span></div>
+          <div class="front">
+            ${photo}
+            <div>
+              <h2 class="name">${idCard.fullName}</h2>
+              <p class="role">${profession}</p>
+              <dl class="fields">
+                <div><dt>Employee ID</dt><dd>${idCard.employeeCode}</dd></div>
+                <div><dt>Experience</dt><dd>${formatExperienceYears(idCard.experienceYears)}</dd></div>
+                <div><dt>Phone</dt><dd>${maskPhoneDisplay(idCard.phone)}</dd></div>
+                <div><dt>Location</dt><dd>${idCard.location || '—'}</dd></div>
+              </dl>
+            </div>
+            <div class="qrcol"><img class="qr" src="${idCard.qrDataUrl}" alt="QR"/><span class="brand">Akansho</span></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="silver"><div><span class="logo">AKANSHO</span><span class="tag">Authorized Employee</span></div></div>
+          <div class="back">
+            <div>
+              <p class="copy">This card identifies the holder as an authorized Akansho employee.</p>
+              <p class="copy">If found, please return to Akansho.</p>
+              <div class="eid"><span>Employee ID</span><strong>${idCard.employeeCode}</strong></div>
+            </div>
+            <div><img class="qr" style="width:78px;height:78px" src="${idCard.qrDataUrl}" alt="QR"/><p class="auth">Authorized Employee</p></div>
+          </div>
+        </div>
       </div>
       <script>setTimeout(function(){window.print()},400)</script>
       </body></html>`);
@@ -467,25 +525,39 @@ export function EmployeeDetailPage() {
 
       <header className="emp-detail__hero no-print">
         <div className="emp-detail__identity">
-          <label className="emp-detail__photo">
-            {employee.photoUrl ? (
-              <img src={employee.photoUrl} alt="" />
-            ) : (
-              <span className="emp-avatar emp-avatar--fallback emp-avatar--lg">
-                {(employee.fullName || '?').slice(0, 1).toUpperCase()}
-              </span>
-            )}
+          <div className="emp-detail__photo-block">
+            <div className="emp-detail__photo" aria-hidden={!employee.photoUrl}>
+              {employee.photoUrl ? (
+                <img src={employee.photoUrl} alt="" />
+              ) : (
+                <span className="emp-avatar emp-avatar--fallback emp-avatar--lg">
+                  {(employee.fullName || '?').slice(0, 1).toUpperCase()}
+                </span>
+              )}
+            </div>
             {canUpdate ? (
-              <input
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                className="sr-only"
-                onChange={(e) =>
-                  void onPhotoSelected(e.target.files?.[0] || null)
-                }
-              />
+              <label className="emp-photo-btn">
+                <span>
+                  {photoBusy
+                    ? t('saving')
+                    : employee.photoUrl
+                      ? t('employeesChangePhoto')
+                      : t('employeesAddPhoto')}
+                </span>
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  className="sr-only"
+                  disabled={photoBusy}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0] || null;
+                    e.target.value = '';
+                    void onPhotoSelected(file);
+                  }}
+                />
+              </label>
             ) : null}
-          </label>
+          </div>
           <div>
             <div className="emp-detail__title-row">
               <h1>{employee.fullName}</h1>
@@ -524,6 +596,95 @@ export function EmployeeDetailPage() {
         </div>
         {idCardError ? <p className="error-text">{idCardError}</p> : null}
       </header>
+
+      <section className="panel emp-access-panel no-print">
+        <div className="emp-access-panel__head">
+          <h2>{t('employeesAccountAccess')}</h2>
+          {canUpdate ? (
+            <div className="emp-access-panel__actions">
+              <Button
+                variant="secondary"
+                disabled={inviteBusy}
+                onClick={() => {
+                  setAccessProfile(employee.profileAccess || 'view');
+                  setAccessRaise(Boolean(employee.canRaiseRequest));
+                  setAccessOpen(true);
+                }}>
+                {t('employeesManageAccess')}
+              </Button>
+              <Button
+                variant="primary"
+                disabled={inviteBusy || !employee.email}
+                onClick={() => {
+                  void (async () => {
+                    setInviteBusy(true);
+                    try {
+                      const result = await inviteEmployee(employee._id);
+                      setEmployee(result.employee);
+                      setInviteResult(result);
+                      setToast(t('employeesInviteToast'));
+                    } catch (e) {
+                      setToast(
+                        e instanceof ApiError
+                          ? e.message
+                          : t('employeesSaveError'),
+                      );
+                    } finally {
+                      setInviteBusy(false);
+                    }
+                  })();
+                }}>
+                {inviteBusy
+                  ? t('saving')
+                  : employee.accountStatus === 'none' ||
+                      employee.accountStatus === 'revoked'
+                    ? t('employeesSendInvite')
+                    : t('employeesResendInvite')}
+              </Button>
+            </div>
+          ) : null}
+        </div>
+        {!employee.email ? (
+          <p className="muted">{t('employeesInviteNeedsEmail')}</p>
+        ) : null}
+        <dl className="emp-dl emp-dl--wide">
+          <div>
+            <dt>{t('employeesFieldEmail')}</dt>
+            <dd>{employee.email || '—'}</dd>
+          </div>
+          <div>
+            <dt>{t('employeesAccountStatus')}</dt>
+            <dd>
+              {employeeAccountLabel(employee.accountStatus)}
+              {employee.totpEnabled ? ` · ${t('employeesTotpOn')}` : ''}
+            </dd>
+          </div>
+          <div>
+            <dt>{t('employeesProfileAccess')}</dt>
+            <dd>
+              {employee.profileAccess === 'edit'
+                ? t('employeesAccessEdit')
+                : t('employeesAccessView')}
+            </dd>
+          </div>
+          <div>
+            <dt>{t('employeesRaiseRequest')}</dt>
+            <dd>
+              {employee.canRaiseRequest
+                ? t('employeesRaiseAllowed')
+                : t('employeesRaiseDenied')}
+            </dd>
+          </div>
+          <div>
+            <dt>{t('employeesInvitation')}</dt>
+            <dd>
+              {employee.inviteSentAt
+                ? formatDate(employee.inviteSentAt)
+                : '—'}
+            </dd>
+          </div>
+        </dl>
+      </section>
 
       <div className="emp-tabs no-print" role="tablist">
         {tabs.map((item) => (
@@ -1097,6 +1258,35 @@ export function EmployeeDetailPage() {
           title={t('employeesIdCardPreview')}
           onClose={() => setIdCardOpen(false)}>
           <div className="emp-id-preview">
+            {canUpdate ? (
+              <div className="emp-id-photo-bar no-print">
+                <p className="muted emp-id-photo-hint">
+                  {idCard.photoUrl
+                    ? t('employeesIdCardPhotoReady')
+                    : t('employeesIdCardPhotoHint')}
+                </p>
+                <label className="emp-photo-btn emp-photo-btn--inline">
+                  <span>
+                    {photoBusy
+                      ? t('saving')
+                      : idCard.photoUrl
+                        ? t('employeesChangePhoto')
+                        : t('employeesAddPhoto')}
+                  </span>
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    className="sr-only"
+                    disabled={photoBusy}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0] || null;
+                      e.target.value = '';
+                      void onPhotoSelected(file, {refreshIdCard: true});
+                    }}
+                  />
+                </label>
+              </div>
+            ) : null}
             <EmployeeIdCard card={idCard} />
             <div className="form-actions no-print">
               <Button variant="ghost" onClick={() => setIdCardOpen(false)}>
@@ -1108,6 +1298,146 @@ export function EmployeeDetailPage() {
               <Button variant="primary" onClick={printIdCard}>
                 {t('employeesIdCardPrint')}
               </Button>
+            </div>
+          </div>
+        </Dialog>
+      ) : null}
+
+      {accessOpen ? (
+        <Dialog
+          open
+          title={t('employeesManageAccess')}
+          onClose={() => {
+            if (!accessBusy) setAccessOpen(false);
+          }}>
+          <div className="modal-form">
+            <p className="modal-lead">{t('employeesAccessLead')}</p>
+            <label>
+              {t('employeesProfileAccess')}
+              <Select
+                options={[
+                  {value: 'view', label: t('employeesAccessView')},
+                  {value: 'edit', label: t('employeesAccessEdit')},
+                ]}
+                value={accessProfile}
+                onChange={(v) => setAccessProfile(v as EmployeeProfileAccess)}
+              />
+            </label>
+            <label className="emp-check">
+              <input
+                type="checkbox"
+                checked={accessRaise}
+                onChange={(e) => setAccessRaise(e.target.checked)}
+              />
+              <span>{t('employeesRaiseRequest')}</span>
+            </label>
+            <div className="form-actions">
+              <Button
+                variant="ghost"
+                disabled={accessBusy}
+                onClick={() => setAccessOpen(false)}>
+                {t('cancel')}
+              </Button>
+              <Button
+                variant="primary"
+                disabled={accessBusy}
+                onClick={() => {
+                  void (async () => {
+                    if (!employee) return;
+                    setAccessBusy(true);
+                    try {
+                      const updated = await updateEmployeeAccess(employee._id, {
+                        profileAccess: accessProfile,
+                        canRaiseRequest: accessRaise,
+                      });
+                      setEmployee(updated);
+                      setAccessOpen(false);
+                      setToast(t('employeesAccessToast'));
+                    } catch (e) {
+                      setToast(
+                        e instanceof ApiError
+                          ? e.message
+                          : t('employeesSaveError'),
+                      );
+                    } finally {
+                      setAccessBusy(false);
+                    }
+                  })();
+                }}>
+                {accessBusy ? t('saving') : t('save')}
+              </Button>
+            </div>
+          </div>
+        </Dialog>
+      ) : null}
+
+      {inviteResult ? (
+        <Dialog
+          open
+          title={t('employeesInviteReady')}
+          onClose={() => setInviteResult(null)}>
+          <div className="modal-form">
+            <p className="modal-lead">{t('employeesInviteLead')}</p>
+            <p className="muted">
+              {t('employeesInviteExpires', {
+                date: formatDate(inviteResult.expiresAt),
+              })}
+            </p>
+            <label>
+              {t('employeesActivationLink')}
+              <input
+                className="text-input"
+                readOnly
+                value={inviteResult.activationLink}
+                onFocus={(e) => e.target.select()}
+              />
+            </label>
+            <div className="form-actions">
+              <Button variant="ghost" onClick={() => setInviteResult(null)}>
+                {t('cancel')}
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  void navigator.clipboard.writeText(
+                    inviteResult.activationLink,
+                  );
+                  setToast(t('employeesLinkCopied'));
+                }}>
+                {t('employeesCopyLink')}
+              </Button>
+              <Button
+                variant="primary"
+                onClick={() => {
+                  window.open(inviteResult.whatsappUrl, '_blank', 'noopener');
+                }}>
+                {t('employeesShareWhatsApp')}
+              </Button>
+              {employee.accountStatus === 'invited' ||
+              employee.accountStatus === 'activation_pending' ? (
+                <Button
+                  variant="ghost"
+                  onClick={() => {
+                    void (async () => {
+                      try {
+                        const updated = await revokeEmployeeInvitation(
+                          employee._id,
+                        );
+                        setEmployee(updated);
+                        setInviteResult(null);
+                        setToast(t('employeesInviteRevoked'));
+                      } catch (e) {
+                        setToast(
+                          e instanceof ApiError
+                            ? e.message
+                            : t('employeesSaveError'),
+                        );
+                      }
+                    })();
+                  }}>
+                  {t('employeesRevokeInvite')}
+                </Button>
+              ) : null}
             </div>
           </div>
         </Dialog>

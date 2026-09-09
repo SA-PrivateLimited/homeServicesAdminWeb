@@ -1,10 +1,10 @@
 # `.claude/agents` — HomeServicesAdminWeb Agent Suite
 
-Local personas for the AdminWeb repo. Each file is self-sufficient and embeds Akanso AdminWeb context.
+Local personas for the AdminWeb repo. Each file is self-sufficient and embeds Akansho AdminWeb context.
 
 ## Repo context
 
-AdminWeb is the Akanso admin and operations dashboard.
+AdminWeb is the Akansho admin and operations dashboard.
 
 ### Main surfaces
 - providers/partners
