@@ -41,8 +41,15 @@
   min-width: 0;
 }
 
+.emp-detail__photo-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
 .emp-detail__photo {
-  cursor: pointer;
   display: block;
 }
 
@@ -50,9 +57,51 @@
 .emp-avatar--lg {
   width: 72px;
   height: 72px;
-  border-radius: 50%;
+  border-radius: 12px;
   object-fit: cover;
   border: 2px solid color-mix(in srgb, var(--color-success, #2f9e44) 35%, white);
+}
+
+.emp-photo-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color, #dee2e6);
+  background: #fff;
+  color: var(--text-primary, #212529);
+  font-size: 0.75rem;
+  font-weight: 650;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.emp-photo-btn:hover {
+  border-color: var(--primary-color, #3182ce);
+  color: var(--primary-color-2, #2c5282);
+}
+
+.emp-photo-btn--inline {
+  flex-shrink: 0;
+}
+
+.emp-id-photo-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+.emp-id-photo-hint {
+  margin: 0;
+  flex: 1 1 180px;
+  font-size: 0.8125rem;
 }
 
 .emp-detail__title-row {
