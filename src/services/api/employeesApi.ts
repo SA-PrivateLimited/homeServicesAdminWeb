@@ -22,6 +22,16 @@ export type EmployeeDocumentType =
   | 'employment_agreement'
   | 'other';
 
+export type EmployeeAccountStatus =
+  | 'none'
+  | 'invited'
+  | 'activation_pending'
+  | 'active'
+  | 'suspended'
+  | 'revoked';
+
+export type EmployeeProfileAccess = 'view' | 'edit';
+
 export interface EmployeeAddress {
   line1?: string;
   line2?: string;
@@ -98,6 +108,13 @@ export interface Employee {
   status: EmployeeStatus;
   leavingDate?: string;
   leavingReason?: string;
+  accountStatus?: EmployeeAccountStatus;
+  profileAccess?: EmployeeProfileAccess;
+  canRaiseRequest?: boolean;
+  totpEnabled?: boolean;
+  inviteSentAt?: string | null;
+  inviteExpiresAt?: string | null;
+  inviteAcceptedAt?: string | null;
   currentSalary?: CompensationRecord | null;
   compensationHistory?: CompensationRecord[];
   bank?: EmployeeBank;
@@ -117,10 +134,22 @@ export interface EmployeeStats {
 
 export interface EmployeeMeta {
   departments: string[];
+  designations: string[];
   professions: string[];
+  lookups?: {
+    department: EmployeeLookup[];
+    designation: EmployeeLookup[];
+    profession: EmployeeLookup[];
+  };
   employmentTypes: EmploymentType[];
   statuses: EmployeeStatus[];
   documentTypes: EmployeeDocumentType[];
+}
+
+export interface EmployeeLookup {
+  _id: string;
+  kind: 'department' | 'designation' | 'profession';
+  label: string;
 }
 
 export interface EmployeeIdCardPayload {
@@ -128,12 +157,19 @@ export interface EmployeeIdCardPayload {
   fullName: string;
   profession: string;
   designation?: string;
+  department?: string;
+  employmentType?: string;
   photoUrl?: string;
   phone: string;
+  email?: string;
   experienceYears: number;
+  workLocation?: string;
   location: string;
+  joiningDate?: string;
+  reportingManager?: string;
   status: EmployeeStatus;
   verificationUrl: string;
+  verify?: string;
   qrDataUrl: string;
   generatedAt: string;
 }
@@ -189,6 +225,29 @@ export async function getEmployeeMeta(): Promise<EmployeeMeta> {
   return apiGet<EmployeeMeta>('/api/admin/employees/meta', {
     cache: 'no-store',
   });
+}
+
+export async function listEmployeeLookups(
+  kind?: 'department' | 'designation' | 'profession',
+): Promise<EmployeeLookup[]> {
+  const q = kind ? `?kind=${kind}` : '';
+  return apiGet<EmployeeLookup[]>(`/api/admin/employees/lookups${q}`, {
+    cache: 'no-store',
+  });
+}
+
+export async function createEmployeeLookup(
+  kind: 'department' | 'designation' | 'profession',
+  label: string,
+): Promise<EmployeeLookup> {
+  return apiPost<EmployeeLookup>('/api/admin/employees/lookups', {
+    kind,
+    label,
+  });
+}
+
+export async function deleteEmployeeLookup(id: string): Promise<void> {
+  await apiDelete(`/api/admin/employees/lookups/${id}`);
 }
 
 export async function getEmployeesPage(options: EmployeeListOptions = {}) {
@@ -343,4 +402,121 @@ export function maskPhoneDisplay(phone?: string): string {
   const ten = digits.length >= 10 ? digits.slice(-10) : digits;
   if (ten.length < 5) return ten || '—';
   return `${ten.slice(0, 5)} XXXXX`;
+}
+
+export function employeeAccountLabel(status?: EmployeeAccountStatus | string): string {
+  switch (status) {
+    case 'none':
+      return 'Not invited';
+    case 'invited':
+      return 'Invitation sent';
+    case 'activation_pending':
+      return 'Activation pending';
+    case 'active':
+      return 'Active';
+    case 'suspended':
+      return 'Suspended';
+    case 'revoked':
+      return 'Revoked';
+    default:
+      return 'Not invited';
+  }
+}
+
+export interface EmployeeInviteResult {
+  employee: Employee;
+  activationLink: string;
+  expiresAt: string;
+  whatsappUrl: string;
+  inviteMessage: string;
+}
+
+function currentAdminWebOrigin(): string | undefined {
+  if (typeof window === 'undefined') return undefined;
+  return window.location.origin;
+}
+
+export async function inviteEmployee(
+  id: string,
+): Promise<EmployeeInviteResult> {
+  return apiPost<EmployeeInviteResult>(
+    `/api/admin/employees/${id}/invitation`,
+    {adminWebOrigin: currentAdminWebOrigin()},
+  );
+}
+
+export async function revokeEmployeeInvitation(id: string): Promise<Employee> {
+  return apiPost<Employee>(`/api/admin/employees/${id}/invitation/revoke`, {});
+}
+
+export async function updateEmployeeAccess(
+  id: string,
+  input: {
+    profileAccess?: EmployeeProfileAccess;
+    canRaiseRequest?: boolean;
+  },
+): Promise<Employee> {
+  return apiPatch<Employee>(`/api/admin/employees/${id}/access`, input);
+}
+
+/** Public employee activation (TOTP) — not Admin activate. */
+export async function validateEmployeeActivationToken(token: string): Promise<{
+  email: string;
+  displayName: string;
+  employeeCode: string;
+}> {
+  return apiGet(
+    `/api/auth/employee/activate?token=${encodeURIComponent(token)}`,
+    {skipAuth: true},
+  );
+}
+
+export async function employeeActivationSetPassword(
+  token: string,
+  password: string,
+): Promise<{
+  email: string;
+  displayName: string;
+  secret: string;
+  qrCodeDataUrl: string;
+  activationMfaToken: string;
+}> {
+  return apiPost(
+    '/api/auth/employee/activate/password',
+    {token, password},
+    {skipAuth: true},
+  );
+}
+
+export async function employeeActivationVerifyMfa(
+  activationMfaToken: string,
+  code: string,
+): Promise<{employee: Employee; message: string}> {
+  return apiPost(
+    '/api/auth/employee/activate/mfa',
+    {activationMfaToken, code},
+    {skipAuth: true},
+  );
+}
+
+export async function employeeLogin(
+  email: string,
+  password: string,
+): Promise<{requiresMfa: boolean; mfaToken: string; email: string; displayName: string}> {
+  return apiPost(
+    '/api/auth/employee/login',
+    {email, password},
+    {skipAuth: true},
+  );
+}
+
+export async function employeeLoginMfa(
+  mfaToken: string,
+  code: string,
+): Promise<{accessToken: string; employee: Employee}> {
+  return apiPost(
+    '/api/auth/employee/login/mfa',
+    {mfaToken, code},
+    {skipAuth: true},
+  );
 }

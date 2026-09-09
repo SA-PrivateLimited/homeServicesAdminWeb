@@ -9,18 +9,23 @@ import {
   VirtualTable,
   type VirtualTableColumn,
 } from 'sapvt-ltd-web-packages';
+import {CreatableLookupSelect} from '../components/CreatableLookupSelect';
 import {usePermissions} from '../hooks/usePermissions';
 import {PERMISSIONS} from '../constants/permissions';
 import {
   createEmployee,
+  createEmployeeLookup,
+  deleteEmployeeLookup,
   employeeStatusLabel,
   formatExperienceYears,
   getEmployeeMeta,
   getEmployeeStats,
   getEmployeesPage,
+  listEmployeeLookups,
   maskPhoneDisplay,
   type CreateEmployeeInput,
   type Employee,
+  type EmployeeLookup,
   type EmployeeMeta,
   type EmployeeStats,
   type EmployeeStatus,
@@ -34,6 +39,13 @@ import './EmployeesPage.css';
 const PAGE_SIZE = 20;
 const ALL = '__all__';
 
+type PageTab = 'employees' | 'department' | 'designation' | 'profession';
+type LookupKind = 'department' | 'designation' | 'profession';
+
+function isLookupTab(tab: PageTab): tab is LookupKind {
+  return tab === 'department' || tab === 'designation' || tab === 'profession';
+}
+
 function statusChipStatus(status: EmployeeStatus): string {
   if (status === 'active') return 'active';
   if (status === 'on_leave') return 'pending';
@@ -46,7 +58,9 @@ export function EmployeesPage() {
   const navigate = useNavigate();
   const {hasPermission} = usePermissions();
   const canCreate = hasPermission(PERMISSIONS.EMPLOYEES_CREATE);
+  const canUpdate = hasPermission(PERMISSIONS.EMPLOYEES_UPDATE);
 
+  const [pageTab, setPageTab] = useState<PageTab>('employees');
   const [rows, setRows] = useState<Employee[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
@@ -60,6 +74,12 @@ export function EmployeesPage() {
   const [statusFilter, setStatusFilter] = useState(ALL);
   const [departmentFilter, setDepartmentFilter] = useState(ALL);
   const [professionFilter, setProfessionFilter] = useState(ALL);
+
+  const [lookups, setLookups] = useState<EmployeeLookup[]>([]);
+  const [lookupLoading, setLookupLoading] = useState(false);
+  const [lookupError, setLookupError] = useState<string | null>(null);
+  const [newLookupLabel, setNewLookupLabel] = useState('');
+  const [lookupBusy, setLookupBusy] = useState(false);
 
   const [createOpen, setCreateOpen] = useState(false);
   const [createBusy, setCreateBusy] = useState(false);
@@ -142,6 +162,40 @@ export function EmployeesPage() {
       }
     })();
   }, []);
+
+  const refreshMeta = useCallback(async () => {
+    try {
+      setMeta(await getEmployeeMeta());
+    } catch {
+      /* keep previous meta */
+    }
+  }, []);
+
+  const loadLookups = useCallback(
+    async (kind: LookupKind) => {
+      setLookupLoading(true);
+      setLookupError(null);
+      try {
+        setLookups(await listEmployeeLookups(kind));
+      } catch (e) {
+        setLookupError(
+          e instanceof ApiError
+            ? e.message
+            : t('employeesLookupLoadError'),
+        );
+        setLookups([]);
+      } finally {
+        setLookupLoading(false);
+      }
+    },
+    [t],
+  );
+
+  useEffect(() => {
+    if (!isLookupTab(pageTab)) return;
+    setNewLookupLabel('');
+    void loadLookups(pageTab);
+  }, [pageTab, loadLookups]);
 
   useEffect(() => {
     if (!createOpen) return;
@@ -345,6 +399,7 @@ export function EmployeesPage() {
       const created = await createEmployee(payload);
       setCreateOpen(false);
       resetForm();
+      void refreshMeta();
       navigate(`/hr/employees/${created._id}`);
     } catch (e) {
       setCreateError(
@@ -357,10 +412,58 @@ export function EmployeesPage() {
     }
   }
 
+  async function handleAddLookup() {
+    if (!isLookupTab(pageTab)) return;
+    const label = newLookupLabel.trim();
+    if (!label) return;
+    setLookupBusy(true);
+    setLookupError(null);
+    try {
+      await createEmployeeLookup(pageTab, label);
+      setNewLookupLabel('');
+      await loadLookups(pageTab);
+      await refreshMeta();
+    } catch (e) {
+      setLookupError(
+        e instanceof ApiError
+          ? e.message
+          : t('employeesLookupSaveError'),
+      );
+    } finally {
+      setLookupBusy(false);
+    }
+  }
+
+  async function handleDeleteLookup(id: string) {
+    if (!isLookupTab(pageTab)) return;
+    setLookupBusy(true);
+    setLookupError(null);
+    try {
+      await deleteEmployeeLookup(id);
+      await loadLookups(pageTab);
+      await refreshMeta();
+    } catch (e) {
+      setLookupError(
+        e instanceof ApiError
+          ? e.message
+          : t('employeesLookupDeleteError'),
+      );
+    } finally {
+      setLookupBusy(false);
+    }
+  }
+
   const emptyMessage =
     search || statusFilter !== ALL || departmentFilter !== ALL
       ? t('employeesEmptySearch')
       : t('employeesEmpty');
+
+  const lookupTabTitle =
+    pageTab === 'department'
+      ? t('employeesTabDepartments')
+      : pageTab === 'designation'
+        ? t('employeesTabDesignations')
+        : t('employeesTabProfessions');
 
   return (
     <div className="admin-page scale-baseline-80" data-testid="employees-root">
@@ -370,7 +473,7 @@ export function EmployeesPage() {
           <p>{t('employeesLead')}</p>
         </div>
         <div className="row-header-actions">
-          {canCreate ? (
+          {canCreate && pageTab === 'employees' ? (
             <Button
               variant="primary"
               onClick={() => {
@@ -383,6 +486,34 @@ export function EmployeesPage() {
         </div>
       </header>
 
+      <div
+        className="emp-page-tabs"
+        role="tablist"
+        aria-label={t('employeesTitle')}>
+        {(
+          [
+            ['employees', t('employeesTabEmployees')],
+            ['department', t('employeesTabDepartments')],
+            ['designation', t('employeesTabDesignations')],
+            ['profession', t('employeesTabProfessions')],
+          ] as const
+        ).map(([id, label]) => (
+          <button
+            key={id}
+            type="button"
+            role="tab"
+            aria-selected={pageTab === id}
+            className={
+              pageTab === id ? 'emp-page-tab is-selected' : 'emp-page-tab'
+            }
+            onClick={() => setPageTab(id)}>
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {pageTab === 'employees' ? (
+        <>
       {stats ? (
         <div className="emp-stats" aria-label={t('employeesStatsLabel')}>
           <div className="emp-stat">
@@ -534,6 +665,64 @@ export function EmployeesPage() {
           )}
         </div>
       </div>
+        </>
+      ) : (
+        <section className="panel emp-lookup-panel" aria-label={lookupTabTitle}>
+          <div className="emp-lookup-panel__header">
+            <div>
+              <h2 className="emp-lookup-panel__title">{lookupTabTitle}</h2>
+              <p className="muted emp-lookup-panel__lead">
+                {t('employeesLookupLead')}
+              </p>
+            </div>
+          </div>
+          {lookupError ? <p className="error-text">{lookupError}</p> : null}
+          {canUpdate ? (
+            <div className="emp-lookup-add">
+              <input
+                className="text-input"
+                value={newLookupLabel}
+                placeholder={t('employeesLookupPlaceholder')}
+                autoComplete="off"
+                onChange={(e) => setNewLookupLabel(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    void handleAddLookup();
+                  }
+                }}
+              />
+              <Button
+                variant="primary"
+                disabled={lookupBusy || !newLookupLabel.trim()}
+                onClick={() => void handleAddLookup()}>
+                {lookupBusy ? t('saving') : t('employeesLookupAdd')}
+              </Button>
+            </div>
+          ) : null}
+          {lookupLoading ? (
+            <p className="muted">{t('loading')}</p>
+          ) : lookups.length === 0 ? (
+            <p className="muted">{t('employeesLookupEmpty')}</p>
+          ) : (
+            <ul className="emp-lookup-list">
+              {lookups.map((row) => (
+                <li key={row._id} className="emp-lookup-list__item">
+                  <span className="emp-lookup-list__label">{row.label}</span>
+                  {canUpdate ? (
+                    <Button
+                      variant="ghost"
+                      disabled={lookupBusy}
+                      onClick={() => void handleDeleteLookup(row._id)}>
+                      {t('employeesLookupRemove')}
+                    </Button>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      )}
 
       {createOpen ? (
         <Dialog
@@ -588,31 +777,37 @@ export function EmployeesPage() {
             </label>
             <label>
               {t('employeesFieldProfession')}
-              <input
-                className="text-input"
+              <CreatableLookupSelect
+                options={meta?.professions || []}
                 value={form.profession}
-                onChange={(e) =>
-                  setForm((f) => ({...f, profession: e.target.value}))
+                addNewLabel={t('employeesLookupAddNew')}
+                newValuePlaceholder={t('employeesLookupPlaceholder')}
+                onChange={(profession) =>
+                  setForm((f) => ({...f, profession}))
                 }
               />
             </label>
             <label>
               {t('employeesFieldDesignation')}
-              <input
-                className="text-input"
+              <CreatableLookupSelect
+                options={meta?.designations || []}
                 value={form.designation}
-                onChange={(e) =>
-                  setForm((f) => ({...f, designation: e.target.value}))
+                addNewLabel={t('employeesLookupAddNew')}
+                newValuePlaceholder={t('employeesLookupPlaceholder')}
+                onChange={(designation) =>
+                  setForm((f) => ({...f, designation}))
                 }
               />
             </label>
             <label>
               {t('employeesFieldDepartment')}
-              <input
-                className="text-input"
+              <CreatableLookupSelect
+                options={meta?.departments || []}
                 value={form.department}
-                onChange={(e) =>
-                  setForm((f) => ({...f, department: e.target.value}))
+                addNewLabel={t('employeesLookupAddNew')}
+                newValuePlaceholder={t('employeesLookupPlaceholder')}
+                onChange={(department) =>
+                  setForm((f) => ({...f, department}))
                 }
               />
             </label>

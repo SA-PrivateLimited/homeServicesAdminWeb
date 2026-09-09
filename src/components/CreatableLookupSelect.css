@@ -1,0 +1,11 @@
+.creatable-lookup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+}
+
+.creatable-lookup__input {
+  width: 100%;
+}

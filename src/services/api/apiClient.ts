@@ -65,7 +65,11 @@ export function handleUnauthorizedSession() {
   handlingUnauthorized = true;
   clearLocalAuthStorage();
   const path = window.location.pathname || '';
-  if (!path.startsWith('/login') && !path.startsWith('/activate')) {
+  if (
+    !path.startsWith('/login') &&
+    !path.startsWith('/activate') &&
+    !path.startsWith('/employee/')
+  ) {
     window.location.assign('/login');
   } else {
     handlingUnauthorized = false;

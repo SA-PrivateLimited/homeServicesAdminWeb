@@ -8,6 +8,7 @@ import {
   StatusChip,
 } from 'sapvt-ltd-web-packages';
 import {EmployeeIdCard} from '../components/EmployeeIdCard/EmployeeIdCard';
+import {CreatableLookupSelect} from '../components/CreatableLookupSelect';
 import {usePermissions} from '../hooks/usePermissions';
 import {PERMISSIONS} from '../constants/permissions';
 import {ApiError} from '../services/api/apiClient';
@@ -20,6 +21,7 @@ import {
   formatExperienceYears,
   generateEmployeeIdCard,
   getEmployee,
+  getEmployeeMeta,
   getEmployeesPage,
   inviteEmployee,
   maskPhoneDisplay,
@@ -32,6 +34,7 @@ import {
   type Employee,
   type EmployeeDocumentType,
   type EmployeeIdCardPayload,
+  type EmployeeMeta,
   type EmployeeProfileAccess,
   type EmploymentType,
   type EmployeeInviteResult,
@@ -109,6 +112,7 @@ export function EmployeeDetailPage() {
   const [managerOptions, setManagerOptions] = useState<
     Array<{value: string; label: string}>
   >([{value: '', label: '—'}]);
+  const [meta, setMeta] = useState<EmployeeMeta | null>(null);
 
   const [salaryOpen, setSalaryOpen] = useState(false);
   const [salaryBusy, setSalaryBusy] = useState(false);
@@ -218,11 +222,15 @@ export function EmployeeDetailPage() {
     setEditOpen(true);
     void (async () => {
       try {
-        const managers = await getEmployeesPage({
-          status: 'active',
-          limit: 100,
-          offset: 0,
-        });
+        const [managers, employeeMeta] = await Promise.all([
+          getEmployeesPage({
+            status: 'active',
+            limit: 100,
+            offset: 0,
+          }),
+          getEmployeeMeta(),
+        ]);
+        setMeta(employeeMeta);
         setManagerOptions([
           {value: '', label: '—'},
           ...managers.items
@@ -1032,31 +1040,37 @@ export function EmployeeDetailPage() {
             </label>
             <label>
               {t('employeesFieldProfession')}
-              <input
-                className="text-input"
+              <CreatableLookupSelect
+                options={meta?.professions || []}
                 value={editForm.profession}
-                onChange={(e) =>
-                  setEditForm((f) => ({...f, profession: e.target.value}))
+                addNewLabel={t('employeesLookupAddNew')}
+                newValuePlaceholder={t('employeesLookupPlaceholder')}
+                onChange={(profession) =>
+                  setEditForm((f) => ({...f, profession}))
                 }
               />
             </label>
             <label>
               {t('employeesFieldDesignation')}
-              <input
-                className="text-input"
+              <CreatableLookupSelect
+                options={meta?.designations || []}
                 value={editForm.designation}
-                onChange={(e) =>
-                  setEditForm((f) => ({...f, designation: e.target.value}))
+                addNewLabel={t('employeesLookupAddNew')}
+                newValuePlaceholder={t('employeesLookupPlaceholder')}
+                onChange={(designation) =>
+                  setEditForm((f) => ({...f, designation}))
                 }
               />
             </label>
             <label>
               {t('employeesFieldDepartment')}
-              <input
-                className="text-input"
+              <CreatableLookupSelect
+                options={meta?.departments || []}
                 value={editForm.department}
-                onChange={(e) =>
-                  setEditForm((f) => ({...f, department: e.target.value}))
+                addNewLabel={t('employeesLookupAddNew')}
+                newValuePlaceholder={t('employeesLookupPlaceholder')}
+                onChange={(department) =>
+                  setEditForm((f) => ({...f, department}))
                 }
               />
             </label>
