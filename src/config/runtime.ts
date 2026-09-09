@@ -20,7 +20,7 @@ const FALLBACK: AppRuntimeConfig = {
   brandName: 'Admin',
   themeColors: themeConfig[DEFAULT_CLIENT],
 };
-const PRODUCTION_API_BASE_URL = 'https://api.akanso.in';
+const PRODUCTION_API_BASE_URL = 'https://api.akansho.com';
 
 let runtimeConfig: AppRuntimeConfig = {...FALLBACK};
 export const RUNTIME_BRANDING_EVENT = 'hs-runtime-branding-change';
@@ -82,7 +82,7 @@ export function sanitizeApiBaseUrl(url: string): string {
     if (
       !envOverride &&
       !import.meta.env.PROD &&
-      /api\.akanso\.in/i.test(next)
+      /api\.(akanso\.in|akansho\.com)/i.test(next)
     ) {
       next = FALLBACK.apiBaseUrl;
     }

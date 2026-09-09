@@ -182,7 +182,7 @@ export function GreetingPage() {
         const data = await updateGreetingConfig({
           state,
           closeMode,
-          eventName: 'Akanso',
+          eventName: 'Akansho',
           greeting: greeting.trim() || 'Happy Holi',
           cta: 'Continue',
           timerEndsAt: fromDatetimeLocalValue(timerLocal),
@@ -532,7 +532,7 @@ export function GreetingPage() {
                 type="url"
                 value={logoAccentUrl}
                 maxLength={500}
-                placeholder="https://assets.akanso.in/..."
+                placeholder="https://assets.akansho.com/..."
                 onChange={(e) => setLogoAccentUrl(e.target.value)}
                 autoComplete="off"
               />

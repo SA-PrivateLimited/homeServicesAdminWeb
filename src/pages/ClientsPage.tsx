@@ -97,7 +97,7 @@ const THEME_PRESETS: Array<{
 }> = [
   {
     id: 'akanso-professional',
-    label: 'Akanso Professional',
+    label: 'Akansho Professional',
     palette: {
       primary: '#176B87',
       primaryDark: '#0F4C5C',

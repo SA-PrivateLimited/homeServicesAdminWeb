@@ -21,7 +21,7 @@ env:
   AWS_REGION: ${{ vars.AWS_REGION || 'eu-north-1' }}
   AWS_ROLE_ARN: arn:aws:iam::715831355325:role/AkansoWebDeployRole
   S3_BUCKET: admin.akanso.in
-  SITE_HOST: admin.akanso.in
+  SITE_HOST: admin.akansho.com
   CLOUDFRONT_DISTRIBUTION_ID: ${{ vars.CLOUDFRONT_DISTRIBUTION_ID }}
   APP_DIR: web
   BUILD_DIR: web/dist
@@ -246,4 +246,4 @@ jobs:
         run: |
           echo "Deployed to s3://${S3_BUCKET}"
           echo "CloudFront: ${{ steps.cf.outputs.dist_id }} invalidation ${{ steps.invalidate.outputs.id }}"
-          echo "Production: https://admin.akanso.in"
+          echo "Production: https://admin.akansho.com"

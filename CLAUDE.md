@@ -2,7 +2,7 @@
 
 ## What this repo is
 
-`HomeServicesAdminWeb` is the Akanso admin and operations dashboard.
+`HomeServicesAdminWeb` is the Akansho admin and operations dashboard.
 
 It manages:
 

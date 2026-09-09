@@ -1,4 +1,4 @@
-const ASSETS_ORIGIN = 'https://assets.akanso.in';
+const ASSETS_ORIGIN = 'https://assets.akansho.com';
 
 function uploadsKey(raw: string): string | null {
   if (raw.startsWith('/uploads/')) {
@@ -24,6 +24,9 @@ export function resolveBrandLogoUrl(logoUrl?: string): string {
   if (raw.startsWith('data:') || raw.startsWith('blob:')) return raw;
 
   if (/^https?:\/\/assets\.akanso\.in\//i.test(raw)) {
+    return raw.replace(/^https?:\/\/assets\.akanso\.in\//i, `${ASSETS_ORIGIN}/`);
+  }
+  if (/^https?:\/\/assets\.akansho\.com\//i.test(raw)) {
     return raw.replace(/^http:\/\//i, 'https://');
   }
 

@@ -1,0 +1,264 @@
+.emp-detail__nav {
+  margin-bottom: 12px;
+}
+
+.emp-back {
+  color: var(--text-muted, #64748b);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.emp-back:hover {
+  color: var(--primary-color, #3182ce);
+}
+
+.emp-toast {
+  margin-bottom: 12px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--color-success, #2f9e44) 12%, white);
+  border: 1px solid color-mix(in srgb, var(--color-success, #2f9e44) 35%, white);
+  color: #166534;
+  font-weight: 600;
+}
+
+.emp-detail__hero {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+  padding: 16px;
+  border: 1px solid var(--border-color, #e9ecef);
+  border-radius: 14px;
+  background: #fff;
+}
+
+.emp-detail__identity {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  min-width: 0;
+}
+
+.emp-detail__photo {
+  cursor: pointer;
+  display: block;
+}
+
+.emp-detail__photo img,
+.emp-avatar--lg {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid color-mix(in srgb, var(--color-success, #2f9e44) 35%, white);
+}
+
+.emp-detail__title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.emp-detail__title-row h1 {
+  margin: 0;
+  font-size: 1.35rem;
+}
+
+.emp-detail__role {
+  margin: 4px 0 0;
+  font-weight: 600;
+  color: var(--text-secondary, #495057);
+}
+
+.emp-detail__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.emp-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.emp-tab {
+  border: 1px solid transparent;
+  background: transparent;
+  padding: 8px 12px;
+  border-radius: 999px;
+  font-weight: 600;
+  color: var(--text-muted, #64748b);
+  cursor: pointer;
+}
+
+.emp-tab--active {
+  background: var(--primary-color-opacity-10, #ebf5ff);
+  color: var(--primary-color-2, #2c5282);
+  border-color: var(--primary-color-opacity-20, #bee3f8);
+}
+
+.emp-section h2,
+.emp-section h3 {
+  margin: 0 0 12px;
+  font-size: 1rem;
+}
+
+.emp-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 28px;
+}
+
+.emp-dl {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+}
+
+.emp-dl--wide {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 24px;
+}
+
+.emp-dl dt {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted, #868e96);
+  margin: 0 0 2px;
+}
+
+.emp-dl dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+.emp-comp-current {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.emp-salary-amount {
+  margin: 4px 0;
+  font-size: 1.5rem;
+  font-weight: 800;
+}
+
+.emp-history {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.emp-history li {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border-color, #e9ecef);
+}
+
+.emp-doc-upload {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 16px;
+  align-items: center;
+}
+
+.emp-file-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 14px;
+  border-radius: 10px;
+  background: var(--primary-color, #3182ce);
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.emp-doc-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.emp-doc-list li {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border-color, #e9ecef);
+}
+
+.emp-doc-list li > div:first-child {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.emp-doc-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.linkish {
+  border: none;
+  background: none;
+  color: var(--color-error, #e03131);
+  cursor: pointer;
+  font: inherit;
+  padding: 0;
+}
+
+.emp-id-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (max-width: 768px) {
+  .emp-grid,
+  .emp-dl--wide {
+    grid-template-columns: 1fr;
+  }
+
+  .emp-detail__actions {
+    width: 100%;
+  }
+
+  .emp-detail__actions .hs-button,
+  .emp-detail__actions button {
+    flex: 1 1 auto;
+  }
+}

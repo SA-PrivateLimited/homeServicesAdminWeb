@@ -31,7 +31,7 @@ The plan must contain:
 
 ## Embedded repo context
 
-AdminWeb is the Akanso admin and operations dashboard.
+AdminWeb is the Akansho admin and operations dashboard.
 
 ### Pick the right layer
 - page
