@@ -325,50 +325,16 @@
     margin: 10mm;
   }
 
-  /* Unclip Dialog / modal ancestors so the card is printable. */
-  .hs-modal-backdrop,
-  .hs-modal,
-  .hs-dialog,
-  .hs-dialog__body {
-    position: static !important;
-    inset: auto !important;
-    overflow: visible !important;
-    max-height: none !important;
-    max-width: none !important;
-    width: 100% !important;
-    height: auto !important;
-    transform: none !important;
-    background: #fff !important;
-    box-shadow: none !important;
-  }
-
+  /*
+   * ID card print uses a dedicated iframe (employeeIdCardExport), not this
+   * Dialog tree. Keep a safe fallback if something calls window.print() here:
+   * hide chrome and show only the card root.
+   */
   .hs-dialog__header,
   .hs-dialog__footer,
   .hs-dialog__close,
-  .hs-modal-backdrop::before,
   .no-print {
     display: none !important;
-  }
-
-  body * {
-    visibility: hidden !important;
-  }
-
-  .akanso-id-print-root,
-  .akanso-id-print-root * {
-    visibility: visible !important;
-  }
-
-  .akanso-id-print-root {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
-    gap: 12mm;
-    padding: 0;
-    background: #fff;
-    flex-direction: column;
-    align-items: center;
   }
 
   .akanso-id-card {
