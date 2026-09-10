@@ -36,9 +36,12 @@ import {
   ALL_PERMISSION_VALUES,
   PERMISSION_MODULES,
   defaultInvitePermissions,
-  isModuleSelected,
-  permissionLabel,
-  toggleModulePermissions,
+  ensureViewWithEdit,
+  isModuleEditSelected,
+  isModuleViewSelected,
+  moduleEditPermissions,
+  setModuleEdit,
+  setModuleView,
 } from '../constants/permissions';
 import {sortByUpdatedThenCreated} from '../utils/sort';
 import '../styles/pages.css';
@@ -168,8 +171,9 @@ export function AdminsPage() {
 
   const openEditPermissions = (user: User) => {
     setEditPermsUser(user);
+    // Explicit [] = no capabilities. null/undefined = legacy full access.
     setEditPermissions(
-      Array.isArray(user.permissions) && user.permissions.length
+      Array.isArray(user.permissions)
         ? [...user.permissions]
         : [...ALL_PERMISSION_VALUES],
     );
@@ -188,7 +192,10 @@ export function AdminsPage() {
     setSavingPerms(true);
     setEditPermsError(null);
     try {
-      await updateAdminPermissions(editPermsUser._id, editPermissions);
+      await updateAdminPermissions(
+        editPermsUser._id,
+        ensureViewWithEdit(editPermissions),
+      );
       const {name} = userLabel(editPermsUser);
       closeEditPermissions();
       setSuccessBanner({
@@ -269,7 +276,7 @@ export function AdminsPage() {
       const result = await inviteAdmin({
         name: createName.trim() || undefined,
         email: createEmail.trim(),
-        permissions: createPermissions,
+        permissions: ensureViewWithEdit(createPermissions),
       });
       closeCreateModal();
       setInviteResult(result);
@@ -404,22 +411,20 @@ export function AdminsPage() {
 
   const togglePermission = (moduleId: string, selected: boolean) => {
     setCreatePermissions((prev) =>
-      toggleModulePermissions(moduleId, prev, selected),
+      setModuleView(moduleId, prev, selected),
     );
   };
 
-  const toggleEditModule = (moduleId: string, selected: boolean) => {
-    setEditPermissions((prev) =>
-      toggleModulePermissions(moduleId, prev, selected),
-    );
+  const toggleCreateEdit = (moduleId: string, selected: boolean) => {
+    setCreatePermissions((prev) => setModuleEdit(moduleId, prev, selected));
   };
 
-  const toggleEditPermission = (permission: string) => {
-    setEditPermissions((prev) =>
-      prev.includes(permission)
-        ? prev.filter((p) => p !== permission)
-        : [...prev, permission],
-    );
+  const toggleEditModuleView = (moduleId: string, selected: boolean) => {
+    setEditPermissions((prev) => setModuleView(moduleId, prev, selected));
+  };
+
+  const toggleEditModuleEdit = (moduleId: string, selected: boolean) => {
+    setEditPermissions((prev) => setModuleEdit(moduleId, prev, selected));
   };
 
   const columns = useMemo<VirtualTableColumn<User>[]>(
@@ -621,20 +626,49 @@ export function AdminsPage() {
           <fieldset className="permissions-fieldset">
             <legend>{t('permissions')}</legend>
             <p className="muted compact">{t('permissionsInviteHint')}</p>
-            <div className="permissions-grid">
-              {PERMISSION_MODULES.map((opt) => (
-                <label key={opt.id} className="permission-check">
-                  <input
-                    type="checkbox"
-                    checked={isModuleSelected(opt.id, createPermissions)}
-                    onChange={(e) =>
-                      togglePermission(opt.id, e.target.checked)
-                    }
-                  />
-                  {opt.label}
-                </label>
-              ))}
-            </div>
+            <table className="permissions-matrix">
+              <thead>
+                <tr>
+                  <th scope="col">{t('module')}</th>
+                  <th scope="col">{t('permissionView')}</th>
+                  <th scope="col">{t('permissionEdit')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {PERMISSION_MODULES.map((opt) => {
+                  const hasEdit = moduleEditPermissions(opt.id).length > 0;
+                  return (
+                    <tr key={opt.id}>
+                      <th scope="row">{opt.label}</th>
+                      <td>
+                        <input
+                          type="checkbox"
+                          aria-label={`${opt.label} view`}
+                          checked={isModuleViewSelected(opt.id, createPermissions)}
+                          onChange={(e) =>
+                            togglePermission(opt.id, e.target.checked)
+                          }
+                        />
+                      </td>
+                      <td>
+                        {hasEdit ? (
+                          <input
+                            type="checkbox"
+                            aria-label={`${opt.label} edit`}
+                            checked={isModuleEditSelected(opt.id, createPermissions)}
+                            onChange={(e) =>
+                              toggleCreateEdit(opt.id, e.target.checked)
+                            }
+                          />
+                        ) : (
+                          <span className="muted">—</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </fieldset>
           {createError ? <p className="error-text">{createError}</p> : null}
           <div className="actions">
@@ -729,36 +763,52 @@ export function AdminsPage() {
               </dd>
             </div>
           </dl>
-          <fieldset className="permissions-fieldset">
+                    <fieldset className="permissions-fieldset">
             <legend>{t('permissions')}</legend>
             <p className="muted compact">{t('permissionsModulesHint')}</p>
-            <div className="permissions-grid">
-              {PERMISSION_MODULES.map((opt) => (
-                <label key={opt.id} className="permission-check">
-                  <input
-                    type="checkbox"
-                    checked={isModuleSelected(opt.id, editPermissions)}
-                    onChange={(e) =>
-                      toggleEditModule(opt.id, e.target.checked)
-                    }
-                  />
-                  {opt.label}
-                </label>
-              ))}
-            </div>
-            <p className="muted compact">{t('permissionsGranularHint')}</p>
-            <div className="permissions-list">
-              {ALL_PERMISSION_VALUES.map((perm) => (
-                <label key={perm} className="permission-check">
-                  <input
-                    type="checkbox"
-                    checked={editPermissions.includes(perm)}
-                    onChange={() => toggleEditPermission(perm)}
-                  />
-                  {permissionLabel(perm)}
-                </label>
-              ))}
-            </div>
+            <table className="permissions-matrix">
+              <thead>
+                <tr>
+                  <th scope="col">{t('module')}</th>
+                  <th scope="col">{t('permissionView')}</th>
+                  <th scope="col">{t('permissionEdit')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {PERMISSION_MODULES.map((opt) => {
+                  const hasEdit = moduleEditPermissions(opt.id).length > 0;
+                  return (
+                    <tr key={opt.id}>
+                      <th scope="row">{opt.label}</th>
+                      <td>
+                        <input
+                          type="checkbox"
+                          aria-label={`${opt.label} view`}
+                          checked={isModuleViewSelected(opt.id, editPermissions)}
+                          onChange={(e) =>
+                            toggleEditModuleView(opt.id, e.target.checked)
+                          }
+                        />
+                      </td>
+                      <td>
+                        {hasEdit ? (
+                          <input
+                            type="checkbox"
+                            aria-label={`${opt.label} edit`}
+                            checked={isModuleEditSelected(opt.id, editPermissions)}
+                            onChange={(e) =>
+                              toggleEditModuleEdit(opt.id, e.target.checked)
+                            }
+                          />
+                        ) : (
+                          <span className="muted">—</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </fieldset>
           {editPermsError ? (
             <p className="error-text">{editPermsError}</p>

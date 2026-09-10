@@ -418,7 +418,7 @@ export function ProvidersPage() {
       setCreateError(t('geoDistrictRequired'));
       return;
     }
-    if (createPin && !/^\d{6}$/.test(createPin)) {
+    if (createPin && !/^\d{4}$/.test(createPin)) {
       setCreateError(t('pinMustBeSix'));
       return;
     }
@@ -962,7 +962,7 @@ export function ProvidersPage() {
           return (
             <span className="pin-cell">
               <span className="pin-cell-value">
-                {pin ? <code>{pin}</code> : row.hasPin ? '••••••' : '—'}
+                {pin ? <code>{pin}</code> : row.hasPin ? '••••' : '—'}
               </span>
               <span className="pin-cell-actions">
                 {row.hasPin ? (
@@ -1361,11 +1361,11 @@ export function ProvidersPage() {
                   <input
                     type="text"
                     inputMode="numeric"
-                    maxLength={6}
+                    maxLength={4}
                     placeholder={t('pinAutoGenerate')}
                     value={createPin}
                     onChange={(e) =>
-                      setCreatePin(e.target.value.replace(/\D/g, '').slice(0, 6))
+                      setCreatePin(e.target.value.replace(/\D/g, '').slice(0, 4))
                     }
                   />
                 </label>
@@ -1398,11 +1398,11 @@ export function ProvidersPage() {
             <input
               type="text"
               inputMode="numeric"
-              maxLength={6}
+              maxLength={4}
               placeholder={t('pinAutoGenerate')}
               value={pinValue}
               onChange={(e) =>
-                setPinValue(e.target.value.replace(/\D/g, '').slice(0, 6))
+                setPinValue(e.target.value.replace(/\D/g, '').slice(0, 4))
               }
             />
           </label>
