@@ -53,8 +53,13 @@ export function firstAllowedPermissionsTab(
 
 export function PermissionsIndexRedirect() {
   const {canAccess} = usePermissions();
+  if (!canAccess(PERMISSIONS.SETTINGS_VIEW)) {
+    return <Navigate to="/" replace />;
+  }
   const tab = firstAllowedPermissionsTab(canAccess);
-  if (!tab) return <Navigate to="/" replace />;
+  if (!tab) {
+    return <Navigate to="/settings/permissions/contact-privacy" replace />;
+  }
   return <Navigate to={`/settings/permissions/${tab}`} replace />;
 }
 
@@ -63,13 +68,24 @@ export function PermissionsPage() {
   const {canAccess} = usePermissions();
   const {tab} = useParams<{tab?: string}>();
 
+  if (!canAccess(PERMISSIONS.SETTINGS_VIEW)) {
+    return <Navigate to="/" replace />;
+  }
+
   const visibleTabs = TAB_DEFS.filter((item) => canAccess(item.permission));
   const defaultTab = visibleTabs[0]?.id ?? null;
   const activeTab =
     visibleTabs.find((item) => item.id === tab)?.id ?? defaultTab;
 
   if (!defaultTab) {
-    return <Navigate to="/" replace />;
+    return (
+      <div className="admin-page scale-baseline-80" data-testid="permissions-root">
+        <header className="page-header">
+          <h1>{t('navPermissions')}</h1>
+          <p className="muted">{t('permissionsNoTabsHint')}</p>
+        </header>
+      </div>
+    );
   }
 
   if (!tab || tab !== activeTab) {

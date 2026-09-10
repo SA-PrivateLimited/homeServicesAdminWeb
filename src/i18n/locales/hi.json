@@ -180,6 +180,7 @@
   "permissionsTitle": "अनुमतियाँ",
   "permissionsLead": "Partner कैसे दिखें, verify हों, नया काम लें, और job पर chat करें — यहाँ तय करें।",
   "permissionsTabContactPrivacy": "Contact privacy",
+  "permissionsNoTabsHint": "आप Permissions खोल सकते हैं, लेकिन टैब के लिए Contacts, Providers, या Jobs View चाहिए।",
   "permissionsTabPartnerVerification": "Partner verification",
   "permissionsTabOpenRequests": "Open requests",
   "permissionsTabJobChat": "Job chat",

@@ -6,7 +6,8 @@ import {
   SuccessBanner,
   type SuccessBannerContent,
 } from '../components/SuccessBanner';
-import {useAuthStore} from '../store/authStore';
+import {usePermissions} from '../hooks/usePermissions';
+import {PERMISSIONS} from '../constants/permissions';
 import {
   getGreetingConfig,
   updateGreetingConfig,
@@ -35,7 +36,9 @@ function timerLocalFromConfig(data: GreetingConfig): string {
 
 export function GreetingPage() {
   const {t} = useTranslation();
-  const superAdminElevated = useAuthStore((s) => s.superAdminElevated);
+  const {hasPermission} = usePermissions();
+  const canView = hasPermission(PERMISSIONS.GREETING_VIEW);
+  const canEdit = hasPermission(PERMISSIONS.GREETING_UPDATE);
 
   const [state, setState] = useState<GreetingState>('NORMAL');
   const [closeMode, setCloseMode] = useState<GreetingCloseMode>('PER_PERSON');
@@ -137,9 +140,9 @@ export function GreetingPage() {
   }, [applyConfig, t]);
 
   useEffect(() => {
-    if (!superAdminElevated) return;
+    if (!canView) return;
     void load();
-  }, [load, superAdminElevated]);
+  }, [load, canView]);
 
   useEffect(() => {
     if (!successBanner) return;
@@ -153,12 +156,12 @@ export function GreetingPage() {
     void load();
   }, [load, loading, saving]);
 
-  if (!superAdminElevated) {
+  if (!canView) {
     return <Navigate to="/" replace />;
   }
 
   const onSaveClick = () => {
-    if (!dirty || saving || loading) return;
+    if (!canEdit || !dirty || saving || loading) return;
     if (tab === 'page' && state === 'LAUNCH' && !fromDatetimeLocalValue(timerLocal)) {
       setError(t('greetingTimerRequired'));
       return;
@@ -558,7 +561,7 @@ export function GreetingPage() {
           </Button>
           <Button
             variant="primary"
-            disabled={loading || saving || !dirty}
+            disabled={loading || saving || !dirty || !canEdit}
             onClick={onSaveClick}>
             {saving ? t('saving') : t('save')}
           </Button>
