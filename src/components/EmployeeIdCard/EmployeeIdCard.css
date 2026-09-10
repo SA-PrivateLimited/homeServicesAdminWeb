@@ -325,6 +325,31 @@
     margin: 10mm;
   }
 
+  /* Unclip Dialog / modal ancestors so the card is printable. */
+  .hs-modal-backdrop,
+  .hs-modal,
+  .hs-dialog,
+  .hs-dialog__body {
+    position: static !important;
+    inset: auto !important;
+    overflow: visible !important;
+    max-height: none !important;
+    max-width: none !important;
+    width: 100% !important;
+    height: auto !important;
+    transform: none !important;
+    background: #fff !important;
+    box-shadow: none !important;
+  }
+
+  .hs-dialog__header,
+  .hs-dialog__footer,
+  .hs-dialog__close,
+  .hs-modal-backdrop::before,
+  .no-print {
+    display: none !important;
+  }
+
   body * {
     visibility: hidden !important;
   }
@@ -353,9 +378,5 @@
     box-shadow: none;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
-  }
-
-  .no-print {
-    display: none !important;
   }
 }

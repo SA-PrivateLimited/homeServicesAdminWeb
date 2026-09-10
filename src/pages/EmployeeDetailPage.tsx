@@ -1,4 +1,4 @@
-import {useCallback, useEffect, useMemo, useState} from 'react';
+import {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {Link, useParams} from 'react-router-dom';
 import {useTranslation} from 'react-i18next';
 import {
@@ -142,6 +142,8 @@ export function EmployeeDetailPage() {
   const [docType, setDocType] = useState<EmployeeDocumentType>('other');
   const [docBusy, setDocBusy] = useState(false);
   const [photoBusy, setPhotoBusy] = useState(false);
+  const [photoPreviewUrl, setPhotoPreviewUrl] = useState<string | null>(null);
+  const photoPreviewUrlRef = useRef<string | null>(null);
 
   const [accessOpen, setAccessOpen] = useState(false);
   const [accessBusy, setAccessBusy] = useState(false);
@@ -419,6 +421,23 @@ export function EmployeeDetailPage() {
     }
   }
 
+  function revokePhotoPreview() {
+    if (photoPreviewUrlRef.current) {
+      URL.revokeObjectURL(photoPreviewUrlRef.current);
+      photoPreviewUrlRef.current = null;
+    }
+    setPhotoPreviewUrl(null);
+  }
+
+  useEffect(() => {
+    return () => {
+      if (photoPreviewUrlRef.current) {
+        URL.revokeObjectURL(photoPreviewUrlRef.current);
+        photoPreviewUrlRef.current = null;
+      }
+    };
+  }, []);
+
   async function onPhotoSelected(
     file: File | null,
     options?: {refreshIdCard?: boolean},
@@ -432,10 +451,15 @@ export function EmployeeDetailPage() {
       setToast(t('employeesPhotoSizeError'));
       return;
     }
+    revokePhotoPreview();
+    const localPreview = URL.createObjectURL(file);
+    photoPreviewUrlRef.current = localPreview;
+    setPhotoPreviewUrl(localPreview);
     setPhotoBusy(true);
     try {
       const result = await uploadEmployeePhoto(employee._id, file);
       setEmployee(result.employee);
+      revokePhotoPreview();
       setToast(t('employeesPhotoToast'));
       if (options?.refreshIdCard || idCardOpen) {
         const payload = await generateEmployeeIdCard(employee._id);
@@ -443,6 +467,7 @@ export function EmployeeDetailPage() {
         setIdCardOpen(true);
       }
     } catch (e) {
+      revokePhotoPreview();
       setToast(
         e instanceof ApiError ? e.message : t('employeesSaveError'),
       );
@@ -485,22 +510,74 @@ export function EmployeeDetailPage() {
   }
 
   function printIdCard() {
-    window.print();
+    const root = document.querySelector('.akanso-id-print-root');
+    if (!root) {
+      window.print();
+      return;
+    }
+    void (async () => {
+      try {
+        if (document.fonts?.ready) await document.fonts.ready;
+        const imgs = Array.from(root.querySelectorAll('img'));
+        await Promise.all(
+          imgs.map(
+            (img) =>
+              img.complete
+                ? Promise.resolve()
+                : new Promise<void>((resolve) => {
+                    img.addEventListener('load', () => resolve(), {once: true});
+                    img.addEventListener('error', () => resolve(), {once: true});
+                  }),
+          ),
+        );
+      } catch {
+        /* print anyway */
+      }
+      window.print();
+    })();
+  }
+
+  function escapeHtml(value: string): string {
+    return String(value || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
   }
 
   function downloadIdCard() {
     if (!idCard) return;
-    const w = window.open('', '_blank', 'noopener,noreferrer,width=900,height=700');
+    // Avoid noopener in features — Chromium often returns null and blocks write.
+    const w = window.open('', '_blank', 'width=900,height=700');
     if (!w) {
       setToast(t('employeesIdCardPopupBlocked'));
       return;
     }
+    try {
+      w.opener = null;
+    } catch {
+      /* ignore */
+    }
     const safeName = `Akansho_Employee_ID_${idCard.employeeCode}.html`;
-    const profession = idCard.profession || idCard.designation || '';
-    const photo = idCard.photoUrl
-      ? `<img class="photo" src="${idCard.photoUrl}" alt=""/>`
-      : `<div class="photo fallback">${(idCard.fullName || '?').slice(0, 1).toUpperCase()}</div>`;
+    const profession = escapeHtml(idCard.profession || idCard.designation || '');
+    const fullName = escapeHtml(idCard.fullName || '');
+    const employeeCode = escapeHtml(idCard.employeeCode || '');
+    const location = escapeHtml(idCard.location || '—');
+    const experience = escapeHtml(
+      formatExperienceYears(idCard.experienceYears),
+    );
+    const phone = escapeHtml(maskPhoneDisplay(idCard.phone));
+    const photoUrl = idCard.photoUrl ? escapeHtml(idCard.photoUrl) : '';
+    const qr = escapeHtml(idCard.qrDataUrl || '');
+    const initial = escapeHtml(
+      (idCard.fullName || '?').trim().slice(0, 1).toUpperCase(),
+    );
+    const photo = photoUrl
+      ? `<img class="photo" src="${photoUrl}" alt=""/>`
+      : `<div class="photo fallback">${initial}</div>`;
     w.document.write(`<!doctype html><html><head><title>${safeName}</title>
+      <meta charset="utf-8"/>
       <style>
         *{box-sizing:border-box}
         body{font-family:system-ui,-apple-system,sans-serif;background:#f1f5f9;margin:0;padding:24px}
@@ -509,6 +586,8 @@ export function EmployeeDetailPage() {
         .silver{height:52px;padding:0 16px;display:flex;align-items:center;justify-content:space-between;
           background:repeating-linear-gradient(0deg,rgba(255,255,255,.3) 0 1px,rgba(0,0,0,.03) 1px 2px),linear-gradient(180deg,#f6f7f9,#c9ced4);
           border-bottom:1px solid rgba(15,28,46,.1)}
+        .brand{display:flex;align-items:center;gap:10px}
+        .mark{width:34px;height:34px;object-fit:contain}
         .logo{font-weight:800;letter-spacing:.14em;font-size:13px;color:#0f1c2e}
         .tag{display:block;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:#64748b;font-weight:650}
         .chip{width:28px;height:20px;border-radius:4px;background:linear-gradient(135deg,#d4af37,#f5e6a3,#a67c00)}
@@ -521,7 +600,7 @@ export function EmployeeDetailPage() {
         .fields dd{margin:0;font-size:11px;font-weight:700;color:#0f1c2e}
         .qrcol{display:flex;flex-direction:column;align-items:center;gap:4px}
         .qr{width:58px;height:58px;border:1px solid #e2e8f0;border-radius:6px}
-        .brand{font-size:10px;font-weight:750;color:#1b7a4e;letter-spacing:.08em;text-transform:uppercase}
+        .footer-brand{font-size:10px;font-weight:750;color:#1b7a4e;letter-spacing:.08em;text-transform:uppercase}
         .back{flex:1;display:grid;grid-template-columns:1fr auto;gap:14px;align-items:center;padding:14px 16px}
         .copy{margin:0 0 6px;font-size:12px;line-height:1.4;color:#334155}
         .eid span{font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:#64748b}
@@ -531,20 +610,20 @@ export function EmployeeDetailPage() {
       </style></head><body>
       <div class="wrap">
         <div class="card">
-          <div class="silver"><div><span class="logo">AKANSHO</span><span class="tag">Employee Identity</span></div><span class="chip"></span></div>
+          <div class="silver"><div class="brand"><img class="mark" src="${escapeHtml(window.location.origin)}/logo-mark.webp" alt=""/><div><span class="logo">AKANSHO</span><span class="tag">Employee Identity</span></div></div><span class="chip"></span></div>
           <div class="front">
             ${photo}
             <div>
-              <h2 class="name">${idCard.fullName}</h2>
+              <h2 class="name">${fullName}</h2>
               <p class="role">${profession}</p>
               <dl class="fields">
-                <div><dt>Employee ID</dt><dd>${idCard.employeeCode}</dd></div>
-                <div><dt>Experience</dt><dd>${formatExperienceYears(idCard.experienceYears)}</dd></div>
-                <div><dt>Phone</dt><dd>${maskPhoneDisplay(idCard.phone)}</dd></div>
-                <div><dt>Location</dt><dd>${idCard.location || '—'}</dd></div>
+                <div><dt>Employee ID</dt><dd>${employeeCode}</dd></div>
+                <div><dt>Experience</dt><dd>${experience}</dd></div>
+                <div><dt>Phone</dt><dd>${phone}</dd></div>
+                <div><dt>Location</dt><dd>${location}</dd></div>
               </dl>
             </div>
-            <div class="qrcol"><img class="qr" src="${idCard.qrDataUrl}" alt="QR"/><span class="brand">Akansho</span></div>
+            <div class="qrcol"><img class="qr" src="${qr}" alt="QR"/><span class="footer-brand">Akansho</span></div>
           </div>
         </div>
         <div class="card">
@@ -553,13 +632,26 @@ export function EmployeeDetailPage() {
             <div>
               <p class="copy">This card identifies the holder as an authorized Akansho employee.</p>
               <p class="copy">If found, please return to Akansho.</p>
-              <div class="eid"><span>Employee ID</span><strong>${idCard.employeeCode}</strong></div>
+              <div class="eid"><span>Employee ID</span><strong>${employeeCode}</strong></div>
             </div>
-            <div><img class="qr" style="width:78px;height:78px" src="${idCard.qrDataUrl}" alt="QR"/><p class="auth">Authorized Employee</p></div>
+            <div><img class="qr" style="width:78px;height:78px" src="${qr}" alt="QR"/><p class="auth">Authorized Employee</p></div>
           </div>
         </div>
       </div>
-      <script>setTimeout(function(){window.print()},400)</script>
+      <script>
+        (function(){
+          function ready(img){
+            return img.complete ? Promise.resolve() : new Promise(function(r){
+              img.addEventListener('load', r, {once:true});
+              img.addEventListener('error', r, {once:true});
+            });
+          }
+          var imgs = Array.prototype.slice.call(document.images || []);
+          Promise.all(imgs.map(ready)).then(function(){
+            setTimeout(function(){ window.print(); }, 50);
+          });
+        })();
+      </script>
       </body></html>`);
     w.document.close();
   }
@@ -604,9 +696,11 @@ export function EmployeeDetailPage() {
       <header className="emp-detail__hero no-print">
         <div className="emp-detail__identity">
           <div className="emp-detail__photo-block">
-            <div className="emp-detail__photo" aria-hidden={!employee.photoUrl}>
-              {employee.photoUrl ? (
-                <img src={employee.photoUrl} alt="" />
+            <div
+              className="emp-detail__photo"
+              aria-hidden={!employee.photoUrl && !photoPreviewUrl}>
+              {photoPreviewUrl || employee.photoUrl ? (
+                <img src={photoPreviewUrl || employee.photoUrl || ''} alt="" />
               ) : (
                 <span className="emp-avatar emp-avatar--fallback emp-avatar--lg">
                   {(employee.fullName || '?').slice(0, 1).toUpperCase()}
