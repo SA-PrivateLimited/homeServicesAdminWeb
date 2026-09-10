@@ -6,6 +6,8 @@ import type {
   GeographyMetaDistrict,
   GeographyMetaState,
 } from '../../services/api/geographyApi';
+import {PERMISSIONS} from '../../constants/permissions';
+import {usePermissions} from '../../hooks/usePermissions';
 import {localTenDigits} from '../../utils/phone';
 import {
   clearBulkDraftStorage,
@@ -57,6 +59,8 @@ export function BulkPartnersPanel({
   standalone = false,
 }: BulkPartnersPanelProps) {
   const {t} = useTranslation();
+  const {hasPermission} = usePermissions();
+  const canMutate = hasPermission(PERMISSIONS.PARTNER_BULK_ONBOARDING_UPDATE);
   const stored = loadBulkDraftFromStorage();
 
   const [expanded, setExpanded] = useState(
@@ -145,6 +149,7 @@ export function BulkPartnersPanel({
 
   const updateRow = useCallback(
     (id: string, patch: Partial<ProviderBulkDraftRow>) => {
+      if (!canMutate) return;
       setRows((prev) =>
         prev.map((row) => {
           if (row.id !== id) return row;
@@ -168,10 +173,11 @@ export function BulkPartnersPanel({
         }),
       );
     },
-    [],
+    [canMutate],
   );
 
   const onLoadRows = () => {
+    if (!canMutate) return;
     setLoadError(null);
     const parsed = parseBulkPaste(pasteText);
     if (!parsed.length) {
@@ -185,6 +191,7 @@ export function BulkPartnersPanel({
   };
 
   const onClearDraft = () => {
+    if (!canMutate) return;
     setPasteText('');
     setRows([]);
     setLoadError(null);
@@ -192,6 +199,7 @@ export function BulkPartnersPanel({
   };
 
   const insertRow = async (rowId: string) => {
+    if (!canMutate) return;
     const row = rows.find((r) => r.id === rowId);
     if (!row || row.status === 'inserting' || row.status === 'success') return;
 
@@ -240,6 +248,7 @@ export function BulkPartnersPanel({
   };
 
   const onInsertAllPending = async () => {
+    if (!canMutate) return;
     const pending = rows.filter((r) => r.status === 'pending' || r.status === 'failed');
     if (!pending.length) return;
     setInsertAllBusy(true);
@@ -285,6 +294,11 @@ export function BulkPartnersPanel({
 
       {isExpanded ? (
         <div className={`bulk-partners-panel__body${standalone ? ' bulk-partners-panel__body--standalone' : ''}`}>
+          {!canMutate ? (
+            <p className="muted compact" data-testid="bulk-partners-view-only">
+              {t('bulkPartnersViewOnly')}
+            </p>
+          ) : null}
           <section className="bulk-partners-section" aria-labelledby="bulk-partners-step-location">
             <div className="bulk-partners-section__head">
               <h3 id="bulk-partners-step-location">{t('bulkPartnersStepLocation')}</h3>
@@ -300,6 +314,7 @@ export function BulkPartnersPanel({
                   showSearch
                   searchPlaceholder={t('searchState')}
                   emptyMessage={t('noStatesFound')}
+                  disabled={!canMutate}
                   onChange={(value) => {
                     setStateId(value);
                     setDistrictId('');
@@ -318,7 +333,7 @@ export function BulkPartnersPanel({
                   showSearch
                   searchPlaceholder={t('searchDistrict')}
                   emptyMessage={t('noDistrictsFound')}
-                  disabled={!stateId}
+                  disabled={!canMutate || !stateId}
                   onChange={(value) => {
                     setDistrictId(value);
                     setBlockId('');
@@ -339,7 +354,7 @@ export function BulkPartnersPanel({
                   showSearch
                   searchPlaceholder={t('searchBlock')}
                   emptyMessage={t('noBlocksFound')}
-                  disabled={!districtId}
+                  disabled={!canMutate || !districtId}
                   onChange={(value) => setBlockId(value)}
                 />
               </div>
@@ -347,6 +362,7 @@ export function BulkPartnersPanel({
                 <span className="bulk-partners-field__label">{t('geoCity')}</span>
                 <input
                   value={city}
+                  disabled={!canMutate}
                   onChange={(e) => setCity(e.target.value)}
                   placeholder={t('geoCity')}
                 />
@@ -358,6 +374,7 @@ export function BulkPartnersPanel({
                   inputMode="numeric"
                   maxLength={6}
                   value={pincode}
+                  disabled={!canMutate}
                   onChange={(e) =>
                     setPincode(e.target.value.replace(/\D/g, '').slice(0, 6))
                   }
@@ -377,17 +394,27 @@ export function BulkPartnersPanel({
               <textarea
                 value={pasteText}
                 placeholder={t('bulkPartnersPastePlaceholder')}
+                disabled={!canMutate}
                 onChange={(e) => setPasteText(e.target.value)}
               />
             </div>
             <div className="bulk-partners-paste-actions">
-              <Button variant="primary" onClick={onLoadRows}>
+              <Button variant="primary" disabled={!canMutate} onClick={onLoadRows}>
                 {t('bulkPartnersLoadRows')}
               </Button>
-              <Button variant="ghost" onClick={() => downloadBulkTemplate(serviceOptions, geoStates, geoDistricts, geoBlocks)}>
+              <Button
+                variant="ghost"
+                onClick={() =>
+                  downloadBulkTemplate(
+                    serviceOptions,
+                    geoStates,
+                    geoDistricts,
+                    geoBlocks,
+                  )
+                }>
                 {t('bulkPartnersDownloadTemplate')}
               </Button>
-              <Button variant="ghost" onClick={onClearDraft}>
+              <Button variant="ghost" disabled={!canMutate} onClick={onClearDraft}>
                 {t('bulkPartnersClearDraft')}
               </Button>
             </div>
@@ -443,7 +470,10 @@ export function BulkPartnersPanel({
                           : row.status === 'failed'
                             ? 'bulk-partners-status--failed'
                             : '';
-                      const readOnly = row.status === 'success' || row.status === 'inserting';
+                      const readOnly =
+                        !canMutate ||
+                        row.status === 'success' ||
+                        row.status === 'inserting';
                       const matchedService = matchServiceValue(
                         row.service,
                         serviceOptions,
@@ -765,7 +795,7 @@ export function BulkPartnersPanel({
                 <div className="bulk-partners-footer-actions">
                   <Button
                     variant="primary"
-                    disabled={insertAllBusy || pendingCount === 0}
+                    disabled={!canMutate || insertAllBusy || pendingCount === 0}
                     onClick={() => void onInsertAllPending()}>
                     {insertAllBusy
                       ? t('bulkPartnersInsertAllBusy')
