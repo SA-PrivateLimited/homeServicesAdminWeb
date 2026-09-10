@@ -148,6 +148,9 @@ export function CustomersPage() {
       });
       setRows(sortByUpdatedThenCreated(result.items));
       setTotal(result.total);
+      // Drop any previously revealed PINs — customer self-reset may have
+      // changed the authoritative customer PIN since this page was opened.
+      setRevealedPins({});
     } catch (err) {
       setError(err instanceof Error ? err.message : t('errorGeneric'));
     } finally {
