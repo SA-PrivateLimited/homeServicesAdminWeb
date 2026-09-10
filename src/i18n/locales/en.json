@@ -999,7 +999,7 @@
   "employeesRaiseDenied": "Not allowed",
   "employeesInvitation": "Invitation sent",
   "employeesInviteToast": "Invitation ready to share.",
-  "employeesAccessLead": "Choose what this employee can do after they activate with password and authenticator.",
+  "employeesAccessLead": "Choose what this employee can do after they activate their account.",
   "employeesAccessToast": "Access updated.",
   "employeesInviteReady": "Share invitation",
   "employeesInviteLead": "Employee must open the link, set a password, then enroll TOTP before they can sign in.",
@@ -1009,5 +1009,10 @@
   "employeesLinkCopied": "Link copied.",
   "employeesShareWhatsApp": "Share on WhatsApp",
   "employeesRevokeInvite": "Revoke invitation",
-  "employeesInviteRevoked": "Invitation revoked."
+  "employeesInviteRevoked": "Invitation revoked.",
+  "employeesReinstate": "Reinstate Employee",
+  "employeesReinstateTitle": "Reinstate employee?",
+  "employeesReinstateLead": "This will change {{name}} from Former Employee to Active Employee. Existing employee information and history will be preserved.",
+  "employeesReinstatedToast": "Employee reinstated successfully.",
+  "employeesReinstateSuperAdminOnly": "Only Super Admin can reinstate an employee."
 }

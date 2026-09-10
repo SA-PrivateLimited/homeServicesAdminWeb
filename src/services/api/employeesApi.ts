@@ -301,6 +301,11 @@ export async function updateEmployeeStatus(
   });
 }
 
+/** Super Admin only — restores a former employee to active without changing employeeCode. */
+export async function reinstateEmployee(id: string): Promise<Employee> {
+  return apiPost<Employee>(`/api/admin/employees/${id}/reinstate`, {});
+}
+
 export async function addEmployeeCompensation(
   id: string,
   input: {

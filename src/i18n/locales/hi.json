@@ -1000,7 +1000,7 @@
   "employeesRaiseDenied": "अनुमति नहीं",
   "employeesInvitation": "निमंत्रण भेजा",
   "employeesInviteToast": "निमंत्रण शेयर करने के लिए तैयार है।",
-  "employeesAccessLead": "पासवर्ड और ऑथेंटिकेटर से सक्रिय होने के बाद कर्मचारी क्या कर सकता है, चुनें।",
+  "employeesAccessLead": "अकाउंट सक्रिय होने के बाद कर्मचारी क्या कर सकता है, चुनें।",
   "employeesAccessToast": "एक्सेस अपडेट हो गया।",
   "employeesInviteReady": "निमंत्रण शेयर करें",
   "employeesInviteLead": "कर्मचारी को लिंक खोलकर पासवर्ड सेट करना होगा, फिर TOTP जोड़कर साइन इन कर सकेंगे।",
@@ -1010,5 +1010,10 @@
   "employeesLinkCopied": "लिंक कॉपी हो गया।",
   "employeesShareWhatsApp": "WhatsApp पर भेजें",
   "employeesRevokeInvite": "निमंत्रण रद्द करें",
-  "employeesInviteRevoked": "निमंत्रण रद्द हो गया।"
+  "employeesInviteRevoked": "निमंत्रण रद्द हो गया।",
+  "employeesReinstate": "कर्मचारी बहाल करें",
+  "employeesReinstateTitle": "कर्मचारी बहाल करें?",
+  "employeesReinstateLead": "इससे {{name}} पूर्व कर्मचारी से सक्रिय कर्मचारी बन जाएंगे। मौजूदा जानकारी और इतिहास सुरक्षित रहेगा।",
+  "employeesReinstatedToast": "कर्मचारी सफलतापूर्वक बहाल हो गया।",
+  "employeesReinstateSuperAdminOnly": "केवल सुपर एडमिन कर्मचारी को बहाल कर सकते हैं।"
 }

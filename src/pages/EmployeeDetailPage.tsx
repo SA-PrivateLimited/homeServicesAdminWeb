@@ -10,6 +10,7 @@ import {
 import {EmployeeIdCard} from '../components/EmployeeIdCard/EmployeeIdCard';
 import {CreatableLookupSelect} from '../components/CreatableLookupSelect';
 import {usePermissions} from '../hooks/usePermissions';
+import {useAuthStore} from '../store/authStore';
 import {PERMISSIONS} from '../constants/permissions';
 import {ApiError} from '../services/api/apiClient';
 import {
@@ -25,6 +26,7 @@ import {
   getEmployeesPage,
   inviteEmployee,
   maskPhoneDisplay,
+  reinstateEmployee,
   revokeEmployeeInvitation,
   updateEmployee,
   updateEmployeeAccess,
@@ -77,6 +79,7 @@ export function EmployeeDetailPage() {
   const {employeeId = ''} = useParams();
   const {t} = useTranslation();
   const {hasPermission} = usePermissions();
+  const superAdminElevated = useAuthStore((s) => s.superAdminElevated);
 
   const canUpdate = hasPermission(PERMISSIONS.EMPLOYEES_UPDATE);
   const canSalary = hasPermission(PERMISSIONS.EMPLOYEES_SALARY);
@@ -125,6 +128,8 @@ export function EmployeeDetailPage() {
 
   const [deactivateOpen, setDeactivateOpen] = useState(false);
   const [deactivateBusy, setDeactivateBusy] = useState(false);
+  const [reinstateOpen, setReinstateOpen] = useState(false);
+  const [reinstateBusy, setReinstateBusy] = useState(false);
 
   const [idCard, setIdCard] = useState<EmployeeIdCardPayload | null>(null);
   const [idCardOpen, setIdCardOpen] = useState(false);
@@ -327,6 +332,23 @@ export function EmployeeDetailPage() {
       );
     } finally {
       setDeactivateBusy(false);
+    }
+  }
+
+  async function confirmReinstate() {
+    if (!employee || !superAdminElevated || reinstateBusy) return;
+    setReinstateBusy(true);
+    try {
+      const updated = await reinstateEmployee(employee._id);
+      setEmployee(updated);
+      setReinstateOpen(false);
+      setToast(t('employeesReinstatedToast'));
+    } catch (e) {
+      setToast(
+        e instanceof ApiError ? e.message : t('employeesSaveError'),
+      );
+    } finally {
+      setReinstateBusy(false);
     }
   }
 
@@ -601,7 +623,28 @@ export function EmployeeDetailPage() {
               {t('employeesDeactivate')}
             </Button>
           ) : null}
+          {employee.status === 'former' ? (
+            <Button
+              variant="primary"
+              disabled={!superAdminElevated || reinstateBusy}
+              title={
+                superAdminElevated
+                  ? undefined
+                  : t('employeesReinstateSuperAdminOnly')
+              }
+              onClick={() => {
+                if (!superAdminElevated) return;
+                setReinstateOpen(true);
+              }}>
+              {t('employeesReinstate')}
+            </Button>
+          ) : null}
         </div>
+        {employee.status === 'former' && !superAdminElevated ? (
+          <p className="muted emp-reinstate-hint no-print">
+            {t('employeesReinstateSuperAdminOnly')}
+          </p>
+        ) : null}
         {idCardError ? <p className="error-text">{idCardError}</p> : null}
       </header>
 
@@ -1249,7 +1292,7 @@ export function EmployeeDetailPage() {
           <p className="modal-lead">
             {t('employeesDeactivateLead', {name: employee.fullName})}
           </p>
-          <div className="form-actions">
+          <div className="form-actions form-actions--end">
             <Button
               variant="ghost"
               disabled={deactivateBusy}
@@ -1261,6 +1304,33 @@ export function EmployeeDetailPage() {
               disabled={deactivateBusy}
               onClick={() => void confirmDeactivate()}>
               {deactivateBusy ? t('saving') : t('employeesDeactivate')}
+            </Button>
+          </div>
+        </Dialog>
+      ) : null}
+
+      {reinstateOpen ? (
+        <Dialog
+          open
+          title={t('employeesReinstateTitle')}
+          onClose={() => {
+            if (!reinstateBusy) setReinstateOpen(false);
+          }}>
+          <p className="modal-lead">
+            {t('employeesReinstateLead', {name: employee.fullName})}
+          </p>
+          <div className="form-actions form-actions--end">
+            <Button
+              variant="ghost"
+              disabled={reinstateBusy}
+              onClick={() => setReinstateOpen(false)}>
+              {t('cancel')}
+            </Button>
+            <Button
+              variant="primary"
+              disabled={reinstateBusy || !superAdminElevated}
+              onClick={() => void confirmReinstate()}>
+              {reinstateBusy ? t('saving') : t('employeesReinstate')}
             </Button>
           </div>
         </Dialog>
@@ -1342,7 +1412,7 @@ export function EmployeeDetailPage() {
                 onChange={(v) => setAccessProfile(v as EmployeeProfileAccess)}
               />
             </label>
-            <label className="emp-check">
+            <label className="checkbox-label">
               <input
                 type="checkbox"
                 checked={accessRaise}
@@ -1350,7 +1420,7 @@ export function EmployeeDetailPage() {
               />
               <span>{t('employeesRaiseRequest')}</span>
             </label>
-            <div className="form-actions">
+            <div className="form-actions form-actions--end">
               <Button
                 variant="ghost"
                 disabled={accessBusy}

@@ -1546,13 +1546,13 @@ a.hs-btn {
 .form-row input,
 .form-row select,
 .form-row textarea,
-.modal label input,
+.modal label input:not([type='checkbox']):not([type='radio']),
 .modal label select,
 .modal label textarea,
-.hs-dialog label input,
+.hs-dialog label input:not([type='checkbox']):not([type='radio']),
 .hs-dialog label select,
 .hs-dialog label textarea,
-.hs-modal label input,
+.hs-modal label input:not([type='checkbox']):not([type='radio']),
 .hs-modal label select,
 .hs-modal label textarea,
 .field input {
@@ -1570,7 +1570,38 @@ a.hs-btn {
   flex-direction: row !important;
   align-items: center;
   gap: var(--space-2) !important;
-  margin-top: var(--space-5);
+  margin-top: 0;
+  font-size: var(--font-size-sm) !important;
+  font-weight: 600;
+  color: var(--color-text) !important;
+}
+
+.modal label.checkbox-label,
+.hs-dialog label.checkbox-label,
+.hs-modal label.checkbox-label,
+.hs-dialog__body label.checkbox-label {
+  flex-direction: row !important;
+  align-items: center;
+  gap: var(--space-2) !important;
+}
+
+.modal label.checkbox-label input[type='checkbox'],
+.hs-dialog label.checkbox-label input[type='checkbox'],
+.hs-modal label.checkbox-label input[type='checkbox'],
+.hs-dialog__body label.checkbox-label input[type='checkbox'] {
+  width: 18px;
+  height: 18px;
+  min-width: 18px;
+  min-height: 18px;
+  max-width: 18px;
+  max-height: 18px;
+  flex: 0 0 18px;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  accent-color: var(--color-primary, #3182ce);
+  cursor: pointer;
 }
 
 .form-actions {
@@ -1581,6 +1612,10 @@ a.hs-btn {
   gap: var(--space-2);
   flex-wrap: wrap;
   align-items: center;
+}
+
+.form-actions--end {
+  justify-content: flex-end;
 }
 
 /* Stand-alone page form (outside a modal): restore top margin */
