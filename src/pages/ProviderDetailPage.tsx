@@ -977,7 +977,7 @@ export function ProviderDetailPage() {
           </div>
           <div>
             <dt>{t('partnerLoginPin')}</dt>
-            <dd>{provider.hasPin ? '••••••' : '—'}</dd>
+            <dd>{provider.hasPin ? '••••' : '—'}</dd>
           </div>
         </dl>
         <div className="modal-actions">
@@ -1709,11 +1709,11 @@ export function ProviderDetailPage() {
               <input
                 type="text"
                 inputMode="numeric"
-                maxLength={6}
+                maxLength={4}
                 placeholder={t('pinAutoGenerate')}
                 value={pinValue}
                 onChange={(e) =>
-                  setPinValue(e.target.value.replace(/\D/g, '').slice(0, 6))
+                  setPinValue(e.target.value.replace(/\D/g, '').slice(0, 4))
                 }
               />
             </label>

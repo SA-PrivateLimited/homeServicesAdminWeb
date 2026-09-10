@@ -60,7 +60,7 @@ export interface PermissionModule {
   permissions: Permission[];
 }
 
-/** Invite / edit UI module groups — checking a module grants all of its permissions. */
+/** Invite / edit UI module groups — View and Edit are controlled separately. */
 export const PERMISSION_MODULES: PermissionModule[] = [
   {
     id: 'overview',
@@ -185,4 +185,107 @@ export function toggleModulePermissions(
 
 export function permissionLabel(permission: string): string {
   return permission.replace(/\./g, ' · ');
+}
+
+/** View capability for a module (`*.view`), if any. */
+export function moduleViewPermission(moduleId: string): Permission | null {
+  const mod = PERMISSION_MODULES.find((m) => m.id === moduleId);
+  if (!mod) return null;
+  return mod.permissions.find((p) => p.endsWith('.view')) ?? null;
+}
+
+/** Mutation capabilities for a module (everything except `*.view`). */
+export function moduleEditPermissions(moduleId: string): Permission[] {
+  const mod = PERMISSION_MODULES.find((m) => m.id === moduleId);
+  if (!mod) return [];
+  return mod.permissions.filter((p) => !p.endsWith('.view'));
+}
+
+export function isModuleViewSelected(
+  moduleId: string,
+  permissions: string[],
+): boolean {
+  const view = moduleViewPermission(moduleId);
+  return view ? permissions.includes(view) : false;
+}
+
+/** Edit is on when every mutation permission for the module is present. */
+export function isModuleEditSelected(
+  moduleId: string,
+  permissions: string[],
+): boolean {
+  const edits = moduleEditPermissions(moduleId);
+  if (!edits.length) return false;
+  return edits.every((p) => permissions.includes(p));
+}
+
+/**
+ * Toggle module View. Turning View off also clears Edit.
+ * Turning View on does not automatically grant Edit.
+ */
+export function setModuleView(
+  moduleId: string,
+  current: string[],
+  enabled: boolean,
+): Permission[] {
+  const mod = PERMISSION_MODULES.find((m) => m.id === moduleId);
+  if (!mod) return current as Permission[];
+  const set = new Set(current);
+  const view = moduleViewPermission(moduleId);
+  const edits = moduleEditPermissions(moduleId);
+  if (enabled) {
+    if (view) set.add(view);
+  } else {
+    if (view) set.delete(view);
+    for (const p of edits) set.delete(p);
+  }
+  return [...set] as Permission[];
+}
+
+/**
+ * Toggle module Edit. Turning Edit on also enables View.
+ * Turning Edit off keeps View if it was set.
+ */
+export function setModuleEdit(
+  moduleId: string,
+  current: string[],
+  enabled: boolean,
+): Permission[] {
+  const mod = PERMISSION_MODULES.find((m) => m.id === moduleId);
+  if (!mod) return current as Permission[];
+  const set = new Set(current);
+  const view = moduleViewPermission(moduleId);
+  const edits = moduleEditPermissions(moduleId);
+  if (enabled) {
+    if (view) set.add(view);
+    for (const p of edits) set.add(p);
+  } else {
+    for (const p of edits) set.delete(p);
+  }
+  return [...set] as Permission[];
+}
+
+/** Ensure any mutation permission implies the module's View permission. */
+export function ensureViewWithEdit(permissions: string[]): Permission[] {
+  const set = new Set(normalizeKnown(permissions));
+  for (const mod of PERMISSION_MODULES) {
+    const view = moduleViewPermission(mod.id);
+    const edits = moduleEditPermissions(mod.id);
+    if (!view || !edits.length) continue;
+    if (edits.some((p) => set.has(p))) set.add(view);
+  }
+  return [...set] as Permission[];
+}
+
+function normalizeKnown(permissions: string[]): Permission[] {
+  const known = new Set<string>(ALL_PERMISSION_VALUES);
+  const out: Permission[] = [];
+  const seen = new Set<string>();
+  for (const raw of permissions) {
+    const p = String(raw || '').trim();
+    if (!p || seen.has(p) || !known.has(p)) continue;
+    seen.add(p);
+    out.push(p as Permission);
+  }
+  return out;
 }
