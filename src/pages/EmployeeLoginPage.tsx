@@ -1,20 +1,19 @@
 import {useState, type FormEvent, type ReactNode} from 'react';
-import {Link} from 'react-router-dom';
+import {Link, Navigate, useNavigate} from 'react-router-dom';
+import {
+  setEmployeeSession,
+} from '../lib/employeeSession';
 import {
   employeeLogin,
   employeeLoginMfa,
-  type Employee,
 } from '../services/api/employeesApi';
 import {AdminBrandLogo} from '../components/AdminBrandLogo';
 import './LoginPage.css';
 
-const EMPLOYEE_JWT_KEY = 'hs_employee_jwt';
-const EMPLOYEE_USER_KEY = 'hs_employee_user';
-
 type Step =
   | {name: 'credentials'}
   | {name: 'mfa'; mfaToken: string; email: string; displayName?: string}
-  | {name: 'done'; employee: Employee};
+  | {name: 'done'};
 
 function Shell({
   children,
@@ -46,6 +45,7 @@ function Shell({
  * Separate from Admin /login (does not use Admin MFA routes or admin session).
  */
 export function EmployeeLoginPage() {
+  const navigate = useNavigate();
   const [step, setStep] = useState<Step>({name: 'credentials'});
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -86,9 +86,8 @@ export function EmployeeLoginPage() {
     setLoading(true);
     try {
       const result = await employeeLoginMfa(step.mfaToken, code);
-      localStorage.setItem(EMPLOYEE_JWT_KEY, result.accessToken);
-      localStorage.setItem(EMPLOYEE_USER_KEY, JSON.stringify(result.employee));
-      setStep({name: 'done', employee: result.employee});
+      setEmployeeSession(result.accessToken, result.employee);
+      navigate('/employee/portal', {replace: true});
     } catch (err) {
       setError(
         err instanceof Error ? err.message : 'Invalid authenticator code',
@@ -99,36 +98,7 @@ export function EmployeeLoginPage() {
   };
 
   if (step.name === 'done') {
-    return (
-      <Shell testId="employee-login-done">
-        <div className="login-brand">
-          <AdminBrandLogo className="login-brand-logo" />
-          <h1>Signed in</h1>
-          <p className="sub">
-            {step.employee.fullName || step.employee.email}
-            {step.employee.employeeCode
-              ? ` · ${step.employee.employeeCode}`
-              : ''}
-          </p>
-          <p className="sub">
-            Your employee account uses email, password, and an authenticator
-            app. Profile tools will open here soon.
-          </p>
-        </div>
-        <button
-          type="button"
-          className="login-submit"
-          onClick={() => {
-            localStorage.removeItem(EMPLOYEE_JWT_KEY);
-            localStorage.removeItem(EMPLOYEE_USER_KEY);
-            setStep({name: 'credentials'});
-            setEmail('');
-            setMfaCode('');
-          }}>
-          Sign out
-        </button>
-      </Shell>
-    );
+    return <Navigate to="/employee/portal" replace />;
   }
 
   if (step.name === 'mfa') {
