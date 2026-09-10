@@ -305,6 +305,7 @@
   "providerCreatedDetail": "{{name}} was added as a provider.",
   "bulkPartnersTitle": "Partner Bulk Onboarding",
   "bulkPartnersLead": "Excel से paste करें, rows देखें, फिर एक-एक Insert करें।",
+  "bulkPartnersViewOnly": "आप यह पेज देख सकते हैं, लेकिन insert/edit के लिए Partner bulk onboarding Edit permission चाहिए।",
   "bulkPartnersExpand": "Partner bulk onboarding दिखाएँ",
   "bulkPartnersCollapse": "Partner bulk onboarding छुपाएँ",
   "bulkPartnersPasteLabel": "Excel से paste करें",

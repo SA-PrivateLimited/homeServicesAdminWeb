@@ -68,10 +68,6 @@ export default function App() {
               }>
               <Route path="providers" element={<ProvidersPage />} />
               <Route
-                path="partners/bulk-onboarding"
-                element={<PartnerBulkOnboardingPage />}
-              />
-              <Route
                 path="providers/:providerId"
                 element={<ProviderDetailPage />}
               />
@@ -82,6 +78,17 @@ export default function App() {
               <Route
                 path="settings/provider-open-requests"
                 element={<ProviderOpenRequestsPage />}
+              />
+            </Route>
+            <Route
+              element={
+                <RequirePermission
+                  permission={PERMISSIONS.PARTNER_BULK_ONBOARDING_VIEW}
+                />
+              }>
+              <Route
+                path="partners/bulk-onboarding"
+                element={<PartnerBulkOnboardingPage />}
               />
             </Route>
             <Route

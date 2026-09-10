@@ -308,6 +308,7 @@
   "providerCreatedDetail": "{{name}} was added as a provider.",
   "bulkPartnersTitle": "Partner Bulk Onboarding",
   "bulkPartnersLead": "Paste from Excel, review rows, then insert one at a time.",
+  "bulkPartnersViewOnly": "You can view this page, but insert and edit actions need Partner bulk onboarding Edit permission.",
   "bulkPartnersExpand": "Show partner bulk onboarding",
   "bulkPartnersCollapse": "Hide partner bulk onboarding",
   "bulkPartnersPasteLabel": "Paste from Excel",
