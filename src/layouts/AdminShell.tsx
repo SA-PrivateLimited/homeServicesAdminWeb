@@ -58,14 +58,14 @@ const NAV: Array<{
   {
     to: '/category-sections',
     key: 'navCategorySections',
-    permission: PERMISSIONS.CATEGORIES_VIEW,
+    permission: PERMISSIONS.CATEGORY_SECTIONS_VIEW,
   },
   {to: '/contacts', key: 'navContacts', permission: PERMISSIONS.CONTACTS_VIEW},
-  {to: '/feedbacks', key: 'navFeedbacks', permission: PERMISSIONS.CONTACTS_VIEW},
+  {to: '/feedbacks', key: 'navFeedbacks', permission: PERMISSIONS.FEEDBACKS_VIEW},
   {
     to: '/settings/permissions',
     key: 'navPermissions',
-    anyOf: [PERMISSIONS.CONTACTS_VIEW, PERMISSIONS.PROVIDERS_VIEW],
+    permission: PERMISSIONS.SETTINGS_VIEW,
   },
   {
     to: '/clients',
@@ -76,8 +76,7 @@ const NAV: Array<{
   {
     to: '/greeting',
     key: 'navGreeting',
-    permission: PERMISSIONS.CLIENTS_VIEW,
-    superAdminOnly: true,
+    permission: PERMISSIONS.GREETING_VIEW,
   },
   {
     to: '/backups',

@@ -93,12 +93,7 @@ export default function App() {
             </Route>
             <Route
               element={
-                <RequirePermission
-                  anyOf={[
-                    PERMISSIONS.PROVIDERS_VIEW,
-                    PERMISSIONS.CONTACTS_VIEW,
-                  ]}
-                />
+                <RequirePermission permission={PERMISSIONS.SETTINGS_VIEW} />
               }>
               <Route
                 path="settings/permissions"
@@ -159,6 +154,13 @@ export default function App() {
                 path="categories/:categoryId"
                 element={<CategoryEditPage />}
               />
+            </Route>
+            <Route
+              element={
+                <RequirePermission
+                  permission={PERMISSIONS.CATEGORY_SECTIONS_VIEW}
+                />
+              }>
               <Route
                 path="category-sections"
                 element={<CategorySectionsPage />}
@@ -169,7 +171,6 @@ export default function App() {
                 <RequirePermission permission={PERMISSIONS.CONTACTS_VIEW} />
               }>
               <Route path="contacts" element={<ContactsPage />} />
-              <Route path="feedbacks" element={<FeedbacksPage />} />
               <Route
                 path="settings/contact-privacy"
                 element={<ContactPrivacyPage />}
@@ -177,9 +178,20 @@ export default function App() {
             </Route>
             <Route
               element={
+                <RequirePermission permission={PERMISSIONS.FEEDBACKS_VIEW} />
+              }>
+              <Route path="feedbacks" element={<FeedbacksPage />} />
+            </Route>
+            <Route
+              element={
                 <RequirePermission permission={PERMISSIONS.CLIENTS_VIEW} />
               }>
               <Route path="clients" element={<ClientsPage />} />
+            </Route>
+            <Route
+              element={
+                <RequirePermission permission={PERMISSIONS.GREETING_VIEW} />
+              }>
               <Route path="greeting" element={<GreetingPage />} />
               <Route path="launch" element={<Navigate to="/greeting" replace />} />
             </Route>

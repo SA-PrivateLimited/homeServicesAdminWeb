@@ -183,6 +183,7 @@
   "permissionsTitle": "Permissions",
   "permissionsLead": "Choose how partners show up, get verified, take open work, and chat on jobs.",
   "permissionsTabContactPrivacy": "Contact privacy",
+  "permissionsNoTabsHint": "You can open Permissions, but need Contacts, Providers, or Jobs View to use a settings tab.",
   "permissionsTabPartnerVerification": "Partner verification",
   "permissionsTabOpenRequests": "Open requests",
   "permissionsTabJobChat": "Job chat",
