@@ -301,6 +301,10 @@ export async function updateEmployeeStatus(
   });
 }
 
+export async function reinstateEmployee(id: string): Promise<Employee> {
+  return apiPost<Employee>(`/api/admin/employees/${id}/reinstate`, {});
+}
+
 export async function addEmployeeCompensation(
   id: string,
   input: {
