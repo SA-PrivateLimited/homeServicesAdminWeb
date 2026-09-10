@@ -34,6 +34,8 @@ import { EmployeesPage } from './pages/EmployeesPage';
 import { EmployeeDetailPage } from './pages/EmployeeDetailPage';
 import { EmployeeActivatePage } from './pages/EmployeeActivatePage';
 import { EmployeeLoginPage } from './pages/EmployeeLoginPage';
+import { EmployeePortalPage } from './pages/EmployeePortalPage';
+import { EmployeeVerifyPage } from './pages/EmployeeVerifyPage';
 import { PERMISSIONS } from './constants/permissions';
 
 export default function App() {
@@ -50,6 +52,8 @@ export default function App() {
         <Route path="/activate" element={<ActivatePage />} />
         <Route path="/employee/activate" element={<EmployeeActivatePage />} />
         <Route path="/employee/login" element={<EmployeeLoginPage />} />
+        <Route path="/employee/portal" element={<EmployeePortalPage />} />
+        <Route path="/employee/verify/:token" element={<EmployeeVerifyPage />} />
         <Route element={<RequireAuth />}>
           <Route element={<AdminShell />}>
             <Route

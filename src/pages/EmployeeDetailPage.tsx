@@ -1302,6 +1302,11 @@ export function EmployeeDetailPage() {
               </div>
             ) : null}
             <EmployeeIdCard card={idCard} />
+            <p className="emp-qr-note no-print">
+              {idCard.qrVerificationEnabled
+                ? 'QR verification enabled — scanning opens the Akansho employee verification page.'
+                : 'QR codes open the Akansho employee verification page (not raw JSON).'}
+            </p>
             <div className="form-actions no-print">
               <Button variant="ghost" onClick={() => setIdCardOpen(false)}>
                 {t('cancel')}

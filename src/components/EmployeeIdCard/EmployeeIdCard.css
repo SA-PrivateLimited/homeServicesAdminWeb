@@ -205,18 +205,22 @@
 }
 
 .akanso-id-card__qr {
-  width: 58px;
-  height: 58px;
+  width: 72px;
+  height: 72px;
   border-radius: 6px;
   background: #fff;
   border: 1px solid #e2e8f0;
   display: block;
   flex-shrink: 0;
+  padding: 4px;
+  box-sizing: border-box;
+  object-fit: contain;
 }
 
 .akanso-id-card__qr--lg {
-  width: 78px;
-  height: 78px;
+  width: 96px;
+  height: 96px;
+  padding: 6px;
 }
 
 .akanso-id-card__footer-brand {

@@ -5,6 +5,7 @@ import {
   apiPatch,
   apiPost,
   apiUploadFormData,
+  ApiError,
 } from './apiClient';
 
 export type EmployeeStatus = 'active' | 'on_leave' | 'inactive' | 'former';
@@ -57,7 +58,7 @@ export interface EmployeeDocument {
   _id: string;
   type: EmployeeDocumentType;
   label?: string;
-  fileUrl: string;
+  fileUrl?: string;
   fileName?: string;
   contentType?: string;
   uploadedAt?: string;
@@ -170,6 +171,8 @@ export interface EmployeeIdCardPayload {
   status: EmployeeStatus;
   verificationUrl: string;
   verify?: string;
+  qrVerificationEnabled?: boolean;
+  idCardStatus?: string;
   qrDataUrl: string;
   generatedAt: string;
 }
@@ -519,4 +522,102 @@ export async function employeeLoginMfa(
     {mfaToken, code},
     {skipAuth: true},
   );
+}
+
+function employeeAuthHeaders(): Record<string, string> {
+  const token =
+    typeof localStorage !== 'undefined'
+      ? localStorage.getItem('hs_employee_jwt')
+      : null;
+  if (!token) return {};
+  return {Authorization: `Bearer ${token}`};
+}
+
+export interface EmployeePortalProfile {
+  employee: Employee;
+  currentCompensation: {
+    amount: number;
+    currency?: string;
+    salaryType?: string;
+    effectiveFrom?: string;
+  } | null;
+  capabilities: {
+    profileAccess: EmployeeProfileAccess;
+    canRaiseRequest: boolean;
+    canViewCompensation: boolean;
+    canViewDocuments: boolean;
+    canViewIdCard: boolean;
+  };
+  supportEmail: string;
+}
+
+export async function fetchEmployeePortalMe(): Promise<EmployeePortalProfile> {
+  return apiGet('/api/employee/me', {
+    skipAuth: true,
+    skipUnauthorizedRedirect: true,
+    headers: employeeAuthHeaders(),
+  });
+}
+
+export async function fetchEmployeeDocumentAccess(
+  documentId: string,
+): Promise<{
+  url: string;
+  contentType: string;
+  fileName: string;
+  expiresIn: number;
+}> {
+  return apiGet(`/api/employee/me/documents/${documentId}/access`, {
+    skipAuth: true,
+    skipUnauthorizedRedirect: true,
+    headers: employeeAuthHeaders(),
+  });
+}
+
+export type EmployeeVerificationState =
+  | 'valid'
+  | 'invalid'
+  | 'revoked'
+  | 'expired'
+  | 'former'
+  | 'inactive';
+
+export interface EmployeePublicVerification {
+  verified: boolean;
+  verificationState: EmployeeVerificationState;
+  message: string;
+  organization?: string;
+  employee?: {
+    name: string;
+    employeeId: string;
+    designation: string;
+    department: string;
+    workLocation: string;
+    photoUrl: string;
+  };
+  employmentStatus?: EmployeeStatus;
+  idCardStatus?: string;
+  verifiedAt?: string;
+  supportEmail: string;
+}
+
+export async function fetchEmployeePublicVerification(
+  token: string,
+): Promise<EmployeePublicVerification> {
+  try {
+    return await apiGet(
+      `/api/employees/verify/${encodeURIComponent(token)}`,
+      {skipAuth: true, skipUnauthorizedRedirect: true},
+    );
+  } catch (err) {
+    if (err instanceof ApiError && (err.status === 404 || err.status === 400)) {
+      return {
+        verified: false,
+        verificationState: 'invalid',
+        message: 'This ID card could not be verified.',
+        supportEmail: 'support@akansho.com',
+      };
+    }
+    throw err;
+  }
 }
