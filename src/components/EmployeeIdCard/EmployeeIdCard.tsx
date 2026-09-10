@@ -20,8 +20,17 @@ export function EmployeeIdCard({card}: Props) {
         aria-label="ID card front">
         <header className="akanso-id-card__silver">
           <div className="akanso-id-card__brand">
-            <span className="akanso-id-card__logo">AKANSHO</span>
-            <span className="akanso-id-card__tag">Employee Identity</span>
+            <img
+              className="akanso-id-card__logo"
+              src="/logo-mark.webp"
+              alt=""
+              width={48}
+              height={48}
+            />
+            <div className="akanso-id-card__brand-text">
+              <span className="akanso-id-card__wordmark">AKANSHO</span>
+              <span className="akanso-id-card__tag">Employee Identity</span>
+            </div>
           </div>
           <span className="akanso-id-card__chip" aria-hidden />
         </header>
@@ -82,9 +91,11 @@ export function EmployeeIdCard({card}: Props) {
         className="akanso-id-card akanso-id-card--back"
         aria-label="ID card back">
         <header className="akanso-id-card__silver">
-          <div className="akanso-id-card__brand">
-            <span className="akanso-id-card__logo">AKANSHO</span>
-            <span className="akanso-id-card__tag">Authorized Employee</span>
+          <div className="akanso-id-card__brand akanso-id-card__brand--text-only">
+            <div className="akanso-id-card__brand-text">
+              <span className="akanso-id-card__wordmark">AKANSHO</span>
+              <span className="akanso-id-card__tag">Authorized Employee</span>
+            </div>
           </div>
         </header>
 

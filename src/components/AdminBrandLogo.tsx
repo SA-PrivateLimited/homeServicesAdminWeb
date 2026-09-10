@@ -4,7 +4,7 @@ import {
   RUNTIME_BRANDING_EVENT,
 } from '../config/runtime';
 
-const FALLBACK_LOGO = '/logo.png';
+const FALLBACK_LOGO = '/logo-mark.webp';
 
 function handleLogoError(img: HTMLImageElement, hide: () => void) {
   if (img.src.endsWith(FALLBACK_LOGO) || img.src.endsWith(`${FALLBACK_LOGO}?`)) {

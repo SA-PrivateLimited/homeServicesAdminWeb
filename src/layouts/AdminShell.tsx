@@ -229,12 +229,12 @@ export function AdminShell() {
               height={36}
               onError={(e) => {
                 const img = e.currentTarget;
-                if (img.src.endsWith('/logo.png')) {
+                if (img.src.includes('/logo-mark.webp')) {
                   img.style.display = 'none';
                   return;
                 }
                 img.onerror = null;
-                img.src = '/logo.png';
+                img.src = '/logo-mark.webp';
               }}
             />
             {!sidebarCollapsed ? <span>{shellTitle}</span> : null}
