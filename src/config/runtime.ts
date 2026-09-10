@@ -127,7 +127,7 @@ export function resolveLogoUrl(logoUrl?: string): string {
 }
 
 export function getBrandLogoSrc(): string {
-  return resolveLogoUrl(runtimeConfig.logoUrl) || '/logo.png';
+  return resolveLogoUrl(runtimeConfig.logoUrl) || '/logo-mark.webp';
 }
 
 export async function loadRuntimeConfig(): Promise<AppRuntimeConfig> {
