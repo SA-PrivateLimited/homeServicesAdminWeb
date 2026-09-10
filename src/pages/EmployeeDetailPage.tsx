@@ -43,6 +43,11 @@ import {
 } from '../services/api/employeesApi';
 import {useAuthStore} from '../store/authStore';
 import {localTenDigits, toE164} from '../utils/phone';
+import {
+  downloadEmployeeIdCard,
+  preparePrintableIdCardHtml,
+  printEmployeeIdCardHtml,
+} from '../utils/employeeIdCardExport';
 import '../styles/pages.css';
 import './EmployeeDetailPage.css';
 
@@ -509,151 +514,31 @@ export function EmployeeDetailPage() {
     }
   }
 
-  function printIdCard() {
-    const root = document.querySelector('.akanso-id-print-root');
-    if (!root) {
-      window.print();
-      return;
-    }
-    void (async () => {
-      try {
-        if (document.fonts?.ready) await document.fonts.ready;
-        const imgs = Array.from(root.querySelectorAll('img'));
-        await Promise.all(
-          imgs.map(
-            (img) =>
-              img.complete
-                ? Promise.resolve()
-                : new Promise<void>((resolve) => {
-                    img.addEventListener('load', () => resolve(), {once: true});
-                    img.addEventListener('error', () => resolve(), {once: true});
-                  }),
-          ),
-        );
-      } catch {
-        /* print anyway */
-      }
-      window.print();
-    })();
-  }
-
-  function escapeHtml(value: string): string {
-    return String(value || '')
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#39;');
-  }
-
-  function downloadIdCard() {
+  async function printIdCard() {
     if (!idCard) return;
-    // Avoid noopener in features — Chromium often returns null and blocks write.
-    const w = window.open('', '_blank', 'width=900,height=700');
-    if (!w) {
-      setToast(t('employeesIdCardPopupBlocked'));
-      return;
-    }
     try {
-      w.opener = null;
+      const html = await preparePrintableIdCardHtml(idCard);
+      await printEmployeeIdCardHtml(html);
     } catch {
-      /* ignore */
+      setToast(t('employeesIdCardError'));
     }
-    const safeName = `Akansho_Employee_ID_${idCard.employeeCode}.html`;
-    const profession = escapeHtml(idCard.profession || idCard.designation || '');
-    const fullName = escapeHtml(idCard.fullName || '');
-    const employeeCode = escapeHtml(idCard.employeeCode || '');
-    const location = escapeHtml(idCard.location || '—');
-    const experience = escapeHtml(
-      formatExperienceYears(idCard.experienceYears),
-    );
-    const phone = escapeHtml(maskPhoneDisplay(idCard.phone));
-    const photoUrl = idCard.photoUrl ? escapeHtml(idCard.photoUrl) : '';
-    const qr = escapeHtml(idCard.qrDataUrl || '');
-    const initial = escapeHtml(
-      (idCard.fullName || '?').trim().slice(0, 1).toUpperCase(),
-    );
-    const photo = photoUrl
-      ? `<img class="photo" src="${photoUrl}" alt=""/>`
-      : `<div class="photo fallback">${initial}</div>`;
-    w.document.write(`<!doctype html><html><head><title>${safeName}</title>
-      <meta charset="utf-8"/>
-      <style>
-        *{box-sizing:border-box}
-        body{font-family:system-ui,-apple-system,sans-serif;background:#f1f5f9;margin:0;padding:24px}
-        .wrap{display:flex;flex-direction:column;gap:20px;align-items:center}
-        .card{width:420px;height:265px;border:1px solid #d0d7de;border-radius:14px;overflow:hidden;background:#fff;display:flex;flex-direction:column}
-        .silver{height:52px;padding:0 16px;display:flex;align-items:center;justify-content:space-between;
-          background:repeating-linear-gradient(0deg,rgba(255,255,255,.3) 0 1px,rgba(0,0,0,.03) 1px 2px),linear-gradient(180deg,#f6f7f9,#c9ced4);
-          border-bottom:1px solid rgba(15,28,46,.1)}
-        .brand{display:flex;align-items:center;gap:10px}
-        .mark{width:34px;height:34px;object-fit:contain}
-        .logo{font-weight:800;letter-spacing:.14em;font-size:13px;color:#0f1c2e}
-        .tag{display:block;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:#64748b;font-weight:650}
-        .chip{width:28px;height:20px;border-radius:4px;background:linear-gradient(135deg,#d4af37,#f5e6a3,#a67c00)}
-        .front{flex:1;display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;padding:12px 14px}
-        .photo{width:72px;height:72px;border-radius:10px;object-fit:cover;border:2px solid #8bc4a4;display:flex;align-items:center;justify-content:center;background:#e8f5ee;font-weight:800;font-size:26px;color:#0f1c2e}
-        .name{margin:0;font-size:15px;font-weight:800;text-transform:uppercase;color:#0f1c2e;letter-spacing:.03em}
-        .role{margin:2px 0 8px;font-size:12px;font-weight:650;color:#1b7a4e}
-        .fields{display:grid;grid-template-columns:1fr 1fr;gap:6px 10px;margin:0}
-        .fields dt{font-size:9px;text-transform:uppercase;letter-spacing:.07em;color:#64748b;margin:0}
-        .fields dd{margin:0;font-size:11px;font-weight:700;color:#0f1c2e}
-        .qrcol{display:flex;flex-direction:column;align-items:center;gap:4px}
-        .qr{width:58px;height:58px;border:1px solid #e2e8f0;border-radius:6px}
-        .footer-brand{font-size:10px;font-weight:750;color:#1b7a4e;letter-spacing:.08em;text-transform:uppercase}
-        .back{flex:1;display:grid;grid-template-columns:1fr auto;gap:14px;align-items:center;padding:14px 16px}
-        .copy{margin:0 0 6px;font-size:12px;line-height:1.4;color:#334155}
-        .eid span{font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:#64748b}
-        .eid strong{display:block;font-size:14px;color:#0f1c2e;margin-top:2px}
-        .auth{margin:6px 0 0;font-size:9px;font-weight:750;letter-spacing:.1em;text-transform:uppercase;color:#1b7a4e;text-align:center}
-        @media print{body{background:#fff;padding:0}.wrap{gap:12mm}.card{box-shadow:none;-webkit-print-color-adjust:exact;print-color-adjust:exact}}
-      </style></head><body>
-      <div class="wrap">
-        <div class="card">
-          <div class="silver"><div class="brand"><img class="mark" src="${escapeHtml(window.location.origin)}/logo-mark.webp" alt=""/><div><span class="logo">AKANSHO</span><span class="tag">Employee Identity</span></div></div><span class="chip"></span></div>
-          <div class="front">
-            ${photo}
-            <div>
-              <h2 class="name">${fullName}</h2>
-              <p class="role">${profession}</p>
-              <dl class="fields">
-                <div><dt>Employee ID</dt><dd>${employeeCode}</dd></div>
-                <div><dt>Experience</dt><dd>${experience}</dd></div>
-                <div><dt>Phone</dt><dd>${phone}</dd></div>
-                <div><dt>Location</dt><dd>${location}</dd></div>
-              </dl>
-            </div>
-            <div class="qrcol"><img class="qr" src="${qr}" alt="QR"/><span class="footer-brand">Akansho</span></div>
-          </div>
-        </div>
-        <div class="card">
-          <div class="silver"><div><span class="logo">AKANSHO</span><span class="tag">Authorized Employee</span></div></div>
-          <div class="back">
-            <div>
-              <p class="copy">This card identifies the holder as an authorized Akansho employee.</p>
-              <p class="copy">If found, please return to Akansho.</p>
-              <div class="eid"><span>Employee ID</span><strong>${employeeCode}</strong></div>
-            </div>
-            <div><img class="qr" style="width:78px;height:78px" src="${qr}" alt="QR"/><p class="auth">Authorized Employee</p></div>
-          </div>
-        </div>
-      </div>
-      <script>
-        (function(){
-          function ready(img){
-            return img.complete ? Promise.resolve() : new Promise(function(r){
-              img.addEventListener('load', r, {once:true});
-              img.addEventListener('error', r, {once:true});
-            });
-          }
-          var imgs = Array.prototype.slice.call(document.images || []);
-          Promise.all(imgs.map(ready)).then(function(){
-            setTimeout(function(){ window.print(); }, 50);
-          });
-        })();
-      </script>
-      </body></html>`);
-    w.document.close();
+  }
+
+  async function downloadIdCard() {
+    if (!idCard) return;
+    try {
+      const previewRoot = document.querySelector(
+        '.akanso-id-print-root',
+      ) as HTMLElement | null;
+      const kind = await downloadEmployeeIdCard(idCard, previewRoot);
+      setToast(
+        kind === 'png'
+          ? t('employeesIdCardDownloadToast')
+          : t('employeesIdCardDownloadHtmlToast'),
+      );
+    } catch {
+      setToast(t('employeesIdCardError'));
+    }
   }
 
   if (loading) {
@@ -1551,10 +1436,12 @@ export function EmployeeDetailPage() {
               <Button variant="ghost" onClick={() => setIdCardOpen(false)}>
                 {t('cancel')}
               </Button>
-              <Button variant="secondary" onClick={downloadIdCard}>
+              <Button
+                variant="secondary"
+                onClick={() => void downloadIdCard()}>
                 {t('employeesIdCardDownload')}
               </Button>
-              <Button variant="primary" onClick={printIdCard}>
+              <Button variant="primary" onClick={() => void printIdCard()}>
                 {t('employeesIdCardPrint')}
               </Button>
             </div>

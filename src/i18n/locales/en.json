@@ -949,6 +949,8 @@
   "employeesIdCardToast": "Employee ID card generated.",
   "employeesIdCardError": "ID card could not be generated. Please try again.",
   "employeesIdCardPopupBlocked": "Allow pop-ups to download the ID card.",
+  "employeesIdCardDownloadToast": "ID card image downloaded.",
+  "employeesIdCardDownloadHtmlToast": "ID card file downloaded. Open it to print or save as PDF.",
   "employeesDeactivate": "Deactivate",
   "employeesDeactivateTitle": "Deactivate Employee?",
   "employeesDeactivateLead": "{{name}} will no longer be treated as an active Akansho employee. Their employee history will remain available.",
