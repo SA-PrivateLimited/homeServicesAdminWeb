@@ -181,6 +181,9 @@
   font-weight: 650;
   color: var(--id-green);
   line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .akanso-id-card__fields {

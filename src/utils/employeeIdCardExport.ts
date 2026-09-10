@@ -11,8 +11,11 @@ const CAPTURE_HOST_ID = 'akanso-id-capture-host';
 /** ISO CR80 ID card size. */
 const CARD_W_MM = 85.6;
 const CARD_H_MM = 54;
-/** Raster capture width in CSS px (~300dpi-ish for screen capture). */
-const CAPTURE_CARD_W = 520;
+/**
+ * Raster capture must match admin preview (`.akanso-id-card` max-width 420px).
+ * Larger/smaller widths change the middle column and wrap role text differently.
+ */
+const CAPTURE_CARD_W = 420;
 const CAPTURE_CARD_H = Math.round((CAPTURE_CARD_W * CARD_H_MM) / CARD_W_MM);
 
 function escapeHtml(value: string): string {
@@ -76,41 +79,52 @@ async function urlToDataUrl(url: string): Promise<string | null> {
 }
 
 function cardShellCss(mode: 'print' | 'capture'): string {
-  const cardSize =
-    mode === 'print'
-      ? `width:${CARD_W_MM}mm;height:${CARD_H_MM}mm;min-width:${CARD_W_MM}mm;min-height:${CARD_H_MM}mm;max-width:${CARD_W_MM}mm;max-height:${CARD_H_MM}mm;`
-      : `width:${CAPTURE_CARD_W}px;height:${CAPTURE_CARD_H}px;`;
+  const isPrint = mode === 'print';
+  const cardSize = isPrint
+    ? `width:${CARD_W_MM}mm;height:${CARD_H_MM}mm;min-width:${CARD_W_MM}mm;min-height:${CARD_H_MM}mm;max-width:${CARD_W_MM}mm;max-height:${CARD_H_MM}mm;`
+    : `width:${CAPTURE_CARD_W}px;height:${CAPTURE_CARD_H}px;`;
+
+  // Capture typography mirrors EmployeeIdCard.css at 16px root (420px preview).
+  // Print uses slightly tighter chrome so CR80 (~323px @96dpi) keeps role on one line.
+  const photo = isPrint ? '56px' : '72px';
+  const qr = isPrint ? '46px' : '58px';
+  const qrLg = isPrint ? '62px' : '78px';
+  const nameFs = isPrint ? '11px' : '14.7px';
+  const roleFs = isPrint ? '9.5px' : '11.5px';
+  const frontGap = isPrint ? '8px' : '12px';
+  const frontPad = isPrint ? '8px 10px' : '12px 14px';
 
   return `
   *{box-sizing:border-box}
   html,body{margin:0;padding:0;background:#fff}
   body{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#0f1c2e}
-  .wrap{display:flex;flex-direction:column;align-items:center;gap:${mode === 'print' ? '12mm' : '20px'};padding:${mode === 'print' ? '0' : '16px'};background:#fff}
+  .wrap{display:flex;flex-direction:column;align-items:center;gap:${isPrint ? '12mm' : '20px'};padding:${isPrint ? '0' : '16px'};background:#fff}
   .card{${cardSize}border:1px solid #d0d7de;border-radius:14px;overflow:hidden;background:#fff;display:flex;flex-direction:column;break-inside:avoid;page-break-inside:avoid;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-  .silver{flex:0 0 auto;height:22%;min-height:44px;max-height:58px;padding:0 16px;display:flex;align-items:center;justify-content:space-between;
+  .silver{flex:0 0 auto;height:22%;min-height:${isPrint ? '34px' : '44px'};max-height:${isPrint ? '44px' : '58px'};padding:0 ${isPrint ? '10px' : '16px'};display:flex;align-items:center;justify-content:space-between;
     background:repeating-linear-gradient(0deg,rgba(255,255,255,.3) 0 1px,rgba(0,0,0,.03) 1px 2px),linear-gradient(180deg,#f6f7f9,#c9ced4);
     border-bottom:1px solid rgba(15,28,46,.1)}
   .brand{display:flex;align-items:center;gap:10px;min-width:0}
-  .mark{width:34px;height:34px;object-fit:contain;flex-shrink:0}
-  .logo{font-weight:800;letter-spacing:.14em;font-size:13px;color:#0f1c2e}
-  .tag{display:block;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:#64748b;font-weight:650}
-  .chip{width:28px;height:20px;border-radius:4px;background:linear-gradient(135deg,#d4af37,#f5e6a3,#a67c00);flex-shrink:0}
-  .front{flex:1;min-height:0;display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;padding:10px 14px}
-  .photo{width:72px;height:72px;border-radius:10px;object-fit:cover;border:2px solid #8bc4a4;display:flex;align-items:center;justify-content:center;background:#e8f5ee;font-weight:800;font-size:26px;color:#0f1c2e}
-  .name{margin:0;font-size:15px;font-weight:800;text-transform:uppercase;color:#0f1c2e;letter-spacing:.03em;line-height:1.2}
-  .role{margin:2px 0 8px;font-size:12px;font-weight:650;color:#1b7a4e}
-  .fields{display:grid;grid-template-columns:1fr 1fr;gap:6px 10px;margin:0}
-  .fields dt{font-size:9px;text-transform:uppercase;letter-spacing:.07em;color:#64748b;margin:0}
-  .fields dd{margin:0;font-size:11px;font-weight:700;color:#0f1c2e}
-  .qrcol{display:flex;flex-direction:column;align-items:center;gap:4px}
-  .qr{width:58px;height:58px;border:1px solid #e2e8f0;border-radius:6px;display:block}
-  .footer-brand{font-size:10px;font-weight:750;color:#1b7a4e;letter-spacing:.08em;text-transform:uppercase}
-  .back{flex:1;min-height:0;display:grid;grid-template-columns:1fr auto;gap:14px;align-items:center;padding:12px 16px}
-  .copy{margin:0 0 6px;font-size:12px;line-height:1.4;color:#334155}
-  .eid span{font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:#64748b}
-  .eid strong{display:block;font-size:14px;color:#0f1c2e;margin-top:2px}
-  .auth{margin:6px 0 0;font-size:9px;font-weight:750;letter-spacing:.1em;text-transform:uppercase;color:#1b7a4e;text-align:center}
-  .qr-lg{width:78px;height:78px;border:1px solid #e2e8f0;border-radius:6px;display:block}
+  .mark{width:${isPrint ? '28px' : '34px'};height:${isPrint ? '28px' : '34px'};object-fit:contain;flex-shrink:0}
+  .logo{font-weight:800;letter-spacing:.14em;font-size:${isPrint ? '11px' : '13.1px'};color:#0f1c2e}
+  .tag{display:block;font-size:${isPrint ? '7.5px' : '9.3px'};letter-spacing:.12em;text-transform:uppercase;color:#64748b;font-weight:650}
+  .chip{width:${isPrint ? '22px' : '28px'};height:${isPrint ? '16px' : '20px'};border-radius:4px;background:linear-gradient(135deg,#d4af37,#f5e6a3,#a67c00);flex-shrink:0}
+  .front{flex:1;min-height:0;display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:${frontGap};align-items:center;padding:${frontPad}}
+  .info{min-width:0;display:flex;flex-direction:column;justify-content:center;gap:2px}
+  .photo{width:${photo};height:${photo};border-radius:10px;object-fit:cover;object-position:center top;border:2px solid #8bc4a4;display:flex;align-items:center;justify-content:center;background:#e8f5ee;font-weight:800;font-size:${isPrint ? '20px' : '26px'};color:#0f1c2e;flex-shrink:0}
+  .name{margin:0;font-size:${nameFs};font-weight:800;text-transform:uppercase;color:#0f1c2e;letter-spacing:.03em;line-height:1.2;overflow-wrap:anywhere}
+  .role{margin:0 0 ${isPrint ? '4px' : '6px'};font-size:${roleFs};font-weight:650;color:#1b7a4e;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .fields{display:grid;grid-template-columns:1fr 1fr;gap:${isPrint ? '4px 8px' : '5px 10px'};margin:0}
+  .fields dt{font-size:${isPrint ? '7.5px' : '8.8px'};text-transform:uppercase;letter-spacing:.07em;color:#64748b;margin:0 0 1px;font-weight:600}
+  .fields dd{margin:0;font-size:${isPrint ? '9px' : '11.2px'};font-weight:700;color:#0f1c2e;line-height:1.25;overflow-wrap:anywhere}
+  .qrcol{display:flex;flex-direction:column;align-items:center;gap:4px;flex-shrink:0}
+  .qr{width:${qr};height:${qr};border:1px solid #e2e8f0;border-radius:6px;display:block}
+  .footer-brand{font-size:${isPrint ? '8px' : '10px'};font-weight:750;color:#1b7a4e;letter-spacing:.08em;text-transform:uppercase}
+  .back{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:${isPrint ? '10px' : '14px'};align-items:center;padding:${isPrint ? '10px 12px' : '12px 16px'}}
+  .copy{margin:0 0 6px;font-size:${isPrint ? '10px' : '12px'};line-height:1.4;color:#334155}
+  .eid span{font-size:${isPrint ? '7.5px' : '9px'};text-transform:uppercase;letter-spacing:.06em;color:#64748b}
+  .eid strong{display:block;font-size:${isPrint ? '11px' : '14px'};color:#0f1c2e;margin-top:2px}
+  .auth{margin:6px 0 0;font-size:${isPrint ? '7.5px' : '9px'};font-weight:750;letter-spacing:.1em;text-transform:uppercase;color:#1b7a4e;text-align:center}
+  .qr-lg{width:${qrLg};height:${qrLg};border:1px solid #e2e8f0;border-radius:6px;display:block}
   @media print{
     @page{size:A4 portrait;margin:12mm}
     html,body{width:auto!important;height:auto!important;overflow:visible!important}
@@ -157,7 +171,7 @@ function buildCardMarkup(
     <div class="silver"><div class="brand"><img class="mark" src="${logoUrl}" alt=""/><div><span class="logo">AKANSHO</span><span class="tag">Employee Identity</span></div></div><span class="chip"></span></div>
     <div class="front">
       ${photo}
-      <div>
+      <div class="info">
         <h2 class="name">${fullName}</h2>
         <p class="role">${profession}</p>
         <dl class="fields">
@@ -282,15 +296,18 @@ function triggerBlobDownload(blob: Blob, filename: string) {
 /**
  * Build an off-screen capture host in the *main* document (not the Dialog).
  * Capturing the modal preview often yields a blank PNG due to overflow/stacking.
+ * Size/typography match admin preview (420px) so role text stays on one line.
  */
 async function captureIdCardPng(
   card: EmployeeIdCardPayload,
   assets: {logoUrl: string; photoUrl: string},
+  previewRoot?: HTMLElement | null,
 ): Promise<Blob> {
   removeHost(CAPTURE_HOST_ID);
   const host = document.createElement('div');
   host.id = CAPTURE_HOST_ID;
   host.setAttribute('aria-hidden', 'true');
+  // opacity:0 can skip painting in some browsers → blank PNG. Keep nearly invisible.
   host.style.cssText = [
     'position:fixed',
     'left:0',
@@ -298,10 +315,59 @@ async function captureIdCardPng(
     `width:${CAPTURE_CARD_W + 32}px`,
     'background:#ffffff',
     'z-index:2147483646',
-    'opacity:0',
+    'opacity:0.01',
     'pointer-events:none',
+    'overflow:visible',
   ].join(';');
-  host.innerHTML = `<style>${cardShellCss('capture')}</style>${buildCardMarkup(card, assets)}`;
+
+  let captureTarget: HTMLElement;
+
+  if (previewRoot) {
+    const clone = previewRoot.cloneNode(true) as HTMLElement;
+    clone.style.width = `${CAPTURE_CARD_W}px`;
+    clone.style.maxWidth = `${CAPTURE_CARD_W}px`;
+    clone.style.margin = '0';
+    clone.style.padding = '0';
+    clone.querySelectorAll('.akanso-id-card').forEach((node) => {
+      const el = node as HTMLElement;
+      el.style.width = `${CAPTURE_CARD_W}px`;
+      el.style.maxWidth = `${CAPTURE_CARD_W}px`;
+      el.style.height = `${CAPTURE_CARD_H}px`;
+      el.style.aspectRatio = 'auto';
+    });
+    clone.querySelectorAll('.akanso-id-card__role').forEach((node) => {
+      const el = node as HTMLElement;
+      el.style.whiteSpace = 'nowrap';
+      el.style.overflow = 'hidden';
+      el.style.textOverflow = 'ellipsis';
+    });
+    // Prefer embedded data URLs so html-to-image does not blank cross-origin photos.
+    for (const img of Array.from(clone.querySelectorAll('img'))) {
+      const src = img.getAttribute('src') || '';
+      if (!src || src.startsWith('data:')) continue;
+      const cls = img.className || '';
+      let data: string | null = null;
+      if (cls.includes('akanso-id-card__logo') || src.includes('logo-mark')) {
+        data = assets.logoUrl;
+      } else if (cls.includes('akanso-id-card__photo') && assets.photoUrl) {
+        data = assets.photoUrl;
+      } else {
+        const abs = src.startsWith('/')
+          ? `${window.location.origin}${src}`
+          : src;
+        data = await urlToDataUrl(abs);
+      }
+      if (data) img.setAttribute('src', data);
+    }
+    host.appendChild(clone);
+    captureTarget = clone;
+  } else {
+    host.innerHTML = `<style>${cardShellCss('capture')}</style>${buildCardMarkup(card, assets)}`;
+    const wrap = host.querySelector('.wrap') as HTMLElement | null;
+    if (!wrap) throw new Error('Capture root missing');
+    captureTarget = wrap;
+  }
+
   document.body.appendChild(host);
 
   try {
@@ -314,15 +380,12 @@ async function captureIdCardPng(
     await waitForImages(host, 4000);
     await new Promise<void>((r) => requestAnimationFrame(() => r()));
 
-    const wrap = host.querySelector('.wrap') as HTMLElement | null;
-    if (!wrap) throw new Error('Capture root missing');
-
-    const dataUrl = await toPng(wrap, {
+    const dataUrl = await toPng(captureTarget, {
       cacheBust: true,
       pixelRatio: 2,
       backgroundColor: '#ffffff',
-      width: CAPTURE_CARD_W + 32,
-      canvasWidth: (CAPTURE_CARD_W + 32) * 2,
+      width: CAPTURE_CARD_W + (previewRoot ? 0 : 32),
+      canvasWidth: (CAPTURE_CARD_W + (previewRoot ? 0 : 32)) * 2,
       style: {
         margin: '0',
         transform: 'none',
@@ -347,20 +410,20 @@ async function captureIdCardPng(
  */
 export async function downloadEmployeeIdCard(
   card: EmployeeIdCardPayload,
-  _previewRoot?: HTMLElement | null,
+  previewRoot?: HTMLElement | null,
 ): Promise<'png' | 'html'> {
   const baseName = `Akansho_Employee_ID_${card.employeeCode || 'card'}`;
   const assets = await resolveAssetUrls(card);
 
   try {
-    const blob = await captureIdCardPng(card, assets);
+    const blob = await captureIdCardPng(card, assets, previewRoot);
     triggerBlobDownload(blob, `${baseName}.png`);
     return 'png';
   } catch {
     // Reliable fallback: self-contained HTML file (opens with cards visible).
     const html = buildEmployeeIdCardHtml(card, {
       ...assets,
-      mode: 'print',
+      mode: 'capture',
     });
     triggerBlobDownload(
       new Blob([html], {type: 'text/html;charset=utf-8'}),
