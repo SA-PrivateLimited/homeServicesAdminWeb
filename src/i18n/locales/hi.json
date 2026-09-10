@@ -950,6 +950,8 @@
   "employeesIdCardToast": "कर्मचारी ID कार्ड बन गया।",
   "employeesIdCardError": "ID कार्ड नहीं बन सका। फिर कोशिश करें।",
   "employeesIdCardPopupBlocked": "ID कार्ड डाउनलोड के लिए पॉप-अप अनुमति दें।",
+  "employeesIdCardDownloadToast": "ID कार्ड इमेज डाउनलोड हो गई।",
+  "employeesIdCardDownloadHtmlToast": "ID कार्ड फ़ाइल डाउनलोड हो गई। खोलकर प्रिंट या PDF सेव करें।",
   "employeesDeactivate": "निष्क्रिय करें",
   "employeesDeactivateTitle": "कर्मचारी निष्क्रिय करें?",
   "employeesDeactivateLead": "{{name}} अब सक्रिय Akansho कर्मचारी नहीं रहेंगे। उनका इतिहास उपलब्ध रहेगा।",
