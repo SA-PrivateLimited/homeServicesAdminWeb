@@ -29,6 +29,7 @@ import {
   updateEmployee,
   updateEmployeeAccess,
   updateEmployeeStatus,
+  reinstateEmployee,
   uploadEmployeeDocument,
   uploadEmployeePhoto,
   type Employee,
@@ -36,9 +37,11 @@ import {
   type EmployeeIdCardPayload,
   type EmployeeMeta,
   type EmployeeProfileAccess,
+  type EmployeeStatus,
   type EmploymentType,
   type EmployeeInviteResult,
 } from '../services/api/employeesApi';
+import {useAuthStore} from '../store/authStore';
 import {localTenDigits, toE164} from '../utils/phone';
 import '../styles/pages.css';
 import './EmployeeDetailPage.css';
@@ -77,6 +80,7 @@ export function EmployeeDetailPage() {
   const {employeeId = ''} = useParams();
   const {t} = useTranslation();
   const {hasPermission} = usePermissions();
+  const superAdminElevated = useAuthStore((s) => s.superAdminElevated);
 
   const canUpdate = hasPermission(PERMISSIONS.EMPLOYEES_UPDATE);
   const canSalary = hasPermission(PERMISSIONS.EMPLOYEES_SALARY);
@@ -125,6 +129,10 @@ export function EmployeeDetailPage() {
 
   const [deactivateOpen, setDeactivateOpen] = useState(false);
   const [deactivateBusy, setDeactivateBusy] = useState(false);
+  const [statusOpen, setStatusOpen] = useState(false);
+  const [statusBusy, setStatusBusy] = useState(false);
+  const [statusDraft, setStatusDraft] = useState<EmployeeStatus>('active');
+  const [statusError, setStatusError] = useState<string | null>(null);
 
   const [idCard, setIdCard] = useState<EmployeeIdCardPayload | null>(null);
   const [idCardOpen, setIdCardOpen] = useState(false);
@@ -327,6 +335,68 @@ export function EmployeeDetailPage() {
       );
     } finally {
       setDeactivateBusy(false);
+    }
+  }
+
+  function openStatusChange() {
+    if (!employee) return;
+    setStatusDraft(employee.status);
+    setStatusError(null);
+    setStatusOpen(true);
+  }
+
+  async function confirmStatusChange() {
+    if (!employee || statusBusy) return;
+    if (statusDraft === employee.status) {
+      setStatusOpen(false);
+      return;
+    }
+    if (
+      employee.status === 'former' &&
+      statusDraft !== 'former' &&
+      !superAdminElevated
+    ) {
+      setStatusError(t('employeesReinstateSuperAdminOnly'));
+      return;
+    }
+    setStatusBusy(true);
+    setStatusError(null);
+    try {
+      const updated =
+        employee.status === 'former' && statusDraft === 'active'
+          ? await reinstateEmployee(employee._id)
+          : await updateEmployeeStatus(employee._id, statusDraft);
+      setEmployee(updated);
+      setStatusOpen(false);
+      setToast(
+        statusDraft === 'former'
+          ? t('employeesDeactivatedToast')
+          : employee.status === 'former' && statusDraft === 'active'
+            ? t('employeesReinstatedToast')
+            : t('employeesStatusUpdatedToast'),
+      );
+    } catch (e) {
+      setStatusError(
+        e instanceof ApiError ? e.message : t('employeesSaveError'),
+      );
+    } finally {
+      setStatusBusy(false);
+    }
+  }
+
+  async function confirmReinstate() {
+    if (!employee || !superAdminElevated || statusBusy) return;
+    setStatusBusy(true);
+    try {
+      const updated = await reinstateEmployee(employee._id);
+      setEmployee(updated);
+      setToast(t('employeesReinstatedToast'));
+    } catch (e) {
+      setToast(
+        e instanceof ApiError ? e.message : t('employeesSaveError'),
+      );
+    } finally {
+      setStatusBusy(false);
     }
   }
 
@@ -596,12 +666,38 @@ export function EmployeeDetailPage() {
               {t('employeesEdit')}
             </Button>
           ) : null}
+          {canDeactivate ? (
+            <Button variant="ghost" onClick={openStatusChange}>
+              {t('employeesChangeStatus')}
+            </Button>
+          ) : null}
+          {canDeactivate && employee.status === 'former' ? (
+            <Button
+              variant="secondary"
+              disabled={!superAdminElevated || statusBusy}
+              title={
+                superAdminElevated
+                  ? undefined
+                  : t('employeesReinstateSuperAdminOnly')
+              }
+              onClick={() => {
+                if (!superAdminElevated) return;
+                void confirmReinstate();
+              }}>
+              {t('employeesReinstate')}
+            </Button>
+          ) : null}
           {canDeactivate && employee.status !== 'former' ? (
             <Button variant="ghost" onClick={() => setDeactivateOpen(true)}>
               {t('employeesDeactivate')}
             </Button>
           ) : null}
         </div>
+        {employee.status === 'former' && !superAdminElevated && canDeactivate ? (
+          <p className="muted emp-reinstate-hint no-print">
+            {t('employeesReinstateSuperAdminOnly')}
+          </p>
+        ) : null}
         {idCardError ? <p className="error-text">{idCardError}</p> : null}
       </header>
 
@@ -1261,6 +1357,56 @@ export function EmployeeDetailPage() {
               disabled={deactivateBusy}
               onClick={() => void confirmDeactivate()}>
               {deactivateBusy ? t('saving') : t('employeesDeactivate')}
+            </Button>
+          </div>
+        </Dialog>
+      ) : null}
+
+      {statusOpen ? (
+        <Dialog
+          open
+          title={t('employeesChangeStatusTitle')}
+          onClose={() => {
+            if (!statusBusy) setStatusOpen(false);
+          }}>
+          <p className="modal-lead">
+            {t('employeesChangeStatusLead', {name: employee.fullName})}
+          </p>
+          <label className="emp-field">
+            <span>{t('employeesColStatus')}</span>
+            <Select
+              options={[
+                {value: 'active', label: employeeStatusLabel('active')},
+                {value: 'on_leave', label: employeeStatusLabel('on_leave')},
+                {value: 'inactive', label: employeeStatusLabel('inactive')},
+                {value: 'former', label: employeeStatusLabel('former')},
+              ].map((opt) => ({
+                ...opt,
+                disabled:
+                  employee.status === 'former' &&
+                  opt.value !== 'former' &&
+                  !superAdminElevated,
+              }))}
+              value={statusDraft}
+              onChange={(value) => setStatusDraft(value as EmployeeStatus)}
+            />
+          </label>
+          {employee.status === 'former' && !superAdminElevated ? (
+            <p className="muted">{t('employeesReinstateSuperAdminOnly')}</p>
+          ) : null}
+          {statusError ? <p className="error-text">{statusError}</p> : null}
+          <div className="form-actions">
+            <Button
+              variant="ghost"
+              disabled={statusBusy}
+              onClick={() => setStatusOpen(false)}>
+              {t('cancel')}
+            </Button>
+            <Button
+              variant="primary"
+              disabled={statusBusy}
+              onClick={() => void confirmStatusChange()}>
+              {statusBusy ? t('saving') : t('save')}
             </Button>
           </div>
         </Dialog>

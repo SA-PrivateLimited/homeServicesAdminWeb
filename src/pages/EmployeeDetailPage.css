@@ -129,6 +129,18 @@
   align-items: flex-start;
 }
 
+.emp-reinstate-hint {
+  margin: 0 0 12px;
+  font-size: 0.9rem;
+}
+
+.emp-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 12px 0 16px;
+}
+
 .emp-access-panel,
 .panel.emp-section {
   padding: 20px 22px;
