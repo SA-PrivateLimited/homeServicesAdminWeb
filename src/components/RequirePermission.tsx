@@ -7,7 +7,6 @@ const FALLBACK_ORDER: Array<{to: string; permission: Permission}> = [
   {to: '/jobs', permission: PERMISSIONS.JOBS_VIEW},
   {to: '/providers', permission: PERMISSIONS.PROVIDERS_VIEW},
   {to: '/customers', permission: PERMISSIONS.CUSTOMERS_VIEW},
-  {to: '/hr/employees', permission: PERMISSIONS.EMPLOYEES_VIEW},
   {to: '/categories', permission: PERMISSIONS.CATEGORIES_VIEW},
   {to: '/geography', permission: PERMISSIONS.GEOGRAPHY_VIEW},
   {to: '/contacts', permission: PERMISSIONS.CONTACTS_VIEW},

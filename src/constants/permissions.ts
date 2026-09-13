@@ -58,15 +58,6 @@ export const PERMISSIONS = {
 
   ADMINS_VIEW: 'admins.view',
   ADMINS_MANAGE: 'admins.manage',
-
-  EMPLOYEES_VIEW: 'employees.view',
-  EMPLOYEES_CREATE: 'employees.create',
-  EMPLOYEES_UPDATE: 'employees.update',
-  EMPLOYEES_SALARY: 'employees.salary',
-  EMPLOYEES_DOCUMENTS: 'employees.documents',
-  EMPLOYEES_ID_CARD: 'employees.id-card',
-  EMPLOYEES_DEACTIVATE: 'employees.deactivate',
-  EMPLOYEES_DELETE: 'employees.delete',
 } as const;
 
 export type Permission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
@@ -178,20 +169,6 @@ export const PERMISSION_MODULES: PermissionModule[] = [
     id: 'greeting',
     label: 'Greeting',
     permissions: [PERMISSIONS.GREETING_VIEW, PERMISSIONS.GREETING_UPDATE],
-  },
-  {
-    id: 'employees',
-    label: 'HR / Employees',
-    permissions: [
-      PERMISSIONS.EMPLOYEES_VIEW,
-      PERMISSIONS.EMPLOYEES_CREATE,
-      PERMISSIONS.EMPLOYEES_UPDATE,
-      PERMISSIONS.EMPLOYEES_SALARY,
-      PERMISSIONS.EMPLOYEES_DOCUMENTS,
-      PERMISSIONS.EMPLOYEES_ID_CARD,
-      PERMISSIONS.EMPLOYEES_DEACTIVATE,
-      PERMISSIONS.EMPLOYEES_DELETE,
-    ],
   },
 ];
 
