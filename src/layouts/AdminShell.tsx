@@ -39,11 +39,6 @@ const NAV: Array<{
   {to: '/geography', key: 'navGeography', permission: PERMISSIONS.GEOGRAPHY_VIEW},
   {to: '/customers', key: 'navCustomers', permission: PERMISSIONS.CUSTOMERS_VIEW},
   {
-    to: '/hr/employees',
-    key: 'navEmployees',
-    permission: PERMISSIONS.EMPLOYEES_VIEW,
-  },
-  {
     to: '/admins',
     key: 'navAdmins',
     permission: PERMISSIONS.ADMINS_VIEW,

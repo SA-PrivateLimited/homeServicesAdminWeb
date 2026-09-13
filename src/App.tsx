@@ -30,12 +30,6 @@ import { BrandCreativesPage } from './pages/BrandCreativesPage';
 import { GeographyStatesPage } from './pages/GeographyStatesPage';
 import { GeographyDistrictsPage } from './pages/GeographyDistrictsPage';
 import { GeographyProvidersPage } from './pages/GeographyProvidersPage';
-import { EmployeesPage } from './pages/EmployeesPage';
-import { EmployeeDetailPage } from './pages/EmployeeDetailPage';
-import { EmployeeActivatePage } from './pages/EmployeeActivatePage';
-import { EmployeeLoginPage } from './pages/EmployeeLoginPage';
-import { EmployeePortalPage } from './pages/EmployeePortalPage';
-import { EmployeeVerifyPage } from './pages/EmployeeVerifyPage';
 import { PERMISSIONS } from './constants/permissions';
 
 export default function App() {
@@ -50,10 +44,6 @@ export default function App() {
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/activate" element={<ActivatePage />} />
-        <Route path="/employee/activate" element={<EmployeeActivatePage />} />
-        <Route path="/employee/login" element={<EmployeeLoginPage />} />
-        <Route path="/employee/portal" element={<EmployeePortalPage />} />
-        <Route path="/employee/verify/:token" element={<EmployeeVerifyPage />} />
         <Route element={<RequireAuth />}>
           <Route element={<AdminShell />}>
             <Route
@@ -123,16 +113,6 @@ export default function App() {
                 <RequirePermission permission={PERMISSIONS.CUSTOMERS_VIEW} />
               }>
               <Route path="customers" element={<CustomersPage />} />
-            </Route>
-            <Route
-              element={
-                <RequirePermission permission={PERMISSIONS.EMPLOYEES_VIEW} />
-              }>
-              <Route path="hr/employees" element={<EmployeesPage />} />
-              <Route
-                path="hr/employees/:employeeId"
-                element={<EmployeeDetailPage />}
-              />
             </Route>
             <Route
               element={

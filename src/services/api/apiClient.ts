@@ -67,8 +67,7 @@ export function handleUnauthorizedSession() {
   const path = window.location.pathname || '';
   if (
     !path.startsWith('/login') &&
-    !path.startsWith('/activate') &&
-    !path.startsWith('/employee/')
+    !path.startsWith('/activate')
   ) {
     window.location.assign('/login');
   } else {
