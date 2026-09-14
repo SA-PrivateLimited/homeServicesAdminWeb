@@ -41,12 +41,24 @@ export default defineConfig({
     exclude: ['sapvt-ltd-web-packages'],
     include: ['antd'],
   },
+  build: {
+    target: 'esnext',
+    modulePreload: false,
+  },
   server: {
+    cors: true,
     fs: {
       allow: ['..'],
     },
     watch: {
       ignored: ['!**/packages/saPvtLtdWebPackages/dist/**'],
+    },
+    proxy: {
+      '/__emp_remote': {
+        target: 'http://localhost:5180',
+        changeOrigin: true,
+        rewrite: (p) => p.replace(/^\/__emp_remote/, ''),
+      },
     },
   },
 });
