@@ -69,6 +69,8 @@
   "empLoading": "कर्मचारी प्रबंधन लोड हो रहा है…",
   "empLoadError": "कर्मचारी प्रबंधन लोड नहीं हो सका। फिर कोशिश करें।",
   "empRetry": "फिर कोशिश करें",
+  "adminSectionError": "यह पेज नहीं खुल सका।",
+  "adminSectionErrorHint": "बाकी एडमिन टैब चल रहे हैं। साइडबार से आगे बढ़ें।",
   "actAsSuperAdmin": "Act as Super Admin",
   "actAsSuperAdminLead": "Enter the 4-digit Super Admin key to add or remove admin accounts.",
   "superAdminKey": "Super Admin key",

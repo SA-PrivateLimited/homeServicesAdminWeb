@@ -31,6 +31,7 @@ import { GeographyStatesPage } from './pages/GeographyStatesPage';
 import { GeographyDistrictsPage } from './pages/GeographyDistrictsPage';
 import { GeographyProvidersPage } from './pages/GeographyProvidersPage';
 import { EmployeeManagementPage } from './pages/EmployeeManagementPage';
+import { EmployeeRouteBoundary } from './components/AdminSectionErrorBoundary';
 import { PERMISSIONS } from './constants/permissions';
 
 export default function App() {
@@ -115,7 +116,14 @@ export default function App() {
               }>
               <Route path="customers" element={<CustomersPage />} />
             </Route>
-            <Route path="hr/*" element={<EmployeeManagementPage />} />
+            <Route
+              path="hr/*"
+              element={
+                <EmployeeRouteBoundary>
+                  <EmployeeManagementPage />
+                </EmployeeRouteBoundary>
+              }
+            />
             <Route path="employees" element={<Navigate to="/hr" replace />} />
             <Route
               element={
