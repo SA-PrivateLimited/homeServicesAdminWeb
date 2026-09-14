@@ -38,6 +38,7 @@ const NAV: Array<{
   },
   {to: '/geography', key: 'navGeography', permission: PERMISSIONS.GEOGRAPHY_VIEW},
   {to: '/customers', key: 'navCustomers', permission: PERMISSIONS.CUSTOMERS_VIEW},
+  {to: '/hr', key: 'navEmployee'},
   {
     to: '/admins',
     key: 'navAdmins',
@@ -268,7 +269,8 @@ export function AdminShell() {
               className={({isActive}) =>
                 isActive ||
                 (item.to.startsWith('/settings/permissions') &&
-                  location.pathname.startsWith('/settings/permissions'))
+                  location.pathname.startsWith('/settings/permissions')) ||
+                (item.to === '/hr' && location.pathname.startsWith('/hr'))
                   ? 'nav-link active'
                   : 'nav-link'
               }

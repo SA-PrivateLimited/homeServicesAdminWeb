@@ -5,12 +5,20 @@
 import type {ClientColorPalette} from '../theme/themeConfig';
 import {themeConfig, DEFAULT_CLIENT} from '../theme/themeConfig';
 import {resolveBrandLogoUrl} from '../utils/brandLogoUrl';
+import {
+  applyEmpRemoteEntry,
+  defaultEmpApiUrl,
+  defaultEmpRemoteUrl,
+  rewriteLocalEmpRemoteUrl,
+} from '../emp/remoteUrl';
 
 export interface AppRuntimeConfig {
   apiBaseUrl: string;
   brandName: string;
   logoUrl?: string;
   themeColors: ClientColorPalette;
+  empRemoteUrl: string;
+  empApiUrl: string;
 }
 
 const FALLBACK: AppRuntimeConfig = {
@@ -19,6 +27,11 @@ const FALLBACK: AppRuntimeConfig = {
     'http://localhost:3001',
   brandName: 'Admin',
   themeColors: themeConfig[DEFAULT_CLIENT],
+  empRemoteUrl:
+    import.meta.env.VITE_EMP_REMOTE_URL?.replace(/\/$/, '') ||
+    defaultEmpRemoteUrl(),
+  empApiUrl:
+    import.meta.env.VITE_EMP_API_URL?.replace(/\/$/, '') || defaultEmpApiUrl(),
 };
 const PRODUCTION_API_BASE_URL = 'https://api.akansho.com';
 
@@ -36,6 +49,14 @@ export function getRuntimeConfig(): AppRuntimeConfig {
 
 export function getApiBaseUrl(): string {
   return sanitizeApiBaseUrl(runtimeConfig.apiBaseUrl);
+}
+
+export function getEmpRemoteUrl(): string {
+  return sanitizeEmpUrl(runtimeConfig.empRemoteUrl, defaultEmpRemoteUrl());
+}
+
+export function getEmpApiUrl(): string {
+  return sanitizeEmpUrl(runtimeConfig.empApiUrl, defaultEmpApiUrl());
 }
 
 export function setApiBaseUrl(url: string): void {
@@ -121,6 +142,26 @@ export function sanitizeApiBaseUrl(url: string): string {
   return trimmed;
 }
 
+function sanitizeEmpUrl(url: string, productionFallback: string): string {
+  const trimmed = String(url || '')
+    .trim()
+    .replace(/\/$/, '');
+  if (isLocalBrowserHost()) {
+    return rewriteLocalEmpRemoteUrl(trimmed || productionFallback);
+  }
+  if (!trimmed || /localhost|127\.0\.0\.1/i.test(trimmed)) {
+    return productionFallback;
+  }
+  if (
+    typeof window !== 'undefined' &&
+    window.location.protocol === 'https:' &&
+    trimmed.startsWith('http://')
+  ) {
+    return trimmed.replace(/^http:\/\//i, 'https://');
+  }
+  return trimmed;
+}
+
 /** Resolve client logo paths to the assets CDN (CloudFront). */
 export function resolveLogoUrl(logoUrl?: string): string {
   return resolveBrandLogoUrl(logoUrl);
@@ -139,7 +180,10 @@ export async function loadRuntimeConfig(): Promise<AppRuntimeConfig> {
       runtimeConfig = {
         ...FALLBACK,
         apiBaseUrl: sanitizeApiBaseUrl(FALLBACK.apiBaseUrl),
+        empRemoteUrl: getEmpRemoteUrl(),
+        empApiUrl: getEmpApiUrl(),
       };
+      applyEmpRemoteEntry(runtimeConfig.empRemoteUrl);
       notifyRuntimeBrandingChanged();
       return runtimeConfig;
     }
@@ -148,9 +192,21 @@ export async function loadRuntimeConfig(): Promise<AppRuntimeConfig> {
       brandName: string;
       logoUrl: string;
       themeColors: Partial<ClientColorPalette>;
+      empRemoteUrl: string;
+      empApiUrl: string;
     }>;
 
     const apiBaseUrl = sanitizeApiBaseUrl(json.apiBaseUrl || FALLBACK.apiBaseUrl);
+    const empRemoteUrl = sanitizeEmpUrl(
+      json.empRemoteUrl ||
+        import.meta.env.VITE_EMP_REMOTE_URL ||
+        FALLBACK.empRemoteUrl,
+      defaultEmpRemoteUrl(),
+    );
+    const empApiUrl = sanitizeEmpUrl(
+      json.empApiUrl || import.meta.env.VITE_EMP_API_URL || FALLBACK.empApiUrl,
+      defaultEmpApiUrl(),
+    );
 
     const themeColors: ClientColorPalette = {
       ...FALLBACK.themeColors,
@@ -162,14 +218,20 @@ export async function loadRuntimeConfig(): Promise<AppRuntimeConfig> {
       brandName: json.brandName?.trim() || FALLBACK.brandName,
       logoUrl: json.logoUrl?.trim() || undefined,
       themeColors,
+      empRemoteUrl,
+      empApiUrl,
     };
+    applyEmpRemoteEntry(empRemoteUrl);
     notifyRuntimeBrandingChanged();
     return runtimeConfig;
   } catch {
     runtimeConfig = {
       ...FALLBACK,
       apiBaseUrl: sanitizeApiBaseUrl(FALLBACK.apiBaseUrl),
+      empRemoteUrl: sanitizeEmpUrl(FALLBACK.empRemoteUrl, defaultEmpRemoteUrl()),
+      empApiUrl: sanitizeEmpUrl(FALLBACK.empApiUrl, defaultEmpApiUrl()),
     };
+    applyEmpRemoteEntry(runtimeConfig.empRemoteUrl);
     notifyRuntimeBrandingChanged();
     return runtimeConfig;
   }

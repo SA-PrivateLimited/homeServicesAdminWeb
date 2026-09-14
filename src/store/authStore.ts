@@ -20,6 +20,7 @@ import {
 } from '../services/api/superAdminApi';
 import { refreshAccessToken } from '../services/sessionRefresh';
 import { ApiError } from '../services/api/apiClient';
+import { clearEmpHostSession } from '../emp/empSession';
 
 interface AuthState {
   user: AdminUser | null;
@@ -51,6 +52,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     const token = await getStoredJwt();
     if (!token) {
       clearSuperAdminToken();
+      clearEmpHostSession();
       await clearBackendSession();
       set({
         user: null,
@@ -92,6 +94,7 @@ export const useAuthStore = create<AuthState>((set) => ({
         }
       }
       clearSuperAdminToken();
+      clearEmpHostSession();
       await clearBackendSession();
       set({
         user: null,
@@ -144,6 +147,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   logout: async () => {
     await logoutWithBackend();
     clearSuperAdminToken();
+    clearEmpHostSession();
     await clearBackendSession();
     set({user: null, token: null, superAdminElevated: false});
   },

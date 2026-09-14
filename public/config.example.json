@@ -1,5 +1,7 @@
 {
   "apiBaseUrl": "http://localhost:3001",
+  "empRemoteUrl": "http://localhost:5180/assets/remoteEntry.js",
+  "empApiUrl": "http://localhost:4100",
   "themeColors": {
     "primary": "#3182CE",
     "primaryDark": "#2C5282",
