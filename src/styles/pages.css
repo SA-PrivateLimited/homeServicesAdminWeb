@@ -868,6 +868,7 @@ a.hs-btn {
 
 .overview-detail {
   margin-top: 0;
+  min-width: 0;
 }
 
 .overview-panels {

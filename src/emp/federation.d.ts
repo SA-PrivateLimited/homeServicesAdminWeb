@@ -2,14 +2,11 @@ declare module 'employeeManagement/EmployeeManagement' {
   import type {ComponentType} from 'react';
 
   export type EmployeeManagementProps = {
-    getAccessToken: () => Promise<string>;
-    companyId: string;
+    /** HR JWT comes from employee-management login inside the remote. */
     apiBaseUrl?: string;
-    displayName?: string;
-    companyName?: string;
-    permissions?: string[];
     locale?: string;
     basePath?: string;
+    companyName?: string;
   };
 
   const EmployeeManagement: ComponentType<EmployeeManagementProps>;

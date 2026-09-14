@@ -72,6 +72,8 @@
   "empLoading": "Loading Employee Management…",
   "empLoadError": "Unable to load Employee Management. Please try again.",
   "empRetry": "Try again",
+  "adminSectionError": "This page could not load.",
+  "adminSectionErrorHint": "Other Admin tabs still work. Use the sidebar to continue.",
   "actAsSuperAdmin": "Act as Super Admin",
   "actAsSuperAdminLead": "Enter the 4-digit Super Admin key to add or remove admin accounts.",
   "superAdminKey": "Super Admin key",

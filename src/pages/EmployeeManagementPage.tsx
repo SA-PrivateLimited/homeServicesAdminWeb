@@ -10,14 +10,8 @@ import {
 } from 'react';
 import {useTranslation} from 'react-i18next';
 import {Button, Loader} from 'sapvt-ltd-web-packages';
-import {useAuthStore} from '../store/authStore';
 import {getEmpApiUrl} from '../config/runtime';
 import {resolveEmpRemoteEntryUrl} from '../emp/remoteUrl';
-import {
-  fetchEmpHostSession,
-  getEmpAccessToken,
-  type EmpHostSession,
-} from '../emp/empSession';
 import {loadFederatedEmployeeManagement} from '../emp/loadRemote';
 import './EmployeeManagementPage.css';
 
@@ -102,10 +96,14 @@ async function assertRemoteEntry() {
   }
 }
 
+/**
+ * Loads the federated Employee Management module.
+ * HR auth uses employee-management company credentials inside the remote —
+ * not Akansho Admin login.
+ */
 export function EmployeeManagementPage() {
   const {t, i18n} = useTranslation();
-  const user = useAuthStore((s) => s.user);
-  const [session, setSession] = useState<EmpHostSession | null>(null);
+  const [remoteReady, setRemoteReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [nonce, setNonce] = useState(0);
   const RemoteEmployeeManagement = useMemo(
@@ -116,12 +114,11 @@ export function EmployeeManagementPage() {
   useEffect(() => {
     let cancelled = false;
     setError(null);
-    setSession(null);
+    setRemoteReady(false);
     void (async () => {
       try {
         await assertRemoteEntry();
-        const next = await fetchEmpHostSession();
-        if (!cancelled) setSession(next);
+        if (!cancelled) setRemoteReady(true);
       } catch (err) {
         if (!cancelled) {
           setError(
@@ -141,7 +138,7 @@ export function EmployeeManagementPage() {
     return <EmployeeLoadError onRetry={onRetry} detail={error} />;
   }
 
-  if (!session) {
+  if (!remoteReady) {
     return <EmployeeLoading />;
   }
 
@@ -149,14 +146,10 @@ export function EmployeeManagementPage() {
     <EmployeeRemoteBoundary onRetry={onRetry} key={nonce}>
       <Suspense fallback={<EmployeeLoading />}>
         <RemoteEmployeeManagement
-          getAccessToken={getEmpAccessToken}
-          companyId={session.companyId}
           apiBaseUrl={getEmpApiUrl()}
-          displayName={user?.name || user?.email || t('empLoadTitle')}
-          companyName="Akansho"
-          permissions={session.permissions}
           locale={i18n.language}
           basePath="/hr"
+          getAccessToken={async () => ''}
         />
       </Suspense>
     </EmployeeRemoteBoundary>

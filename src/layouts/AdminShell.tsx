@@ -19,6 +19,7 @@ import {
   type NewServiceRequestPayload,
 } from '../services/adminSocket';
 import {setAppLanguage} from '../i18n';
+import {AdminOutletErrorBoundary} from '../components/AdminSectionErrorBoundary';
 import './AdminShell.css';
 
 const NAV: Array<{
@@ -87,6 +88,16 @@ const NAV: Array<{
 ];
 
 const SIDEBAR_COLLAPSED_KEY = 'hs-admin-sidebar-collapsed';
+
+type NavItem = (typeof NAV)[number];
+
+function navLinkClass(item: NavItem, pathname: string, isActive: boolean): string {
+  const permissionsOpen =
+    item.to.startsWith('/settings/permissions') &&
+    pathname.startsWith('/settings/permissions');
+  const employeeOpen = item.to === '/hr' && pathname.startsWith('/hr');
+  return isActive || permissionsOpen || employeeOpen ? 'nav-link active' : 'nav-link';
+}
 
 export function AdminShell() {
   const {t, i18n} = useTranslation();
@@ -267,12 +278,7 @@ export function AdminShell() {
               to={item.to}
               end={Boolean(item.end)}
               className={({isActive}) =>
-                isActive ||
-                (item.to.startsWith('/settings/permissions') &&
-                  location.pathname.startsWith('/settings/permissions')) ||
-                (item.to === '/hr' && location.pathname.startsWith('/hr'))
-                  ? 'nav-link active'
-                  : 'nav-link'
+                navLinkClass(item, location.pathname, isActive)
               }
               title={t(item.key)}>
               <span className="nav-link-abbr" aria-hidden>
@@ -423,7 +429,9 @@ export function AdminShell() {
             </div>
           </div>
         ) : null}
-        <Outlet />
+        <AdminOutletErrorBoundary>
+          <Outlet />
+        </AdminOutletErrorBoundary>
       </main>
 
       {elevateOpen ? (
